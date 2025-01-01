@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block body %}
+{% if messages %}
+<div class="messages">
+    {% for message in messages %}
+        <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+            {{ message }}
+        </div>
+    {% endfor %}
+</div>
+{% endif %}
+         <div class="page-wrapper">
+            <div class="content container-fluid">
+               <div class="page-header">
+                  <div class="row align-items-center">
+                     <div class="col">
+                        <h3 class="page-title">Product</h3>
+                        <ul class="breadcrumb">
+                           <li class="breadcrumb-item"><a href="">Dashboard</a></li>
+                           <li class="breadcrumb-item active">Product</li>
+                        </ul>
+                     </div>
+                     <div class="col-auto text-right float-right ml-auto">
+                        <a href="#" class="btn btn-outline-primary mr-2"><i class="fas fa-download"></i> Download</a>
+                        <a href="{% url 'add_product' %}" class="btn btn-primary"><i class="fas fa-plus"></i></a>
+                     </div>
+                  </div>
+               </div>
+               <div class="row">
+                  <div class="col-sm-12">
+                     <div class="card card-table">
+                        <div class="card-body">
+                           <div class="table-responsive">
+                              <table class="table table-hover table-center mb-0 datatable">
+                                 <thead>
+                                    <tr>
+                                       <th>ID</th>
+                                       <th>Name</th>
+                                       <th>Category</th>
+                                       <th>Stock</th>
+                                       <th>Price</th>
+                                       <th>status</th>
+         
+                                       <th class="">Action</th>
+                                    </tr>
+                                 </thead>
+                                 <tbody>
+                                    {% for product in products %}
+                                    <tr>
+                                       <td>{{ product.id}}</td>
+                                 
+                                       <td>{{ product.name }}</td>
+                                       <td>{{ product.category.name }}</td>
+                                       <td>{{ product.stock }}</td>
+                                       <td>{{ product.price }}</td>
+                                       <td>
+                                          {% if product.is_active %}
+                                             Active
+                                          {% else %}
+                                             Deactivate
+                                           {% endif %}
+
+                                       </td>
+                                       
+                                       <td class=>
+                                          <div class="actions">
+                                             <a href="{% url 'edit_product' product.id %}" class="btn btn-sm bg-success-light mr-2">
+                                                 <i class="fas fa-pen"></i>edit</a>
+                                             <a href="{% url 'toggle_product_status' product.id %}" class="btn btn-sm bg-danger mr-2">
+                                                <i class="fas fa-trash"></i>
+                                                {% if product.is_active %}
+                                                Deactivate
+                                                {% else %}
+                                                Activate
+                                                {% endif %}
+                                            </a>
+                                            
+                                         </div>
+                                       </td>
+                                    </tr>
+                                    {% endfor %}
+                                 </tbody>
+                              </table>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+            <footer>
+            </footer>
+         </div>
+      </div>
+      <script src="{%static 'assets/js/jquery-3.6.0.min.js' %}"></script>
+      <script src="{%static 'assets/js/popper.min.js' %}"></script>
+      <script src="{%static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
+      <script src="{%static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
+      <script src="{%static 'assets/plugins/datatables/datatables.min.js' %}"></script>
+      <script src="{%static 'assets/js/script.js' %}"></script>
+   </body>
+   <!-- Mirrored from preschool.dreamguystech.com/html-template/students.html by HTTrack Website Copier/3.x [XR&CO'2014], Thu, 28 Oct 2021 11:11:49 GMT -->
+</html>
+
+
+{% endblock %}

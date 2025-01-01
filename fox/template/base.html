@@ -1,0 +1,221 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+   
+   <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+      <title>Admin - Dashboard</title>
+      <link rel="shortcut icon" href="{% static 'assets/img/favicon.png' %}">
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,500;0,600;0,700;1,400&amp;display=swap">
+      <link rel="stylesheet" href="{% static 'assets/plugins/bootstrap/css/bootstrap.min.css' %}">
+      <link rel="stylesheet" href="{% static 'assets/plugins/fontawesome/css/fontawesome.min.css' %}">
+      <link rel="stylesheet" href="{% static 'assets/plugins/fontawesome/css/all.min.css' %}">
+      <link rel="stylesheet" href="{% static 'assets/css/style.css' %}">
+   </head>
+   <body>
+      
+      <div class="main-wrapper">
+         <div class="header">
+            <div class="header-left">
+               <a href=" " class="logo">
+               <img src="" alt="">
+               </a>
+               <a href="" class="logo logo-small">
+               <img src="" alt="" width="30" height="30">
+               </a>
+            </div>
+            <a href="javascript:void(0);" id="toggle_btn">
+            <i class="fas fa-align-left"></i>
+            </a>
+            <div class="top-nav-search">
+               <form>
+                  <input type="text" class="form-control" placeholder="Search here">
+                  <button class="btn" type="submit"><i class="fas fa-search"></i></button>
+               </form>
+            </div>
+            <a class="mobile_btn" id="mobile_btn">
+            <i class="fas fa-bars"></i>
+            </a>
+            <ul class="nav user-menu">
+               <li class="nav-item dropdown noti-dropdown">
+                  <a href="#" class="dropdown-toggle nav-link" data-toggle="dropdown">
+                   {% if unread_notification_count > 0 %}
+                  <i class="far fa-bell"></i> <span class="badge badge-pill">{{unread_notification_count}}</span>
+                  {% endif %}
+                  </a>
+                  <div class="dropdown-menu notifications">
+                     <div class="topnav-dropdown-header">
+                        <span class="notification-title">Notifications</span>
+                        <a href="javascript:void(0)" class="clear-noti"> Clear All </a>
+                     </div>
+                     <div class="noti-content">
+                        <ul class="notification-list">
+                           {% for notification in unread_notification %}
+                           <li class="notification-message">
+                              <a href="#">
+                                 <div class="media">
+                                    <span class="avatar avatar-sm">
+                                    <img class="avatar-img rounded-circle" alt="" src="">
+                                    </span>
+                                    <div class="media-body">
+                                       <p class="noti-details"><span class="noti-title">{{ notification.user.username }}</span> {{ notification.message }} <span class="noti-title">your estimate</span></p>
+                                       <p class="noti-time"><span class="notification-time">{{ notification.created_at|timesince }} ago</span></p>
+                                    </div>
+                                 </div>
+                              </a>
+                           </li>
+                           {% endfor %}
+
+                        </ul>
+                     </div>
+                     <div class="topnav-dropdown-footer">
+                        <a href="#">View all Notifications</a>
+                     </div>
+                  </div>
+               </li>
+               <li class="nav-item dropdown has-arrow">
+                  <a href="#" class="dropdown-toggle nav-link" data-toggle="dropdown">
+                  <span class="user-img"><img class="rounded-circle" src="" width="31" alt=""></span>
+                  </a>
+                  <div class="dropdown-menu">
+                     <div class="user-header">
+                        <div class="avatar avatar-sm">
+                           <img src="" alt="" class="avatar-img rounded-circle">
+                        </div>
+                        <div class="user-text">
+                           <h6></h6>
+                           <p class="text-muted mb-0">Administrator</p>
+                        </div>
+                     </div>
+                     <a class="dropdown-item" href="">My Profile</a>
+                     <a class="dropdown-item" href="">Inbox</a>
+                     <a class="dropdown-item" href="{% url 'logout' %}">Logout</a>
+                  </div>
+               </li>
+            </ul>
+         </div>
+         <div class="sidebar" id="sidebar">
+            <div class="sidebar-inner slimscroll">
+               <div id="sidebar-menu" class="sidebar-menu">
+                  <ul>
+                     <li class="menu-title">
+                        <span>Main Menu</span>
+                     </li>
+                     <li class="submenu active">
+                        <a href="#"><i class="fas fa-user-cog"></i> <span> Dashboard</span> <span class="menu-arrow"></span></a>
+                        <ul>
+                           <li><a href="{% url 'admin_home' %}" class="active">Admin Dashboard</a></li>
+                        </ul>
+                     </li>
+                     <li class="submenu">
+                        <a href="#"><i class="fa fa-list-alt" aria-hidden="true"></i> <span> Products</span> <span class="menu-arrow"></span></a>
+                        <ul>
+                           <li><a href="{% url 'product' %}">Products List</a></li>
+                           <li><a href="{% url 'add_product' %}">Product Add</a></li>
+                          
+                        </ul>
+                     </li>
+                     <li class="submenu">
+                        <a href="#"><i class="fa fa-user" aria-hidden="true"></i> <span> Customers</span> <span class="menu-arrow"></span></a>
+                        <ul>
+                           <li><a href="{% url 'customer' %}">Customers List</a></li>
+                           <li><a href="{% url 'edit_customer' %}">Customer Edit</a></li>
+                        </ul>
+                     </li>
+                     <li class="submenu">
+                        <a href="#"><i class="fa fa-list-alt" aria-hidden="true"></i> <span> Category</span> <span class="menu-arrow"></span></a>
+                        <ul>
+                           <li><a href="{% url 'category' %}">Category List</a></li>
+                           <li><a href="{% url 'add_category' %}">Category Add</a></li>
+                          
+                        </ul>
+                     </li>
+
+                    
+                  </ul>
+               </div>
+            </div>
+         </div>
+
+
+         {% block body %}
+            
+         {% endblock %}
+
+      </div>
+
+ 
+
+    
+      <script type="text/javascript">
+          document.addEventListener('DOMContentLoaded', function() {
+              // Select the notification dropdown element
+              const notiDropdown = document.querySelector('.noti-dropdown');
+              const clearAllBtn = document.querySelector('.clear-noti');
+      
+              if (notiDropdown) {
+                  // Add a click event listener to the notification dropdown
+                  notiDropdown.addEventListener('click', function() {
+                      const url = "";
+      
+                      // Use the Fetch API to send a POST request to mark notifications as read
+                      fetch(url, {
+                          method: 'POST',
+                          headers: {
+                              'X-CSRFToken': '{{ csrf_token }}',
+                              'Content-Type': 'application/x-www-form-urlencoded',
+                          }
+                      })
+                      .then(response => response.json())  // Parse the JSON response
+                      .then(data => {
+                          if (data.status === 'success') {
+                              // Remove the badge if notifications are successfully marked as read
+                              const badge = document.querySelector('.badge');
+                              if (badge) {
+                                  badge.remove();
+                              }
+                          }
+                      })
+                      .catch(error => {
+                          console.error('Error:', error);  // Log any errors
+                      });
+                  });
+              }
+      
+              if (clearAllBtn) {
+                  // Add a click event listener to the "Clear All" button
+                  clearAllBtn.addEventListener('click', function() {
+                      const clearUrl = "";  // Ensure this URL points to the correct view
+      
+                      // Use Fetch to send a POST request to clear all notifications
+                      fetch(clearUrl, {
+                          method: 'POST',
+                          headers: {
+                              'X-CSRFToken': '{{ csrf_token }}',
+                              'Content-Type': 'application/x-www-form-urlencoded',
+                          }
+                      })
+                      .then(response => response.json())  // Parse the JSON response
+                      .then(data => {
+                          if (data.status === 'success') {
+                              // Clear all notifications from the dropdown
+                              const notificationList = document.querySelector('.notification-list');
+                              if (notificationList) {
+                                  notificationList.innerHTML = '<li>No new notifications</li>';  // Optionally show a "No new notifications" message
+                              }
+                          }
+                      })
+                      .catch(error => {
+                          console.error('Error:', error);  // Log any errors
+                      });
+                  });
+              }
+          });
+      </script>
+      
+      
+  </body>
+  </html>
+  

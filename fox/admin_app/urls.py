@@ -1,0 +1,35 @@
+
+from django.urls import path
+from django.conf.urls.static import static
+from django.conf import settings
+from . import views
+
+urlpatterns = [
+    #url for admin home page
+    path('admin_home',views.admin_home,name='admin_home'),
+
+    #url for admin product functions
+    path('product',views.product_list,name='product'),
+    path('product/add_product',views.add_product,name='add_product'),
+    path('product/edit/<int:product_id>/',views.edit_product,name='edit_product'),
+    path('product_details',views.product_details,name='product_details'),
+    path('product/toggle/<int:product_id>/', views.toggle_product_status, name='toggle_product_status'), #for soft delete
+    path('product/<int:product_id>/', views.product_details, name='product_details'),
+
+
+    #url for admin customer functions
+    path('customer',views.customer_list,name='customer'),
+    path('customer/edit_customer',views.edit_customer,name='edit_customer'),
+    path('customers/<int:user_id>/block/', views.block_user, name='block_user'),
+    path('customers/<int:user_id>/unblock/', views.unblock_user, name='unblock_user'),
+
+
+    #url for admin category functions
+    path('category',views.category_list,name='category'),
+    path('category/add_category',views.add_category,name='add_category'),
+    path('edit_category',views.edit_category,name='edit_category'),
+    path('categories/<int:category_id>/edit/', views.edit_category, name='edit_category'),
+    path('category/toggle/<int:category_id>/', views.toggle_category_status, name='toggle_category_status'),  #for soft delete
+]
+
+urlpatterns += static(settings.MEDIA_URL,document_root=settings.MEDIA_ROOT)

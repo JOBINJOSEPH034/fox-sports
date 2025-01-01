@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block body %}
+   
+         <div class="page-wrapper">
+            <div class="content container-fluid">
+               <div class="page-header">
+                  <div class="row align-items-center">
+                     <div class="col">
+                        <h3 class="page-title">Add Category</h3>
+                        <ul class="breadcrumb">
+                           <li class="breadcrumb-item"><a href="{% url 'category' %}">Category</a></li>
+                           <li class="breadcrumb-item active">Add Category</li>
+                        </ul>
+                     </div>
+                  </div>
+               </div>
+               <div class="row">
+                  <div class="col-sm-12">
+                     <div class="card">
+                        <div class="card-body">
+                           <form method="POST"   enctype="multipart/form-data">
+                              {% csrf_token %}
+                              <div class="row">
+                                 <div class="col-12">
+                                    <h5 class="form-title"><span>Category  Information</span></h5>
+                                 </div>
+                                 <div class="col-12 col-sm-6">
+                                    <div class="form-group">
+                                       <label for="name">Name</label>
+                                       <input type="text" class="form-control" name="name" id="name" required>
+                                    </div>
+                                 </div>
+                                 
+                                 <div class="col-12 col-sm-6">
+                                    <div class="form-group">
+                                       <label for="description" >Description</label>
+                                       <input type="text" class="form-control" name = "description" id="description" required>
+                                    </div>
+                                 </div>
+                                
+                                 
+                           
+                                
+         
+                                 
+                                 <div class="col-12">
+                                    <button type="submit" class="btn btn-primary">Submit</button>
+                                 </div>
+                              </div>
+                           </form>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </div>
+      </div>
+      <script src="{%static 'assets/js/jquery-3.6.0.min.js' %}"></script>
+      <script src="{%static 'assets/js/popper.min.js' %}"></script>
+      <script src="{%static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
+      <script src="{%static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
+      <script src="{%static 'assets/js/script.js' %}"></script>
+   </body>
+   <!-- Mirrored from preschool.dreamguystech.com/html-template/add-student.html by HTTrack Website Copier/3.x [XR&CO'2014], Thu, 28 Oct 2021 11:11:50 GMT -->
+</html>
+{% endblock %}
