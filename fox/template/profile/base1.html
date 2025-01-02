@@ -122,69 +122,45 @@
 
 
     <div class="container-fluid">
-        <div class="row px-xl-5">
-            <!-- Select Address Section -->
-            <div class="col-lg-8">
-                <h5 class="section-title position-relative text-uppercase mb-3">
-                    <span class="bg-secondary pr-3">Select Address</span>
-                </h5>
-                <div class="bg-light p-3 mb-5">
-                    <form method="POST" action="{% url 'checkout' %}">
-                        {% csrf_token %}
-                        {% for address in addresses %}
-                        <div class="border-bottom pb-3 mb-3">
-                            <p><strong>Name:</strong> {{ address.name }}</p>
-                            <p><strong>Phone:</strong> {{ address.phone }}</p>
-                            <p><strong>Address:</strong> {{ address.address_line }}, {{ address.city }}, {{ address.state }} - {{ address.postal_code }}</p>
-                            <div class="form-check">
-                                <input type="radio" name="selected_address" value="{{ address.id }}" id="address-{{ address.id }}" class="form-check-input">
-                                <label for="address-{{ address.id }}" class="form-check-label">Select this address</label>
-                            </div>
-                        </div>
-                        {% empty %}
-                        <p>No addresses found. <a href="{% url 'manage_addresses' %}">Add Address</a></p>
-                        {% endfor %}
-                    </div>
-                    <a href="{% url 'manage_addresses' %}" class="btn btn-primary mb-3">Add/Edit Address</a>
-            </div>
-    
-            <!-- Payment and Confirm Order Section -->
-            <div class="col-lg-4">
-                <div class="bg-light p-30 mb-5">
-                    <h5 class="section-title position-relative text-uppercase mb-3">
-                        <span class="bg-secondary pr-3">Order Summary</span>
-                    </h5>
-                    <div class="border-bottom pb-2">
-                        <div class="d-flex justify-content-between mb-3">
-                            <h6>Subtotal</h6>
-                            <h6>₹{{ cart_total }}</h6>
-                        </div>
-                    </div>
-                    <div class="pt-2">
-                        <h5 class="section-title position-relative text-uppercase mb-3">
-                            <span class="bg-secondary pr-3">Payment Options</span>
-                        </h5>
-                        <div class="form-check">
-                            <input type="radio" name="payment_method" value="cod" id="cod" class="form-check-input" checked>
-                            <label for="cod" class="form-check-label">Cash on Delivery</label>
-                        </div>
-                        <div class="form-check">
-                            <input type="radio" name="payment_method" value="online" id="online" class="form-check-input" disabled>
-                            <label for="online" class="form-check-label">Online Payment (Coming Soon)</label>
-                        </div>
-                        <div class="pt-2">
-                            <button type="submit" class="btn btn-block btn-primary font-weight-bold my-3 py-3">Checkout</button>
-                        </div>
-                    </div>
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-lg-3 bg-light">
+                <div class="p-4">
+                    <h5 class="text-uppercase">Profile Menu</h5>
+                    <ul class="list-group">
+                        <li class="list-group-item">
+                            <a href="{% url 'profile' %}" class="text-dark">User Details</a>
+                        </li>
+                        <li class="list-group-item">
+                            <a href="" class="text-dark">Edit Profile</a>
+                        </li>
+                        <li class="list-group-item">
+                            <a href="{% url 'manage_addresses' %}" class="text-dark">Manage Addresses</a>
+                        </li>
+                        <li class="list-group-item">
+                            <a href="{% url 'order_management' %}" class="text-dark">Order History</a>
+                        </li>
+                        <li class="list-group-item">
+                            <a href="" class="text-dark">Change Password</a>
+                        </li>
+                    </ul>
                 </div>
-            </div>
-            </form>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="col-lg-9">
+                {% block content %}
+                {% endblock %}
+            </main>
         </div>
     </div>
-    
+
+
 
 
     
+
+
     <!-- Footer Start -->
     <div class="container-fluid bg-dark text-secondary mt-5 pt-5">
         <div class="row px-xl-5 pt-5">
@@ -254,26 +230,8 @@
             </div>
         </div>
     </div>
+
     
-    <script>
-        // Inline script to update the hidden input value when an address is selected
-        function selectAddress(addressId) {
-            document.getElementById('selected-address-input').value = addressId;
-        }
-    </script>
-
- 
-
-    <script>
-        document.querySelectorAll('.size-option').forEach(function(element) {
-            element.addEventListener('click', function() {
-                const sizeId = element.getAttribute('data-size-id');
-                const priceAdjustment = element.getAttribute('data-price-adjust');
-                alert('You selected size ID: ' + sizeId + ' with a price adjustment of ₹' + priceAdjustment);
-                // Here you can update your UI or send data to the server if needed
-            });
-        });
-    </script>
     <!-- Footer End -->
 
 

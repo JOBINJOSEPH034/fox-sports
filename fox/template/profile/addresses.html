@@ -1,0 +1,20 @@
+{% extends 'base1.html' %}
+
+{% block title %}Addresses{% endblock %}
+
+{% block content %}
+<div class="bg-light p-4">
+    <h3>Manage Addresses</h3>
+    <ul class="list-group">
+        {% for address in addresses %}
+        <li class="list-group-item">
+            <p>{{ address.name }}</p>
+            <p>{{ address.address_line }}</p>
+            <p>{{ address.city }}, {{ address.state }} - {{ address.postal_code }}</p>
+            <a href="{% url 'edit_address' address.id %}" class="btn btn-sm btn-primary">Edit</a>
+            <a href="{% url 'delete_address' address.id %}" class="btn btn-sm btn-danger">Delete</a>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %}

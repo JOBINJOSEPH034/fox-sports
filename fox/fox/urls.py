@@ -28,7 +28,8 @@ urlpatterns = [
     path('',include('admin_app.urls')),              #admin app url
     path('',include('auth_app.urls')),               #auth app url
     path('accounts/', include('allauth.urls')),      #for social account
+  
     
     
 ]
-urlpatterns += static(settings.MEDIA_URL,document_root=settings.MEDIA_ROOT)
+urlpatterns += static(settings.MEDIA_URL,document_root=settings.MEDIA_ROOT) 

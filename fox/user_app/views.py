@@ -3,9 +3,12 @@ from admin_app.models import Category ,Product,ProductVariant
 from .models import Cart, CartItem,Address, Order
 from django.db.models import Sum
 from django.contrib import messages
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
 from django.db.models import Q
+from django.http import JsonResponse
 
 
 
@@ -221,7 +224,7 @@ def manage_addresses(request):
                 postal_code=request.POST.get('postal_code'),
                 is_default=request.POST.get('is_default') == 'on'
             )
-        return redirect('manage_addresses')
+        return redirect('profile')
 
     # Display all addresses for the user
     addresses = Address.objects.filter(user=request.user)
@@ -248,13 +251,9 @@ def edit_address(request, address_id):
             Address.objects.filter(user=request.user).update(is_default=False)
         address.is_default = is_default
         address.save()
-        return redirect('manage_addresses')  # After editing, redirect to the manage addresses page
+        return redirect('profile')  # After editing, redirect to the manage addresses page
 
     return render(request, 'edit_address.html', {'address': address})
-
-
-
-
 
 
 
@@ -263,24 +262,32 @@ def delete_address(request, address_id):
     # Delete an address
     address = get_object_or_404(Address, id=address_id, user=request.user)
     address.delete()
-    return redirect('manage_addresses')
+    return redirect('profile')
+
+
 
 
 #chechout
 
 @login_required
 def checkout(request):
-    # Get the user's cart
     cart, created = Cart.objects.get_or_create(user=request.user)
     cart_items = CartItem.objects.filter(cart=cart)
     cart_total = sum(item.total_price for item in cart_items)
+
+    if not cart_items.exists():
+        # Add a message to the messages framework
+        messages.error(request, "Your cart is empty. Please add items to your cart before checking out.")
+        
+        # Redirect to the shopping page
+        return redirect('shop')  # Replace 'shopping_page' with your actual shopping page URL name
 
     # Get all addresses
     addresses = Address.objects.filter(user=request.user)
 
     if request.method == 'POST':
         # Handle order placement
-        address_id = request.POST.get('address_id')
+        address_id = request.POST.get('selected_address')
         selected_address = get_object_or_404(Address, id=address_id, user=request.user)
         order = Order.objects.create(
             user=request.user,
@@ -300,5 +307,47 @@ def checkout(request):
 @login_required
 def order_success(request, order_id):
     # Display order confirmation
-    order = get_object_or_404(Order, id=order_id, user=request.user)
+    order = get_object_or_404(Order, id=order_id)
     return render(request, 'order_success.html', {'order': order})
+
+
+
+
+
+
+
+#order management for user
+
+@login_required
+def order_management(request):
+    # Fetch all orders for the logged-in user
+    user_orders = Order.objects.filter(user=request.user).order_by('-created_at')
+    return render(request, 'order_management.html', {'orders': user_orders})
+
+
+# Cancel Order
+@login_required
+def cancel_order(request, order_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    if order.order_status in ['Pending', 'Processing']:
+        order.cancel_order()
+        messages.success(request, "Order cancelled successfully!")
+    else:
+        messages.error(request, "Order cannot be cancelled because it has already been delivered or shipped!")
+    return redirect('order_management')
+
+
+
+# User Profile View (Displays user details)
+@login_required
+def profile(request):
+    user = request.user  # The logged-in user
+    addresses = Address.objects.filter(user=user)
+    orders = Order.objects.filter(user=user).order_by('-created_at')  # Fetch orders
+    return render(request, 'profile/profile.html', {
+        'user': user,
+        'addresses': addresses,
+        'orders': orders
+    })
+
+
