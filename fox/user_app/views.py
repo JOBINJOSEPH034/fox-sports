@@ -224,7 +224,7 @@ def manage_addresses(request):
                 postal_code=request.POST.get('postal_code'),
                 is_default=request.POST.get('is_default') == 'on'
             )
-        return redirect('profile')
+        return redirect('manage_addresses')
 
     # Display all addresses for the user
     addresses = Address.objects.filter(user=request.user)
@@ -251,7 +251,7 @@ def edit_address(request, address_id):
             Address.objects.filter(user=request.user).update(is_default=False)
         address.is_default = is_default
         address.save()
-        return redirect('profile')  # After editing, redirect to the manage addresses page
+        return redirect('manage_addresses')  # After editing, redirect to the manage addresses page
 
     return render(request, 'edit_address.html', {'address': address})
 
@@ -320,34 +320,35 @@ def order_success(request, order_id):
 
 @login_required
 def order_management(request):
-    # Fetch all orders for the logged-in user
-    user_orders = Order.objects.filter(user=request.user).order_by('-created_at')
-    return render(request, 'order_management.html', {'orders': user_orders})
+    # Fetch all orders for the logged-in user, ordered by creation date (latest first)
+    orders = Order.objects.filter(user=request.user).order_by('-created_at')
+    return render(request, 'profile/orders.html', {'orders': orders})
 
-
-# Cancel Order
 @login_required
 def cancel_order(request, order_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
-    if order.order_status in ['Pending', 'Processing']:
-        order.cancel_order()
-        messages.success(request, "Order cancelled successfully!")
+
+    if order.order_status in ['Pending', 'Processing', 'Shipped']:
+        order.order_status = 'Cancelled'
+        order.save()
+        messages.success(request, f"Order {order.id} has been successfully canceled.")
     else:
-        messages.error(request, "Order cannot be cancelled because it has already been delivered or shipped!")
+        messages.error(request, f"Order {order.id} cannot be canceled.")
+
     return redirect('order_management')
-
-
-
 # User Profile View (Displays user details)
 @login_required
 def profile(request):
-    user = request.user  # The logged-in user
-    addresses = Address.objects.filter(user=user)
-    orders = Order.objects.filter(user=user).order_by('-created_at')  # Fetch orders
-    return render(request, 'profile/profile.html', {
-        'user': user,
-        'addresses': addresses,
-        'orders': orders
-    })
+    user = request.user  # Get the logged-in user
+    user_data = {
+        'username': user.username,
+        'first_name': user.first_name,
+        'last_name': user.last_name,
+        'email': user.email,
+        'date_joined': user.date_joined,  # When the user signed up
+        'last_login': user.last_login,  # Last login timestamp
+    }
+
+    return render(request, 'profile/profile.html', {'user_data': user_data})
 
 

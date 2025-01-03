@@ -5,8 +5,33 @@
 {% block content %}
 <div class="bg-light p-4">
     <h3>User Details</h3>
-    <p><strong>Name:</strong> {{ user.first_name }} {{ user.last_name }}</p>
-    <p><strong>Email:</strong> {{ user.email }}</p>
-    <p><strong>Phone:</strong> {{ user.phone }}</p>
+    <p><strong>Username:</strong>{{ user_data.username }} </p>
+    <p><strong>Name:</strong> {{ user_data.first_name }} {{ user_data.last_name }}</p>
+    <p><strong>Email:</strong>{{ user_data.email }}</p>
+    <p><strong>Phone:</strong> {{ user_data.phone  }}</p>
+    <p><strong>Bio:</strong> {{ user_data.bio  }}</p>
+    <p><strong>Date Joined:</strong> {{ user_data.date_joined }}</p>
+   
+</div>
+
+
+<div class="bg-light p-4">
+    <h3>Edit Profile</h3>
+    <form method="POST" action="">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="first_name">First Name</label>
+            <input type="text" id="first_name" name="first_name" value="{{ user.first_name }}" class="form-control">
+        </div>
+        <div class="form-group">
+            <label for="last_name">Last Name</label>
+            <input type="text" id="last_name" name="last_name" value="{{ user.last_name }}" class="form-control">
+        </div>
+        <div class="form-group">
+            <label for="phone">Phone</label>
+            <input type="text" id="phone" name="phone" value="{{ user.phone }}" class="form-control">
+        </div>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+    </form>
 </div>
 {% endblock %}

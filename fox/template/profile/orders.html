@@ -1,6 +1,6 @@
-{% extends 'base1.html' %}
+{% extends 'profile/base1.html' %}
 
-{% block title %}Order History{% endblock %}
+{% block title %}Order Management{% endblock %}
 
 {% block content %}
 <div class="bg-light p-4">
@@ -10,6 +10,7 @@
             <tr>
                 <th>Order ID</th>
                 <th>Date</th>
+                <th>Address</th>
                 <th>Status</th>
                 <th>Total</th>
                 <th>Actions</th>
@@ -20,12 +21,35 @@
             <tr>
                 <td>{{ order.id }}</td>
                 <td>{{ order.created_at }}</td>
-                <td>{{ order.status }}</td>
-                <td>₹{{ order.total_price }}</td>
                 <td>
-                    <a href="{% url 'cancel_order' order.id %}" class="btn btn-sm btn-danger" {% if order.status == "Delivered" %}disabled{% endif %}>
+                    {{ order.address.name }}<br>
+                    {{ order.address.address_line }}<br>
+                    {{ order.address.city }}, {{ order.address.state }}<br>
+                    {{ order.address.postal_code }}
+                </td>
+                <td>
+                    <span class="badge 
+                        {% if order.order_status == 'Pending' %}bg-warning
+                        {% elif order.order_status == 'Processing' %}bg-info
+                        {% elif order.order_status == 'Shipped' %}bg-primary
+                        {% elif order.order_status == 'Delivered' %}bg-success
+                        {% elif order.order_status == 'Cancelled' %}bg-danger
+                        {% endif %}">
+                        {{ order.order_status }}
+                    </span>
+                </td>
+                <td>₹{{ order.total_price }}</td>
+               
+                <td>
+                    {% if order.order_status not in "Delivered,Cancelled" %}
+                    <a href="{% url 'cancel_order' order.id %}" class="btn btn-sm btn-danger">
                         Cancel Order
                     </a>
+                    {% else %}
+                    <button class="btn btn-sm btn-secondary" disabled>
+                        {{ order.order_status }}
+                    </button>
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}

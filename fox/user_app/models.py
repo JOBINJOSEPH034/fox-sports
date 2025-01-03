@@ -1,5 +1,6 @@
 
 from django.db import models
+
 from admin_app.models import Product, ProductVariant
 from django.contrib.auth.models import User
 from django.utils.timezone import now
@@ -70,3 +71,17 @@ class Order(models.Model):
         if self.order_status in ['Pending', 'Processing']:
             self.order_status = 'Cancelled'
             self.save()
+
+
+
+
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    phone = models.CharField(max_length=15, null=True, blank=True)
+    date_of_birth = models.DateField(null=True, blank=True)
+    address = models.TextField(null=True, blank=True)  # Optional default address
+
+    def __str__(self):
+        return self.user.username
+
