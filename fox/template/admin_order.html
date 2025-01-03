@@ -1,0 +1,116 @@
+
+{% extends 'base.html' %}
+{% load static %}
+{% block body %}
+{% if messages %}
+<div class="messages">
+    {% for message in messages %}
+        <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+            {{ message }}
+        </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="page-wrapper">
+    <div class="content container-fluid">
+        <div class="page-header">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h3 class="page-title">Order Management</h3>
+                    <ul class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
+                        <li class="breadcrumb-item active">Orders</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="card card-table">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-center">
+                                <thead>
+                                    <tr>
+                                        <th>Order ID</th>
+                                        <th>User ID</th> 
+                                        <th>User</th>
+                                        <th>Status</th>
+                                        <th>Total Price</th>
+                                        <th>Created At</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for order in orders %}
+                                    <tr>
+                                        <td>{{ order.id }}</td>
+                                        <td>{{ order.user.id }}</td>
+                                        <td>{{ order.user.username }}</td>
+                                        <td>
+                                            {% if order.status == "Cancelled" %}
+                                            <span class="badge badge-danger">{{ order.get_status_display }}</span>
+                                            {% elif order.status == "Delivered" %}
+                                            <span class="badge badge-success">{{ order.status }}</span>
+                                            {% elif order.status == "Shipped" %}
+                                            <span class="badge badge-primary">{{ order.status }}</span>
+                                            {% elif order.status == "Out for Delivery" %}
+                                            <span class="badge badge-info">{{ order.status }}</span>
+                                            {% elif order.status == "Processing" %}
+                                            <span class="badge badge-secondary">{{ order.status }}</span>
+                                            {% elif order.status == "Pending" %}
+                                            <span class="badge badge-warning">{{ order.status }}</span>
+                                            {% else %}
+                                            <span class="badge badge-light">{{ order.status }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>₹{{ order.total_price }}</td>
+                                        <td>{{ order.created_at|date:"d M Y, H:i" }}</td>
+                                        <td>
+                                            {% if order.status != "Delivered" %}
+                                                <!-- Dropdown Button -->
+                                                <div class="dropdown">
+                                                    <button class="btn btn-sm btn-primary dropdown-toggle" type="button" id="orderActions{{ order.id }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                                        Change Status
+                                                    </button>
+                                                    <div class="dropdown-menu" aria-labelledby="orderActions{{ order.id }}">
+                                                        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'pending' %}">Pending</a>
+                                                        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Processing' %}">Processing</a>
+                                                        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'shipped' %}">Shipped</a>
+                                                        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Out for Delivery' %}">Out for Delivery</a>
+                                                        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Delivered' %}">Delivered</a>
+                                                        <div class="dropdown-divider"></div>
+                                                        <a class="dropdown-item" href="{% url 'admin_cancel_order' order.id %}">Cancel</a>
+                                                    </div>
+                                                </div>
+                                            {% else %}
+                                                <span class="badge badge-success">Delivered</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="6" class="text-center">No orders found</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+      <script src="{%static 'assets/js/jquery-3.6.0.min.js' %}"></script>
+      <script src="{%static 'assets/js/popper.min.js' %}"></script>
+      <script src="{%static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
+      <script src="{%static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
+      <script src="{%static 'assets/js/script.js' %}"></script>
+   </body>
+   <!-- Mirrored from preschool.dreamguystech.com/html-template/add-student.html by HTTrack Website Copier/3.x [XR&CO'2014], Thu, 28 Oct 2021 11:11:50 GMT -->
+</html>
+{% endblock %}

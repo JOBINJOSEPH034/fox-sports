@@ -30,6 +30,11 @@ urlpatterns = [
     path('edit_category',views.edit_category,name='edit_category'),
     path('categories/<int:category_id>/edit/', views.edit_category, name='edit_category'),
     path('category/toggle/<int:category_id>/', views.toggle_category_status, name='toggle_category_status'),  #for soft delete
+
+
+    path('admin_order-management/', views.admin_order_management, name='admin_order_management'),
+    path('order/<int:order_id>/status/<str:status>/', views.admin_update_order_status, name='admin_update_order_status'),
+    path('order/<int:order_id>/cancel/', views.admin_cancel_order, name='admin_cancel_order'),
 ]
 
 urlpatterns += static(settings.MEDIA_URL,document_root=settings.MEDIA_ROOT)

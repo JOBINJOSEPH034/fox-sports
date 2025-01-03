@@ -2,10 +2,12 @@ from django.shortcuts import render
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from . models import Category,Product,Brand,ProductVariant
+from user_app.models import Order
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
 import json
+from django.http import HttpResponse
 from django.http import JsonResponse
 
 # Create your views here.
@@ -246,3 +248,44 @@ def toggle_category_status(request, category_id):
     status = "activated" if category.is_active else "soft deleted"
     messages.success(request, f"Category '{category.name}' has been {status}.")
     return redirect('category')
+
+
+
+
+@login_required
+def admin_order_management(request):
+    orders = Order.objects.all()  # You can filter by user if needed
+    return render(request, 'admin_order.html', {'orders': orders})
+
+
+
+def admin_update_order_status(request, order_id, status):
+    # Get the order object by its ID
+    order = get_object_or_404(Order, id=order_id)
+
+    # Update the order status
+    order.status = status
+    order.save()
+
+    # Redirect back to the order management page
+    return redirect('admin_order_management')  # Adjust the URL name accordingly
+
+
+
+def admin_cancel_order(request, order_id):
+    
+    order = get_object_or_404(Order, id=order_id)
+
+    # Check if the order is not already canceled or delivered
+    if order.status not in ['Cancelled', 'Delivered']:
+        order.status = 'Cancelled'  # Update the status to "Cancelled"
+        order.save()  # Save the order with the updated status
+
+        # You can add a success message here, if needed.
+        messages.success(request, f"Order {order.id} has been cancelled successfully.")
+    else:
+        # You can add a message if the order is already cancelled or delivered.
+        messages.warning(request, f"Order {order.id} cannot be cancelled as it is already {order.status}.")
+
+    # Redirect to the order management page
+    return redirect('admin_order_management')

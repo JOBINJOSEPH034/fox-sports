@@ -3,6 +3,8 @@ from django.urls import path
 from django.conf.urls.static import static
 from django.conf import settings
 from . import views
+from django.contrib.auth.views import PasswordChangeView
+from django.urls import reverse_lazy
 urlpatterns = [
     #url for user 
     path('',views.home_page ),
@@ -26,6 +28,14 @@ urlpatterns = [
     path('order-management/', views.order_management, name='order_management'),
     path('cancel-order/<int:order_id>/', views.cancel_order, name='cancel_order'),
     
+    path(
+        'change-password/',
+        PasswordChangeView.as_view(
+            template_name='profile/change_password.html',
+            success_url=reverse_lazy('profile')  # Redirect to profile after success
+        ),
+        name='change_password'
+    ),
     
 ]
 urlpatterns += static(settings.MEDIA_URL,document_root=settings.MEDIA_ROOT)

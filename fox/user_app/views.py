@@ -12,6 +12,8 @@ from django.http import JsonResponse
 
 
 
+
+
 # Create your views here.
 
 #USER HOME PAGE
@@ -317,6 +319,9 @@ def order_success(request, order_id):
 
 
 #order management for user
+
+def is_admin(user):
+    return user.is_superuser
 
 @login_required
 def order_management(request):
