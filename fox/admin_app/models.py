@@ -38,12 +38,25 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_active=models.BooleanField(default=True)
+    is_variant = models.BooleanField(default=False)
     popularity = models.PositiveIntegerField(default=0)  
+
+
 
 
 
     def __str__(self):
         return self.name
+    
+    def reduce_stock(self, quantity):
+        """
+        Reduces the stock of the product. Ensures no negative stock.
+        """
+        if self.stock >= quantity:
+            self.stock -= quantity
+            self.save()
+        else:
+            raise ValueError("Insufficient stock!")
 
 
     
@@ -56,6 +69,16 @@ class ProductVariant(models.Model):
     def __str__(self):
         return f"{self.product.name} - {self.name}"
     
+
+    def reduce_stock(self, quantity):
+        """
+        Reduces the stock of the variant. Ensures no negative stock.
+        """
+        if self.stock >= quantity:
+            self.stock -= quantity
+            self.save()
+        else:
+            raise ValueError("Insufficient stock!")
 
 
 

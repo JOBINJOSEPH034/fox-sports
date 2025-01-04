@@ -37,6 +37,7 @@
                                         <th>Order ID</th>
                                         <th>User ID</th> 
                                         <th>User</th>
+                                        <th>Items</th>
                                         <th>Status</th>
                                         <th>Total Price</th>
                                         <th>Created At</th>
@@ -49,6 +50,7 @@
                                         <td>{{ order.id }}</td>
                                         <td>{{ order.user.id }}</td>
                                         <td>{{ order.user.username }}</td>
+                                        <td>{{ order.user.name }}</td>
                                         <td>
                                             {% if order.status == "Cancelled" %}
                                             <span class="badge badge-danger">{{ order.get_status_display }}</span>
@@ -81,8 +83,10 @@
                                                         <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'shipped' %}">Shipped</a>
                                                         <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Out for Delivery' %}">Out for Delivery</a>
                                                         <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Delivered' %}">Delivered</a>
+                                                        
                                                         <div class="dropdown-divider"></div>
                                                         <a class="dropdown-item" href="{% url 'admin_cancel_order' order.id %}">Cancel</a>
+                                                       
                                                     </div>
                                                 </div>
                                             {% else %}

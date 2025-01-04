@@ -2,7 +2,7 @@
 from django.urls import path
 from django.conf.urls.static import static
 from django.conf import settings
-from . import views
+from . import views 
 
 urlpatterns = [
     #url for admin home page
@@ -35,6 +35,11 @@ urlpatterns = [
     path('admin_order-management/', views.admin_order_management, name='admin_order_management'),
     path('order/<int:order_id>/status/<str:status>/', views.admin_update_order_status, name='admin_update_order_status'),
     path('order/<int:order_id>/cancel/', views.admin_cancel_order, name='admin_cancel_order'),
+
+
+    path('inventory/', views.inventory_management, name='inventory_management'),
+    path('update_stock/<int:product_id>/', views.update_product_stock, name='update_product_stock'),
+    path('update_stock/<int:variant_id>/', views.update_variant_stock, name='update_variant_stock'),
 ]
 
 urlpatterns += static(settings.MEDIA_URL,document_root=settings.MEDIA_ROOT)

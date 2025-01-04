@@ -149,6 +149,12 @@ def edit_product(request, product_id):
 
 
 
+
+
+
+
+
+
 #for soft delete
 def toggle_product_status(request, product_id):
     product = get_object_or_404(Product, id=product_id)
@@ -273,19 +279,86 @@ def admin_update_order_status(request, order_id, status):
 
 
 def admin_cancel_order(request, order_id):
-    
+    # Get the order object by its ID (without user restriction for admin)
     order = get_object_or_404(Order, id=order_id)
+    print(f"Canceling order {order.id} with current status: {order.status}")
 
-    # Check if the order is not already canceled or delivered
-    if order.status not in ['Cancelled', 'Delivered']:
-        order.status = 'Cancelled'  # Update the status to "Cancelled"
-        order.save()  # Save the order with the updated status
+    if order.status in ['Pending', 'Processing', 'Shipped','Out for Delivery']:
+    
 
-        # You can add a success message here, if needed.
-        messages.success(request, f"Order {order.id} has been cancelled successfully.")
+        # Change the order status to cancelled
+        order.status = 'Cancelled'
+        order.save()
+
+        messages.success(request, f"Order {order.id} has been successfully canceled and stock updated.")
     else:
-        # You can add a message if the order is already cancelled or delivered.
-        messages.warning(request, f"Order {order.id} cannot be cancelled as it is already {order.status}.")
+        messages.error(request, f"Order {order.id} cannot be canceled.")
 
     # Redirect to the order management page
     return redirect('admin_order_management')
+
+
+# View to display inventory
+def inventory_management(request):
+    products = Product.objects.all()
+    variants = ProductVariant.objects.all()
+    return render(request, 'inventory_management.html', {
+        'products': products,
+        'variants': variants,
+    })
+
+# Update stock for products
+def update_product_stock(request, product_id):
+    product = get_object_or_404(Product, id=product_id)
+    if request.method == 'POST':
+        new_stock = int(request.POST.get('stock', product.stock))
+        product.stock = new_stock
+        product.save()
+    return redirect('inventory_management')
+
+# Update stock for variants
+def update_variant_stock(request, variant_id):
+    variant = get_object_or_404(ProductVariant, id=variant_id)
+    if request.method == 'POST':
+        new_stock = int(request.POST.get('stock', variant.stock))
+        variant.stock = new_stock
+        variant.save()
+    return redirect('inventory_management')
+
+def create_order(request, product_id):
+    product = Product.objects.get(id=product_id)
+    quantity = int(request.POST.get('quantity', 1))
+
+    # Check if the product has enough stock
+    if product.stock >= quantity:
+        # Reduce the stock of the product
+        product.stock -= quantity
+        product.save()
+
+        # Create the order
+        Order.objects.create(user=request.user, product=product, quantity=quantity)
+
+        messages.success(request, f"Order placed successfully for {product.name}!")
+    else:
+        messages.error(request, f"Insufficient stock for {product.name}.")
+
+    return redirect('product_detail', product.id)
+
+def create_order_with_variant(request, variant_id):
+    variant = ProductVariant.objects.get(id=variant_id)
+    quantity = int(request.POST.get('quantity', 1))
+
+    # Check if the variant has enough stock
+    if variant.stock >= quantity:
+        # Reduce the stock of the variant
+        variant.stock -= quantity
+        variant.save()
+
+        # Create the order
+        Order.objects.create(user=request.user, product=variant.product, quantity=quantity)
+
+        messages.success(request, f"Order placed successfully for {variant.product.name} ({variant.name})!")
+    else:
+        messages.error(request, f"Insufficient stock for {variant.product.name} ({variant.name}).")
+
+    return redirect('product_detail', variant.product.id)

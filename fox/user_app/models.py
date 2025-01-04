@@ -64,7 +64,7 @@ class Order(models.Model):
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    address = models.ForeignKey(Address, on_delete=models.SET_NULL, null=True, blank=True) 
+    address = models.ForeignKey(Address, on_delete=models.SET_NULL, null=True, blank=True,related_name='address') 
     product_name = models.CharField(max_length=100,null=True, blank=True)
     quantity = models.IntegerField(default=1)
     total_price = models.FloatField()
@@ -76,7 +76,51 @@ class Order(models.Model):
 
     def __str__(self):
         return f"Order {self.id} - {self.user.username}"
+    
 
+    def reduce_inventory(self):
+        """
+        Reduces the stock of products/variants based on the order items.
+        """
+        for item in self.items.all():
+            item.reduce_stock()
+            
+
+    def restore_inventory(self):
+        """
+        Restores the stock of products/variants for all order items.
+        Called when an order is cancelled.
+        """
+        for item in self.items.all():
+            if item.variant:
+                item.variant.stock += item.quantity
+                item.variant.save()
+            elif item.product:
+                item.product.stock += item.quantity
+                item.product.save()        
+
+
+
+# OrderItem Model
+class OrderItem(models.Model):
+    order = models.ForeignKey(Order, related_name="items", on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, null=True, blank=True)
+    variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, null=True, blank=True)
+    quantity = models.PositiveIntegerField()
+
+    def reduce_stock(self):
+        """
+        Reduces the stock of the associated product or variant.
+        """
+        if self.variant:
+            self.variant.reduce_stock(self.quantity)
+        elif self.product:
+            self.product.reduce_stock(self.quantity)
+
+    def __str__(self):
+        if self.variant:
+            return f"{self.variant.name} (x{self.quantity})"
+        return f"{self.product.name} (x{self.quantity})"
 
 
 

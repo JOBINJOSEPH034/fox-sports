@@ -72,13 +72,18 @@
                     <i class="fa fa-angle-down text-dark"></i>
                 </a>
                 <nav class="collapse position-absolute navbar navbar-vertical navbar-light align-items-start p-0 bg-light" id="navbar-vertical" style="width: calc(100% - 30px); z-index: 999;">
-                    {% for category in categories %}
+            
                     <div class="navbar-nav w-100">
                        
-                        <a href="{% url 'shop' %}" class="nav-item nav-link">{{ category.name }}</a>
+                        <a href="{% url 'shop_men' %}" class="nav-item nav-link">Men</a>
                         
                     </div>
-                    {% endfor %}
+                    <div class="navbar-nav w-100">
+                       
+                        <a href="{% url 'shop_women' %}" class="nav-item nav-link">Women</a>
+                        
+                    </div>
+                    
                 </nav>
             </div>
 

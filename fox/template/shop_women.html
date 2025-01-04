@@ -4,7 +4,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>FOX</title>
+    <title>Fox Sports</title>
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <meta content="Free HTML Templates" name="keywords">
     <meta content="Free HTML Templates" name="description">
@@ -26,7 +26,17 @@
     <!-- Customized Bootstrap Stylesheet -->
     <link href="{% static 'css/style.css' %}" rel="stylesheet">
 
+
 </head>
+{% if messages %}
+<div class="messages">
+    {% for message in messages %}
+        <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+            {{ message }}
+        </div>
+    {% endfor %}
+</div>
+{% endif %}
 
 <body>
     <!-- Topbar Start -->
@@ -35,12 +45,19 @@
         <div class="row align-items-center bg-light py-3 px-xl-5 d-none d-lg-flex">
             <div class="col-lg-4">
                 <a href="" class="text-decoration-none">
-                    <span class="h1 text-uppercase text-primary bg-dark px-2">FOX</span>
+                    <span class="h1 text-uppercase text-primary bg-dark px-2">Fox</span>
                     <span class="h1 text-uppercase text-dark bg-primary px-2 ml-n1">Sports</span>
                 </a>
             </div>
+                  <!-- Search Bar Section -->
+        <div class="col-lg-4">
+            <form action="{% url 'shop' %}" method="get" class="d-flex">
+                <input type="text" name="search" class="form-control" value="{{ search_query }}" placeholder="Search Products...">
+                <button type="submit" class="btn btn-primary ml-2">Search</button>
+            </form>
+        </div>
            
-          
+           
         </div>
     </div>
     <!-- Topbar End -->
@@ -113,7 +130,6 @@
             </div>
         </div>
     </div>
-   
     <!-- Navbar End -->
 
 
@@ -124,8 +140,8 @@
                 <nav class="breadcrumb bg-light mb-30">
                     <a class="breadcrumb-item text-dark" href="{% url  'main' %}">Home</a>
                     <a class="breadcrumb-item text-dark" href="{% url  'shop' %}">Shop</a>
-                    <a class="breadcrumb-item text-dark" href="{% url  'detail' %}">Product Detail</a>
-                <span class="breadcrumb-item active">Cart</span>
+                    <span class="breadcrumb-item active">Women</span>
+                   
                 </nav>
             </div>
         </div>
@@ -133,74 +149,100 @@
     <!-- Breadcrumb End -->
 
 
+    <!-- Shop Start -->
+    <div class="container-fluid">
+        <div class="row px-xl-5">
+            
+            <!-- Shop Product Start -->
+            <div class="col-lg-12 col-md-8">
+                <h2 class="section-title position-relative text-uppercase mx-xl-5 mb-4"><span class="bg-secondary pr-3">Women Collections</span></h2>
+                <!-- Filter and Sort Options -->
+    <div class="d-flex justify-content-between mb-4">
+        <!-- Filter Options -->
+        <form method="get" action="" class="d-flex">
+           
+            
+            <select name="brand" class="form-control mr-2" style="width: 200px;">
+                <option value="">Filter by Brand</option>
+                {% for brand in brands %}
+                <option value="{{ brand.id }}" {% if request.GET.brand == brand.id|stringformat:"s" %}selected{% endif %}>
+                    {{ brand.name }}
+                </option>
+                {% endfor %}
+            </select>
+            
+            <button type="submit" class="btn btn-primary">Filter</button>
+        </form>
 
+        <!-- Sort Options -->
+        <form method="get" action="">
+            <select name="sort" class="form-control" onchange="this.form.submit();" style="width: 200px;">
+                <option value="">Sort by</option>
+                <option value="low_to_high" {% if request.GET.sort == 'low_to_high' %}selected{% endif %}>Price: Low to High</option>
+                <option value="high_to_low" {% if request.GET.sort == 'high_to_low' %}selected{% endif %}>Price: High to Low</option>
+                <option value="alphabetical" {% if request.GET.sort == 'alphabetical' %}selected{% endif %}>A to Z</option>
+                <option value="reverse_alphabetical" {% if request.GET.sort == 'reverse_alphabetical' %}selected{% endif %}>Z to A</option>
+                <option value="popularity" {% if request.GET.sort == 'popularity' %}selected{% endif %}>Popularity</option>                <option value="new_arrivals" {% if request.GET.sort == 'new_arrivals' %}selected{% endif %}>New Arrivals</option>
+            </select>
+        </form>
+    </div>
+                <div class="row pb-4">
+                    {% for product in products %}
+                    {% if product.is_active %}
 
-<!-- cart.html -->
-<div class="container-fluid">
-    <div class="row px-xl-5">
-        <div class="col-lg-8 table-responsive mb-5">
-            <table class="table table-light table-borderless table-hover text-center mb-0">
-                <thead class="thead-dark">
-                    <tr>
-                        <th>Products</th>
-                        <th>Price</th>
-                        <th>Quantity</th>
-                        <th>Total</th>
-                        <th>Remove</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in cart_items %}
-                    <tr>
-                        <td class="align-middle">
-                            <img src="{{ item.product.image1.url }}" alt="" style="width: 50px;"> {{ item.product.name }}
-                        </td>
-                        <td class="align-middle">₹{{  item.total_price }}</td>
-                        <td class="align-middle">
-                            <form method="POST" action="{% url 'update_cart_item' item.id %}">
-                                {% csrf_token %}
-                                <input type="number" name="quantity" value="{{ item.quantity }}" min="1" class="form-control w-50 d-inline">
-                                <button type="submit" class="btn btn-sm btn-primary">Update</button>
-                            </form>
-                        </td>
-                        <td class="align-middle">₹{{ item.total_price }}</td>
-                        <td class="align-middle">
-                            <a href="{% url 'remove_cart_item' item.id %}" class="btn btn-sm btn-danger">
-                                <i class="fa fa-trash"></i>
-                            </a>
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="text-center">Your cart is empty.</td>
-                    </tr>
+                    <div class="col-lg-4 col-md-6 col-sm-6 pb-1">
+                        <div class="product-item bg-light mb-4">
+                            <div class="product-img position-relative overflow-hidden">
+                               <a href="{% url 'product_details' product_id=product.id %}">
+                                <img class="img-fluid w-100" src="{{ product.image2.url }}"  alt="{{ product.name }}" style="width: 300px; height: 300px; object-fit: cover;">
+                               </a>
+                            </div>
+                            <div class="text-center py-4">
+                                <a class="h6 text-decoration-none text-truncate" href="">{{ product.name }}</a>
+                                <div class="d-flex align-items-center justify-content-center mt-2">
+                                    <h5>₹{{ product.price }}</h5><h6 class="text-muted ml-2"><del></del></h6>
+                                </div>
+                                <div class="d-flex align-items-center justify-content-center mb-1">
+                                    <small class="fa fa-star text-primary mr-1"></small>
+                                    <small class="fa fa-star text-primary mr-1"></small>
+                                    <small class="fa fa-star text-primary mr-1"></small>
+                                    <small class="fa fa-star text-primary mr-1"></small>
+                                    <small class="fa fa-star text-primary mr-1"></small>
+                                    <small>(241)</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                <!-- Optionally, you can display a message for soft-deleted products -->
+                <div class="product-deleted">
+                    <p>{{ product.name }} - Not Available</p>
+                </div>
+
+                    {% endif %}
+                         
                     {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        <div class="col-lg-4">
-            <div class="bg-light p-30 mb-5">
-                <h5 class="section-title position-relative text-uppercase mb-3">
-                    <span class="bg-secondary pr-3">Cart Summary</span>
-                </h5>
-                <div class="border-bottom pb-2">
-                    <div class="d-flex justify-content-between mb-3">
-                        <h6>Subtotal</h6>
-                        <h6>₹{{ cart_total }}</h6>
+                      
+                    
+                    <div class="col-12">
+                        <nav>
+                          <ul class="pagination justify-content-center">
+                            <li class="page-item disabled"><a class="page-link" href="#">Previous</span></a></li>
+                            <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                            <li class="page-item"><a class="page-link" href="#">2</a></li>
+                            <li class="page-item"><a class="page-link" href="#">3</a></li>
+                            <li class="page-item"><a class="page-link" href="#">Next</a></li>
+                          </ul>
+                        </nav>
                     </div>
                 </div>
-                <div class="pt-2">
-                    <a href="{% url 'checkout' %}" class="btn btn-block btn-primary font-weight-bold my-3 py-3">Proceed To Checkout</a>
-                </div>
             </div>
+            <!-- Shop Product End -->
         </div>
     </div>
-</div>
+    <!-- Shop End -->
 
 
-
-
-    
     <!-- Footer Start -->
     <div class="container-fluid bg-dark text-secondary mt-5 pt-5">
         <div class="row px-xl-5 pt-5">
@@ -270,17 +312,6 @@
             </div>
         </div>
     </div>
-
-    <script>
-        document.querySelectorAll('.size-option').forEach(function(element) {
-            element.addEventListener('click', function() {
-                const sizeId = element.getAttribute('data-size-id');
-                const priceAdjustment = element.getAttribute('data-price-adjust');
-                alert('You selected size ID: ' + sizeId + ' with a price adjustment of ₹' + priceAdjustment);
-                // Here you can update your UI or send data to the server if needed
-            });
-        });
-    </script>
     <!-- Footer End -->
 
 

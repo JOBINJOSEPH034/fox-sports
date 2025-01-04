@@ -1,0 +1,123 @@
+
+{% extends 'base.html' %}
+{% load static %}
+{% block body %}
+{% if messages %}
+<div class="messages">
+    {% for message in messages %}
+        <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+            {{ message }}
+        </div>
+    {% endfor %}
+</div>
+{% endif %}
+<div class="page-wrapper">
+    <div class="content container-fluid">
+        <div class="page-header">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h3 class="page-title">Inventory Management</h3>
+                    <ul class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
+                        <li class="breadcrumb-item active">Inventory</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="card card-table">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-center">
+                                <thead>
+                                    <tr>
+                                        <th>Product ID</th>
+                                        <th>Product Name</th>
+                                        <th>Variant</th>
+                                        <th>Stock</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for product in products %}
+                                    <tr>
+                                        <td>{{ product.id }}</td>
+                                        <td>{{ product.name }}</td>
+                                        <td>
+                                            {% if product.variant %}
+                                                {{ product.variant.name }}
+                                            {% else %}
+                                                Default
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if product.stock > 0 %}
+                                                <span class="badge badge-success">{{ product.stock }}</span>
+                                            {% else %}
+                                                <span class="badge badge-danger">Out of Stock</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <button 
+                                                type="button" 
+                                                class="btn btn-sm btn-primary" 
+                                                data-toggle="modal" 
+                                                data-target="#editStockModal{{ product.id }}">
+                                                Edit Stock
+                                            </button>
+                                        </td>
+                                    </tr>
+
+                                    <!-- Edit Stock Modal -->
+                                    <div class="modal fade" id="editStockModal{{ product.id }}" tabindex="-1" role="dialog" aria-labelledby="editStockModalLabel" aria-hidden="true">
+                                        <div class="modal-dialog" role="document">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="editStockModalLabel">Edit Stock for {{ product.name }}</h5>
+                                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                        <span aria-hidden="true">&times;</span>
+                                                    </button>
+                                                </div>
+                                                <form method="POST" action="">
+                                                    {% csrf_token %}
+                                                    <div class="modal-body">
+                                                        <div class="form-group">
+                                                            <label for="stockCount{{ product.id }}">Stock Count</label>
+                                                            <input type="number" class="form-control" id="stockCount{{ product.id }}" name="stock" value="{{ product.stock }}" min="0" required>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="5" class="text-center">No products found</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+      <script src="{%static 'assets/js/jquery-3.6.0.min.js' %}"></script>
+      <script src="{%static 'assets/js/popper.min.js' %}"></script>
+      <script src="{%static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
+      <script src="{%static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
+      <script src="{%static 'assets/js/script.js' %}"></script>
+   </body>
+   <!-- Mirrored from preschool.dreamguystech.com/html-template/add-student.html by HTTrack Website Copier/3.x [XR&CO'2014], Thu, 28 Oct 2021 11:11:50 GMT -->
+</html>
+{% endblock %}

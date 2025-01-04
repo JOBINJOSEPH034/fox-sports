@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="bg-light p-4">
-    <h3>Order </h3>
+    <h3>Order Management</h3>
     <table class="table table-hover">
         <thead>
             <tr>
@@ -35,19 +35,22 @@
                         {% elif order.order_status == 'Delivered' %}bg-success
                         {% elif order.order_status == 'Cancelled' %}bg-danger
                         {% endif %}">
-                        {{ order.order_status }}
+                        {{ order.status }}
                     </span>
                 </td>
                 <td>₹{{ order.total_price }}</td>
                
                 <td>
-                    {% if order.order_status not in "Delivered,Cancelled" %}
-                    <a href="{% url 'cancel_order' order.id %}" class="btn btn-sm btn-danger">
-                        Cancel Order
-                    </a>
+                    {% if order.status not in "Delivered,Cancelled" %}
+                    <form action="{% url 'cancel_order' order.id %}" method="POST" style="display:inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-danger">
+                            Cancel Order
+                        </button>
+                    </form>
                     {% else %}
                     <button class="btn btn-sm btn-secondary" disabled>
-                        {{ order.order_status }}
+                        {{ order.status }}
                     </button>
                     {% endif %}
                 </td>

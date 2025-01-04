@@ -62,7 +62,7 @@ def main_page_search(request):
 def product_page(request):
 
     categories = Category.objects.filter(is_active=True)
-    products = Product.objects.filter(stock__gt=0,is_active=True)  #for only men
+    products = Product.objects.filter(stock__gt=0,is_active=True) 
 
     cart_items = CartItem.objects.filter(user=request.user)
     total_items = cart_items.aggregate(total_items=Sum('quantity'))['total_items'] or 0
@@ -111,11 +111,126 @@ def product_page(request):
     })
 
 
+@login_required
+def shop_men(request):
+    categories = Category.objects.filter(is_active=True)
+    men_category = get_object_or_404(Category, name="Men")
+    products = Product.objects.filter(category=men_category, stock__gt=0, is_active=True)
+
+    cart_items = CartItem.objects.filter(user=request.user)
+    total_items = cart_items.aggregate(total_items=Sum('quantity'))['total_items'] or 0
+
+    search_query = request.GET.get('search', '').strip()
+    sort_option = request.GET.get('sort')
+
+    if search_query:
+        products = products.filter(
+            Q(name__icontains=search_query) | 
+            Q(description__icontains=search_query)
+        )
+
+    
+    if sort_option:
+        if sort_option == 'low_to_high':
+            products = products.order_by('price')
+        elif sort_option == 'high_to_low':
+            products = products.order_by('-price')
+        elif sort_option == 'alphabetical':
+            products = products.order_by('name')
+        elif sort_option == 'reverse_alphabetical':
+            products = products.order_by('-name')
+        elif sort_option == 'popularity':
+            products = products.order_by('-popularity')  # Assuming popularity is a field in Product
+        elif sort_option == 'new_arrivals':
+            products = products.order_by('-created_at')  # Assuming created_at is a field in Product
+        
+
+
+    return render(request, 'shop_men.html', {
+        'products': products,
+        'categories': categories,
+        'total_items': total_items,
+        'search_query': search_query,
+        'sort_option': sort_option,
+        
+        })
+
+
+
+@login_required
+def shop_women(request):
+    categories = Category.objects.filter(is_active=True)
+    women_category = get_object_or_404(Category, name="Women")
+    products = Product.objects.filter(category=women_category, stock__gt=0, is_active=True)
+
+    cart_items = CartItem.objects.filter(user=request.user)
+    total_items = cart_items.aggregate(total_items=Sum('quantity'))['total_items'] or 0
+
+    search_query = request.GET.get('search', '').strip()
+    sort_option = request.GET.get('sort')
+
+    if search_query:
+        products = products.filter(
+            Q(name__icontains=search_query) | 
+            Q(description__icontains=search_query)
+        )
+
+    
+    if sort_option:
+        if sort_option == 'low_to_high':
+            products = products.order_by('price')
+        elif sort_option == 'high_to_low':
+            products = products.order_by('-price')
+        elif sort_option == 'alphabetical':
+            products = products.order_by('name')
+        elif sort_option == 'reverse_alphabetical':
+            products = products.order_by('-name')
+        elif sort_option == 'popularity':
+            products = products.order_by('-popularity')  # Assuming popularity is a field in Product
+        elif sort_option == 'new_arrivals':
+            products = products.order_by('-created_at')  # Assuming created_at is a field in Product
+        
+
+
+    return render(request, 'shop_women.html', {
+        'products': products,
+        'categories': categories,
+        'total_items': total_items,
+        'search_query': search_query,
+        'sort_option': sort_option,
+        
+        })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 @login_required
 @never_cache
-def product_detail(request):
-    return render(request,'detail.html')
+def product_detail(request,product_id):
+    product = Product.objects.get(id=product_id)
+    is_out_of_stock = product.stock == 0
+    return render(request, 'detail.html', {
+        'product': product,
+        'is_out_of_stock': is_out_of_stock,
+    
+    })
 
 
 
@@ -319,7 +434,7 @@ def order_success(request, order_id):
 
 
 #order management for user
-
+@login_required
 def is_admin(user):
     return user.is_superuser
 
@@ -329,18 +444,27 @@ def order_management(request):
     orders = Order.objects.filter(user=request.user).order_by('-created_at')
     return render(request, 'profile/orders.html', {'orders': orders})
 
+
 @login_required
 def cancel_order(request, order_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
 
-    if order.order_status in ['Pending', 'Processing', 'Shipped']:
-        order.order_status = 'Cancelled'
+    if order.status in ['Pending', 'Processing', 'Shipped','Out for Delivery']:
+        
+      
+        order.status = 'Cancelled'
         order.save()
-        messages.success(request, f"Order {order.id} has been successfully canceled.")
+
+        messages.success(request, f"Order {order.id} has been successfully canceled and stock has been updated.")
     else:
         messages.error(request, f"Order {order.id} cannot be canceled.")
 
     return redirect('order_management')
+
+
+
+
+
 # User Profile View (Displays user details)
 @login_required
 def profile(request):
