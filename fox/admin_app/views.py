@@ -56,6 +56,7 @@ def product_list(request):
 @never_cache
 
 def add_product(request):
+    print("Inside the add_product view") 
     if request.method == "POST":
         try:
             # Create the new product
@@ -82,20 +83,26 @@ def add_product(request):
 
             # Process product variants
             variants_json = request.POST.get('variants_data')  # Expecting a JSON string
+            print(f"Received variants data: {variants_json}")
             if variants_json:
                 variants = json.loads(variants_json)  # Parse JSON data
+                print(f"Parsed variants: {variants}")
                 for variant in variants:
+                    print(f"Saving variant: {variant}")
                     ProductVariant.objects.create(
                         product=product,
                         size=variant['size'],
                         additional_price=variant['additional_price'],
                     )
+            else:
+                print("No variants data found!")        
 
             messages.success(request, "Product added successfully!")
-            return JsonResponse({"success": True})
+            return redirect('add_product') 
 
         except Exception as e:
-            return JsonResponse({"success": False, "error": str(e)})
+            messages.error(request, f"Error: {str(e)}")
+            return redirect('add_product') 
 
     categories = Category.objects.all()
     brands = Brand.objects.all()
@@ -134,10 +141,11 @@ def edit_product(request, product_id):
                     )
 
             messages.success(request, "Product updated successfully!")
-            return JsonResponse({"success": True})
+            return redirect('edit_product', product_id=product.id) 
 
         except Exception as e:
-            return JsonResponse({"success": False, "error": str(e)})
+            messages.error(request, f"Error: {str(e)}")
+            return redirect('edit_product', product_id=product.id)
 
     categories = Category.objects.all()
     variants = product.variants.all()  # Get existing variants
@@ -164,6 +172,16 @@ def toggle_product_status(request, product_id):
     messages.success(request, f"Product '{product.name}' has been {status}.")
     return redirect('product')
 
+
+def permanent_delete_product(request, product_id):
+    try:
+        product = Product.objects.get(id=product_id)
+        product.delete()  # Permanently delete the product from the database
+        messages.success(request, "Product permanently deleted.")
+    except Product.DoesNotExist:
+        messages.error(request, "Product not found.")
+    
+    return redirect('product')  # Redirect back to the product list page
 
 @login_required
 @never_cache
@@ -260,7 +278,7 @@ def toggle_category_status(request, category_id):
 
 @login_required
 def admin_order_management(request):
-    orders = Order.objects.all()  # You can filter by user if needed
+    orders = Order.objects.all().select_related('product','variant')  # You can filter by user if needed
     return render(request, 'admin_order.html', {'orders': orders})
 
 
@@ -301,20 +319,34 @@ def admin_cancel_order(request, order_id):
 # View to display inventory
 def inventory_management(request):
     products = Product.objects.all()
-    variants = ProductVariant.objects.all()
+   
     return render(request, 'inventory_management.html', {
         'products': products,
-        'variants': variants,
+    
     })
 
 # Update stock for products
-def update_product_stock(request, product_id):
-    product = get_object_or_404(Product, id=product_id)
-    if request.method == 'POST':
-        new_stock = int(request.POST.get('stock', product.stock))
-        product.stock = new_stock
-        product.save()
-    return redirect('inventory_management')
+def update_stock(request, product_id, variant_id=None):
+    if variant_id:
+        # Handle variant stock update
+        variant = get_object_or_404(ProductVariant, id=variant_id)
+        if request.method == 'POST':
+            new_stock = int(request.POST.get('stock', variant.stock))
+            variant.stock = new_stock
+            variant.save()
+            messages.success(request, f"Stock updated for variant: {variant.name}")
+        return redirect('inventory_management')
+    else:
+        # Handle product stock update
+        product = get_object_or_404(Product, id=product_id)
+        if request.method == 'POST':
+            new_stock = int(request.POST.get('stock', product.stock))
+            product.stock = new_stock
+            product.save()
+            messages.success(request, f"Stock updated for product: {product.name}")
+        return redirect('inventory_management')
+
+
 
 # Update stock for variants
 def update_variant_stock(request, variant_id):
@@ -325,24 +357,46 @@ def update_variant_stock(request, variant_id):
         variant.save()
     return redirect('inventory_management')
 
-def create_order(request, product_id):
-    product = Product.objects.get(id=product_id)
-    quantity = int(request.POST.get('quantity', 1))
+# Order Creation for Products
+def create_order(request, product_id, variant_id=None):
+    if variant_id:
+        # Handle order for a variant
+        variant = get_object_or_404(ProductVariant, id=variant_id)
+        quantity = int(request.POST.get('quantity', 1))
 
-    # Check if the product has enough stock
-    if product.stock >= quantity:
-        # Reduce the stock of the product
-        product.stock -= quantity
-        product.save()
-
-        # Create the order
-        Order.objects.create(user=request.user, product=product, quantity=quantity)
-
-        messages.success(request, f"Order placed successfully for {product.name}!")
+        if variant.stock >= quantity:
+            variant.stock -= quantity
+            variant.save()
+            Order.objects.create(
+                user=request.user, 
+                product=variant.product,  # Correct product assignment
+                variant=variant,  # Assign the variant
+                quantity=quantity,
+                total_price=variant.product.price * quantity  # Calculate total price
+            )
+            messages.success(request, f"Order placed for variant: {variant.name}")
+        else:
+            messages.error(request, f"Insufficient stock for variant: {variant.name}")
+        return redirect('product_detail', variant.product.id)
     else:
-        messages.error(request, f"Insufficient stock for {product.name}.")
+        # Handle order for a product
+        product = get_object_or_404(Product, id=product_id)
+        quantity = int(request.POST.get('quantity', 1))
 
-    return redirect('product_detail', product.id)
+        if product.stock >= quantity:
+            product.stock -= quantity
+            product.save()
+            Order.objects.create(
+                user=request.user, 
+                product=product,  # Correct product assignment
+                quantity=quantity,
+                total_price=product.price * quantity  # Calculate total price
+            )
+            messages.success(request, f"Order placed for product: {product.name}")
+        else:
+            messages.error(request, f"Insufficient stock for product: {product.name}")
+        return redirect('product_detail', product.id)
+
 
 def create_order_with_variant(request, variant_id):
     variant = ProductVariant.objects.get(id=variant_id)

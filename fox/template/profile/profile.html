@@ -4,20 +4,31 @@
 
 {% block content %}
 <div class="bg-light p-4">
-    <h3>User Details</h3>
-    <p><strong>Username:</strong>{{ user_data.username }} </p>
-    <p><strong>Name:</strong> {{ user_data.first_name }} {{ user_data.last_name }}</p>
-    <p><strong>Email:</strong>{{ user_data.email }}</p>
-    <p><strong>Phone:</strong> {{ user_data.phone  }}</p>
-    <p><strong>Bio:</strong> {{ user_data.bio  }}</p>
-    <p><strong>Date Joined:</strong> {{ user_data.date_joined }}</p>
-   
+    <h3>User Profile</h3>
+    <p><strong>Username:</strong> {{ user.username }}</p>
+    <p><strong>First Name:</strong> {{ user.first_name }}</p>
+    <p><strong>Last Name:</strong> {{ user.last_name }}</p>
+    <p><strong>Email:</strong> {{ user.email }}</p>
+    <p><strong>Phone:</strong> 
+        {% if user.profile.phone %}
+            {{ user.profile.phone }}
+        {% else %}
+            No phone number available
+        {% endif %}
+    </p>
+    <p><strong>Bio:</strong> 
+        {% if user.profile.bio %}
+            {{ user.profile.bio }}
+        {% else %}
+            No bio available
+        {% endif %}
+    </p>
+    <p><strong>Date Joined:</strong> {{ user.date_joined }}</p>
 </div>
-
 
 <div class="bg-light p-4">
     <h3>Edit Profile</h3>
-    <form method="POST" action="">
+    <form method="POST">
         {% csrf_token %}
         <div class="form-group">
             <label for="first_name">First Name</label>
@@ -28,8 +39,20 @@
             <input type="text" id="last_name" name="last_name" value="{{ user.last_name }}" class="form-control">
         </div>
         <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" value="{{ user.email }}" class="form-control">
+        </div>
+        <div class="form-group">
             <label for="phone">Phone</label>
-            <input type="text" id="phone" name="phone" value="{{ user.phone }}" class="form-control">
+            {% if user.profile.phone %}
+                <input type="text" id="phone" name="phone" value="{{ user.profile.phone }}" class="form-control">
+            {% else %}
+                <input type="text" id="phone" name="phone" value="" class="form-control" placeholder="Enter your phone number">
+            {% endif %}
+        </div>
+        <div class="form-group">
+            <label for="bio">Bio</label>
+            <textarea id="bio" name="bio" class="form-control" placeholder="Write something about yourself">{{ user.profile.bio }}</textarea>
         </div>
         <button type="submit" class="btn btn-primary">Save Changes</button>
     </form>

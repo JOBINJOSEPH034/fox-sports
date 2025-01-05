@@ -1,6 +1,6 @@
 from django.shortcuts import render ,redirect,get_object_or_404
-from admin_app.models import Category ,Product,ProductVariant
-from .models import Cart, CartItem,Address, Order
+from admin_app.models import Category ,Product,ProductVariant,Brand
+from .models import Cart, CartItem,Address, Order,OrderItem
 from django.db.models import Sum
 from django.contrib import messages
 from django.contrib.auth.forms import PasswordChangeForm
@@ -69,6 +69,7 @@ def product_page(request):
    
     search_query = request.GET.get('search', '').strip()
     selected_category = request.GET.get('category')
+    selected_brand = request.GET.get('brand')
     sort_option = request.GET.get('sort')
     # Search functionality
     if search_query:
@@ -81,8 +82,11 @@ def product_page(request):
     if selected_category:
         products = products.filter(category_id=selected_category)
 
+    if selected_brand:
+        products = products.filter(brand_id=selected_brand)    
 
 
+    brands = Brand.objects.all()
     # Sorting functionality
 
     if sort_option:
@@ -105,6 +109,7 @@ def product_page(request):
         'products': products,
         'search_query': search_query,
         'selected_category': selected_category,
+        'selected_brand': selected_brand,
         'sort_option': sort_option,
         'total_items': total_items
 
@@ -203,32 +208,17 @@ def shop_women(request):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 @login_required
 @never_cache
 def product_detail(request,product_id):
     product = Product.objects.get(id=product_id)
     is_out_of_stock = product.stock == 0
+    variants = product.variants.all()  # Fetch variants for this product
+
     return render(request, 'detail.html', {
         'product': product,
         'is_out_of_stock': is_out_of_stock,
+        'variants': variants,  
     
     })
 
@@ -393,26 +383,59 @@ def checkout(request):
     cart_total = sum(item.total_price for item in cart_items)
 
     if not cart_items.exists():
-        # Add a message to the messages framework
         messages.error(request, "Your cart is empty. Please add items to your cart before checking out.")
-        
-        # Redirect to the shopping page
-        return redirect('shop')  # Replace 'shopping_page' with your actual shopping page URL name
+        return redirect('shop')  # Replace with your actual shop page URL name
 
-    # Get all addresses
     addresses = Address.objects.filter(user=request.user)
 
     if request.method == 'POST':
-        # Handle order placement
         address_id = request.POST.get('selected_address')
         selected_address = get_object_or_404(Address, id=address_id, user=request.user)
+
+        # Create the order
         order = Order.objects.create(
             user=request.user,
             address=selected_address,
             total_price=cart_total,
         )
+
+        # Iterate through cart items and create individual order items
+        for item in cart_items:
+            # Check if the cart item has a product variant
+            if item.variant:
+                # Update stock for the product variant
+                if item.variant.stock >= item.quantity:
+                    item.variant.stock -= item.quantity  # Reduce the stock by the ordered quantity
+                    item.variant.save()  # Save the updated variant stock
+                    OrderItem.objects.create(
+                        order=order,
+                        product=item.variant.product,
+                        variant=item.variant,
+                        quantity=item.quantity,
+                        total_price=item.total_price
+                    )
+                else:
+                    messages.error(request, f"Insufficient stock for {item.variant.name}.")
+                    return redirect('checkout')  # Redirect back to checkout page if stock is insufficient
+            else:
+                # Update stock for the product if no variant
+                if item.product.stock >= item.quantity:
+                    item.product.stock -= item.quantity  # Reduce the stock by the ordered quantity
+                    item.product.save()  # Save the updated product stock
+                    OrderItem.objects.create(
+                        order=order,
+                        product=item.product,
+                        quantity=item.quantity,
+                        total_price=item.total_price
+                    )
+                else:
+                    messages.error(request, f"Insufficient stock for {item.product.name}.")
+                    return redirect('checkout')  # Redirect back to checkout page if stock is insufficient
+
         # Clear cart after order is placed
         cart_items.delete()
+
+        # Redirect to the order success page with the order ID
         return redirect('order_success', order_id=order.id)
 
     return render(request, 'checkout.html', {
@@ -420,7 +443,6 @@ def checkout(request):
         'cart_total': cart_total,
         'addresses': addresses,
     })
-
 @login_required
 def order_success(request, order_id):
     # Display order confirmation
@@ -468,16 +490,31 @@ def cancel_order(request, order_id):
 # User Profile View (Displays user details)
 @login_required
 def profile(request):
-    user = request.user  # Get the logged-in user
-    user_data = {
-        'username': user.username,
-        'first_name': user.first_name,
-        'last_name': user.last_name,
-        'email': user.email,
-        'date_joined': user.date_joined,  # When the user signed up
-        'last_login': user.last_login,  # Last login timestamp
-    }
+    user = request.user
 
-    return render(request, 'profile/profile.html', {'user_data': user_data})
+    if request.method == 'POST':
+        try:
+            # Update the user model fields
+            user.first_name = request.POST.get('first_name')
+            user.last_name = request.POST.get('last_name')
+            user.email = request.POST.get('email')
 
+            # If you have a Profile model with additional fields, update that as well
+            if hasattr(user, 'profile'):
+                user.profile.phone = request.POST.get('phone')
+                user.profile.bio = request.POST.get('bio', '')
 
+            # Save the updated user and profile
+            user.save()
+            if hasattr(user, 'profile'):
+                user.profile.save()
+
+            messages.success(request, "Your profile has been updated successfully.")
+            return redirect('profile')  # Redirect to the same page after saving
+        except Exception as e:
+            messages.error(request, f"Error occurred: {e}")
+            return redirect('profile')
+
+    return render(request, 'profile/profile.html', {
+        'user': user
+    })

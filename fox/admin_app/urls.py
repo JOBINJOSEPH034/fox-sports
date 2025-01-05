@@ -15,6 +15,7 @@ urlpatterns = [
     path('product_details',views.product_details,name='product_details'),
     path('product/toggle/<int:product_id>/', views.toggle_product_status, name='toggle_product_status'), #for soft delete
     path('product/<int:product_id>/', views.product_details, name='product_details'),
+    path('product/permanent_delete/<int:product_id>/', views.permanent_delete_product, name='permanent_delete_product'),
 
 
     #url for admin customer functions
@@ -38,8 +39,10 @@ urlpatterns = [
 
 
     path('inventory/', views.inventory_management, name='inventory_management'),
-    path('update_stock/<int:product_id>/', views.update_product_stock, name='update_product_stock'),
+    path('update_stock/<int:product_id>/', views.update_stock, name='update_stock'),
     path('update_stock/<int:variant_id>/', views.update_variant_stock, name='update_variant_stock'),
+     path('create_order/<int:product_id>/', views.create_order, name='create_order'),
+    path('create_order/<int:product_id>/<int:variant_id>/', views.create_order, name='create_order_variant'),
 ]
 
 urlpatterns += static(settings.MEDIA_URL,document_root=settings.MEDIA_ROOT)

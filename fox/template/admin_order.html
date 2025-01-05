@@ -1,4 +1,3 @@
-
 {% extends 'base.html' %}
 {% load static %}
 {% block body %}
@@ -31,13 +30,14 @@
                 <div class="card card-table">
                     <div class="card-body">
                         <div class="table-responsive">
-                            <table class="table table-hover table-center">
+                            <table class="table table-hover table-center table-striped">
                                 <thead>
-                                    <tr>
+                                    <tr class="text-center">
                                         <th>Order ID</th>
-                                        <th>User ID</th> 
+                                        <th>User ID</th>
                                         <th>User</th>
-                                        <th>Items</th>
+                                        <th>Product Item Name</th>
+                                        <th>Quantity</th>
                                         <th>Status</th>
                                         <th>Total Price</th>
                                         <th>Created At</th>
@@ -46,11 +46,18 @@
                                 </thead>
                                 <tbody>
                                     {% for order in orders %}
-                                    <tr>
+                                    <tr class="text-center">
                                         <td>{{ order.id }}</td>
                                         <td>{{ order.user.id }}</td>
                                         <td>{{ order.user.username }}</td>
-                                        <td>{{ order.user.name }}</td>
+                                        <td>
+                                            {% if order.variant %}
+                                                {{ order.variant.name }} 
+                                            {% else %}
+                                                {{ order.product.name }} 
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ order.quantity }}</td>
                                         <td>
                                             {% if order.status == "Cancelled" %}
                                             <span class="badge badge-danger">{{ order.get_status_display }}</span>
@@ -83,10 +90,8 @@
                                                         <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'shipped' %}">Shipped</a>
                                                         <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Out for Delivery' %}">Out for Delivery</a>
                                                         <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Delivered' %}">Delivered</a>
-                                                        
                                                         <div class="dropdown-divider"></div>
                                                         <a class="dropdown-item" href="{% url 'admin_cancel_order' order.id %}">Cancel</a>
-                                                       
                                                     </div>
                                                 </div>
                                             {% else %}
@@ -96,7 +101,7 @@
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="6" class="text-center">No orders found</td>
+                                        <td colspan="9" class="text-center">No orders found</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -109,12 +114,11 @@
     </div>
 </div>
 
-      <script src="{%static 'assets/js/jquery-3.6.0.min.js' %}"></script>
-      <script src="{%static 'assets/js/popper.min.js' %}"></script>
-      <script src="{%static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
-      <script src="{%static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
-      <script src="{%static 'assets/js/script.js' %}"></script>
-   </body>
-   <!-- Mirrored from preschool.dreamguystech.com/html-template/add-student.html by HTTrack Website Copier/3.x [XR&CO'2014], Thu, 28 Oct 2021 11:11:50 GMT -->
+<script src="{%static 'assets/js/jquery-3.6.0.min.js' %}"></script>
+<script src="{%static 'assets/js/popper.min.js' %}"></script>
+<script src="{%static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
+<script src="{%static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
+<script src="{%static 'assets/js/script.js' %}"></script>
+</body>
 </html>
 {% endblock %}

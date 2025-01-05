@@ -1,158 +1,176 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block body %}
-   
-         <div class="page-wrapper">
-            <div class="content container-fluid">
-               <div class="page-header">
-                  <div class="row align-items-center">
-                     <div class="col">
-                        <h3 class="page-title">Add Product</h3>
-                        <ul class="breadcrumb">
-                           <li class="breadcrumb-item"><a href="{% url 'product' %}">Product</a></li>
-                           <li class="breadcrumb-item active">Add Product</li>
-                        </ul>
-                        <div class="col-auto text-right float-right ml-auto">
-                           <a href="#" class="btn btn-outline-primary mr-2"><i class="fas fa-download"></i> Download</a>
-                           <a href="{% url 'add_product' %}" class="btn btn-primary"><i class="fas fa-plus"></i></a>
-                        </div>
-                     </div>
-                  </div>
-               </div>
-               <div class="row">
-                  <div class="col-sm-12">
-                     <div class="card">
-                        <div class="card-body">
-                           <form method="POST"   enctype="multipart/form-data">
-                              {% csrf_token %}
-                              <div class="row">
-                                 <div class="col-12">
-                                    <h5 class="form-title"><span>Product Information</span></h5>
-                                 </div>
-                                 <div class="col-12 col-sm-6">
-                                    <div class="form-group">
-                                       <label for="name ">Name</label>
-                                       <input type="text" class="form-control" name="name" id="name" required>
-                                    </div>
-                                 </div>
-                                 <div class="col-12 col-sm-6">
-                                    <div class="form-group">
-                                       <label for="description">Description</label>
-                                       <input type="text" class="form-control" name="description" id="description" required>
-                                    </div>
-                                 </div>
-                                 <div class="col-12 col-sm-6">
-                                    <div class="form-group">
-                                       <label for="category">Category</label>
-                                       <select name="category" id="category" required>
-                                          {% for category in categories %}
-                                          <option value="{{ category.id }}">{{ category.name }}</option>
-                                          {% endfor %}
 
-                                       </select><br>
-                                    </div>
-                                 </div>
-                                 
-                                 
-                                 <div class="form-group">
-                                    <label for="stock">Stock</label>
-                                    <div>
-                                       <input type="number" class="form-control" name="stock" id="stock" required>
-                                    </div>
-                                 </div>
-                                 <div class="col-12 col-sm-6">
-                                    <div class="form-group">
-                                       <label for="brand">Brand</label>
-                                       <input type="text" class="form-control" name="brand" id="brand" placeholder="Enter brand name" required>
-                                    </div>
-                                 <div class="col-12 col-sm-6">
-                                    <div class="form-group">
-                                       <label for="price">Price</label>
-                                       <input type="number" class="form-control" name = "price" id="price" required>
-                                    </div>
-                                 </div>
-      
-                     
-                                 <div class="col-12 col-sm-6">
-                                    <div class="form-group">
-                                       <label for="image1">product Image 1</label>
-                                       <input type="file" class="form-control" name="image1" id="image1" required >
-                                    </div>
-                                 </div>
-                                 <div class="col-12 col-sm-6">
-                                    <div class="form-group">
-                                       <label for="image2">product Image 2</label>
-                                       <input type="file" class="form-control" name="image2" id="image2">
-                                    </div>
-                                 </div>
-                                  <!-- Product Variants Section -->
-                           <div class="col-12">
-                              <h5 class="form-title"><span>Product Variants</span></h5>
-                              <div id="variant-container">
-                                 <div class="form-group row">
-                                    <div class="col-md-4">
-                                       <label for="size">Size</label>
-                                       <input type="text" class="form-control" name="size" placeholder="E.g., S, M, L, XL" required>
-                                    </div>
-                                    <div class="col-md-4">
-                                       <label for="additional price">Additional Price</label>
-                                       <input type="number" class="form-control" name="pri" placeholder="Enter additional price" required>
-                                    </div>
-                                    <div class="col-md-4 d-flex align-items-end">
-                                       <button type="button" class="btn btn-danger remove-variant-btn">Remove</button>
-                                    </div>
-                                 </div>
-                              </div>
-                              <button type="button" class="btn btn-primary mt-2" id="add-variant-btn">Add Variant</button>
-                           </div>
-
-                           <div class="col-12 d-flex justify-content-end mt-4">
-                              <button type="submit" class="btn btn-primary">Submit</button>
-                           </div>
-                              </div>
-                           </form>
-                        </div>
-                     </div>
-                  </div>
+<div class="page-wrapper">
+   <div class="content container-fluid">
+      <div class="page-header">
+         <div class="row align-items-center">
+            <div class="col">
+               <h3 class="page-title">Add Product</h3>
+               <ul class="breadcrumb">
+                  <li class="breadcrumb-item"><a href="{% url 'product' %}">Product</a></li>
+                  <li class="breadcrumb-item active">Add Product</li>
+               </ul>
+               <div class="col-auto text-right float-right ml-auto">
+                  <a href="#" class="btn btn-outline-primary mr-2"><i class="fas fa-download"></i> Download</a>
+                  <a href="{% url 'add_product' %}" class="btn btn-primary"><i class="fas fa-plus"></i></a>
                </div>
             </div>
          </div>
       </div>
-      <script>
-         let variantCount = 1;
-   
-         document.getElementById('add-variant-btn').addEventListener('click', function() {
-            const container = document.getElementById('variant-container');
-            const variantHTML = `
-               <div class="form-group row">
-                  <div class="col-md-4">
-                     <label for="size">Size</label>
-                     <input type="text" class="form-control" name="variants[${variantCount}][size]" placeholder="E.g., S, M, L, XL" required>
-                  </div>
-                  <div class="col-md-4">
-                     <label for="price">Additional Price</label>
-                     <input type="number" class="form-control" name="variants[${variantCount}][price]" placeholder="Enter additional price" required>
-                  </div>
-                  <div class="col-md-4 d-flex align-items-end">
-                     <button type="button" class="btn btn-danger remove-variant-btn">Remove</button>
-                  </div>
-               </div>`;
-            container.insertAdjacentHTML('beforeend', variantHTML);
-            variantCount++;
-         });
-   
-         document.getElementById('variant-container').addEventListener('click', function(e) {
-            if (e.target.classList.contains('remove-variant-btn')) {
-               e.target.closest('.form-group.row').remove();
-            }
-         });
-      </script>
-      <script src="{%static 'assets/js/jquery-3.6.0.min.js' %}"></script>
-      <script src="{%static 'assets/js/popper.min.js' %}"></script>
-      <script src="{%static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
-      <script src="{%static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
-      <script src="{%static 'assets/js/script.js' %}"></script>
-   </body>
-   <!-- Mirrored from preschool.dreamguystech.com/html-template/add-student.html by HTTrack Website Copier/3.x [XR&CO'2014], Thu, 28 Oct 2021 11:11:50 GMT -->
-</html>
+
+      <div class="row">
+         <div class="col-sm-12">
+            <div class="card">
+               <div class="card-body">
+                  <form method="POST" enctype="multipart/form-data">
+                     {% csrf_token %}
+                     <div class="row">
+                        <div class="col-12">
+                           <h5 class="form-title"><span>Product Information</span></h5>
+                        </div>
+                        <div class="col-12 col-sm-6">
+                           <div class="form-group">
+                              <label for="name ">Name</label>
+                              <input type="text" class="form-control" name="name" id="name" required>
+                           </div>
+                        </div>
+                        <div class="col-12 col-sm-6">
+                           <div class="form-group">
+                              <label for="description">Description</label>
+                              <input type="text" class="form-control" name="description" id="description" required>
+                           </div>
+                        </div>
+                        <div class="col-12 col-sm-6">
+                           <div class="form-group">
+                              <label for="category">Category</label>
+                              <select name="category" id="category" required>
+                                 {% for category in categories %}
+                                 <option value="{{ category.id }}">{{ category.name }}</option>
+                                 {% endfor %}
+                              </select><br>
+                           </div>
+                        </div>
+                        
+                        <div class="form-group">
+                           <label for="stock">Stock</label>
+                           <div>
+                              <input type="number" class="form-control" name="stock" id="stock" required>
+                           </div>
+                        </div>
+                        <div class="col-12 col-sm-6">
+                           <div class="form-group">
+                              <label for="brand">Brand</label>
+                              <input type="text" class="form-control" name="brand" id="brand" placeholder="Enter brand name" required>
+                           </div>
+                        </div>
+                        <div class="col-12 col-sm-6">
+                           <div class="form-group">
+                              <label for="price">Price</label>
+                              <input type="number" class="form-control" name="price" id="price" required>
+                           </div>
+                        </div>
+
+                        <div class="col-12 col-sm-6">
+                           <div class="form-group">
+                              <label for="image1">Product Image 1</label>
+                              <input type="file" class="form-control" name="image1" id="image1" required>
+                           </div>
+                        </div>
+                        <div class="col-12 col-sm-6">
+                           <div class="form-group">
+                              <label for="image2">Product Image 2</label>
+                              <input type="file" class="form-control" name="image2" id="image2">
+                           </div>
+                        </div>
+
+                        <!-- Product Variants Section -->
+                        <div class="col-12">
+                           <h5 class="form-title"><span>Product Variants</span></h5>
+                           <div id="variant-container">
+                              <div class="form-group row variant-row">
+                                 <div class="col-md-4">
+                                    <label for="size">Size</label>
+                                    <input type="text" class="form-control" name="variants[0][size]" placeholder="E.g., S, M, L, XL" required>
+                                 </div>
+                                 <div class="col-md-4">
+                                    <label for="additional price">Additional Price</label>
+                                    <input type="number" class="form-control" name="variants[0][additional_price]" placeholder="Enter additional price" required>
+                                 </div>
+                                 <div class="col-md-4 d-flex align-items-end">
+                                    <button type="button" class="btn btn-danger remove-variant-btn">Remove</button>
+                                 </div>
+                              </div>
+                           </div>
+                           <button type="button" class="btn btn-primary mt-2" id="add-variant-btn">Add Variant</button>
+                        </div>
+
+                        <!-- Hidden input field to store variants JSON -->
+                        <input type="hidden" id="variants_data" name="variants_data">
+
+                        <div class="col-12 d-flex justify-content-end mt-4">
+                           <button type="submit" class="btn btn-primary">Submit</button>
+                        </div>
+                     </div>
+                  </form>
+               </div>
+            </div>
+         </div>
+      </div>
+   </div>
+</div>
+
+<script>
+   let variantCount = 1;
+
+   document.getElementById('add-variant-btn').addEventListener('click', function() {
+      const container = document.getElementById('variant-container');
+      const variantHTML = `
+         <div class="form-group row variant-row">
+            <div class="col-md-4">
+               <label for="size">Size</label>
+               <input type="text" class="form-control" name="variants[${variantCount}][size]" placeholder="E.g., S, M, L, XL" required>
+            </div>
+            <div class="col-md-4">
+               <label for="additional_price">Additional Price</label>
+               <input type="number" class="form-control" name="variants[${variantCount}][additional_price]" placeholder="Enter additional price" required>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+               <button type="button" class="btn btn-danger remove-variant-btn">Remove</button>
+            </div>
+         </div>`;
+      container.insertAdjacentHTML('beforeend', variantHTML);
+      variantCount++;
+   });
+
+   document.getElementById('variant-container').addEventListener('click', function(e) {
+      if (e.target.classList.contains('remove-variant-btn')) {
+         e.target.closest('.form-group.row').remove();
+      }
+   });
+
+   // Serialize the variant data into JSON and set it to the hidden input field
+   document.querySelector('form').addEventListener('submit', function(e) {
+      e.preventDefault();  // Prevent form submission for debugging
+      let variants = [];
+      document.querySelectorAll('.variant-row').forEach(function(row) {
+         let size = row.querySelector('[name$="[size]"]').value;
+         let price = row.querySelector('[name$="[additional_price]"]').value;
+         variants.push({size: size, additional_price: price});
+      });
+      console.log(variants);  // Log variants to console for debugging
+      document.getElementById('variants_data').value = JSON.stringify(variants);
+
+      // Submit the form manually after debugging
+      e.target.submit();
+   });
+</script>
+
+<script src="{% static 'assets/js/jquery-3.6.0.min.js' %}"></script>
+<script src="{% static 'assets/js/popper.min.js' %}"></script>
+<script src="{% static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
+<script src="{% static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
+<script src="{% static 'assets/js/script.js' %}"></script>
+
 {% endblock %}

@@ -26,3 +26,10 @@ Thumbs.db
 
 # Django Static Files
 /static/
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.svg
+*.webp

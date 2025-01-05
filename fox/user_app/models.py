@@ -5,6 +5,7 @@ from admin_app.models import Product, ProductVariant
 from django.contrib.auth.models import User
 from django.utils.timezone import now
 
+
 class Cart(models.Model):
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -64,7 +65,9 @@ class Order(models.Model):
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE,related_name='product',default=1)
     address = models.ForeignKey(Address, on_delete=models.SET_NULL, null=True, blank=True,related_name='address') 
+    variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, null=True, blank=True)  # variant field (optional)
     product_name = models.CharField(max_length=100,null=True, blank=True)
     quantity = models.IntegerField(default=1)
     total_price = models.FloatField()
@@ -107,6 +110,7 @@ class OrderItem(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, null=True, blank=True)
     variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, null=True, blank=True)
     quantity = models.PositiveIntegerField()
+    total_price = models.DecimalField(max_digits=10, decimal_places=2,default=0)
 
     def reduce_stock(self):
         """
@@ -127,6 +131,7 @@ class OrderItem(models.Model):
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     phone = models.CharField(max_length=15, null=True, blank=True)
+    bio = models.TextField(blank=True, null=True)
     date_of_birth = models.DateField(null=True, blank=True)
     address = models.TextField(null=True, blank=True)  # Optional default address
 

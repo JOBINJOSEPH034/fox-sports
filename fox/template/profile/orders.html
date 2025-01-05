@@ -11,6 +11,7 @@
                 <th>Order ID</th>
                 <th>Date</th>
                 <th>Address</th>
+                <th>Product Name</th>  <!-- New column for product name -->
                 <th>Status</th>
                 <th>Total</th>
                 <th>Actions</th>
@@ -20,7 +21,7 @@
             {% for order in orders %}
             <tr>
                 <td>{{ order.id }}</td>
-                <td>{{ order.created_at }}</td>
+                <td>{{ order.created_at|date:"d M Y, H:i" }}</td>
                 <td>
                     {{ order.address.name }}<br>
                     {{ order.address.address_line }}<br>
@@ -28,18 +29,23 @@
                     {{ order.address.postal_code }}
                 </td>
                 <td>
+                    {% for item in order.items.all %}
+                        {{ item.product.name }}  <!-- Fetch the product name from order items -->
+                        {% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </td>
+                <td>
                     <span class="badge 
-                        {% if order.order_status == 'Pending' %}bg-warning
-                        {% elif order.order_status == 'Processing' %}bg-info
-                        {% elif order.order_status == 'Shipped' %}bg-primary
-                        {% elif order.order_status == 'Delivered' %}bg-success
-                        {% elif order.order_status == 'Cancelled' %}bg-danger
+                        {% if order.status == 'Pending' %}bg-warning
+                        {% elif order.status == 'Processing' %}bg-info
+                        {% elif order.status == 'Shipped' %}bg-primary
+                        {% elif order.status == 'Delivered' %}bg-success
+                        {% elif order.status == 'Cancelled' %}bg-danger
                         {% endif %}">
                         {{ order.status }}
                     </span>
                 </td>
-                <td>₹{{ order.total_price }}</td>
-               
+                <td>₹{{ order.total_price|floatformat:2 }}</td>
                 <td>
                     {% if order.status not in "Delivered,Cancelled" %}
                     <form action="{% url 'cancel_order' order.id %}" method="POST" style="display:inline;">
@@ -54,6 +60,10 @@
                     </button>
                     {% endif %}
                 </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="text-center">No orders found</td>
             </tr>
             {% endfor %}
         </tbody>

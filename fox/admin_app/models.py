@@ -31,7 +31,7 @@ class Product(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     stock = models.PositiveIntegerField(default=0)
-    brand=models.ForeignKey(Brand, on_delete=models.CASCADE,null=True,blank=True)
+    brand=models.ForeignKey(Brand, on_delete=models.CASCADE,null=True,blank=True,related_name='brand')
     price = models.DecimalField(max_digits=10, decimal_places=2)
     image1 = models.ImageField(upload_to='product_images/', blank=True, null=True)
     image2 = models.ImageField(upload_to='product_images/', blank=True, null=True)
