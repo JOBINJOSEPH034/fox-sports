@@ -1,5 +1,4 @@
 from django.db import models
-from django.contrib.auth.models import User
 
 # Create your models here.
 
@@ -41,17 +40,11 @@ class Product(models.Model):
     is_variant = models.BooleanField(default=False)
     popularity = models.PositiveIntegerField(default=0)  
 
-
-
-
-
     def __str__(self):
         return self.name
     
     def reduce_stock(self, quantity):
-        """
-        Reduces the stock of the product. Ensures no negative stock.
-        """
+        
         if self.stock >= quantity:
             self.stock -= quantity
             self.save()
@@ -59,7 +52,7 @@ class Product(models.Model):
             raise ValueError("Insufficient stock!")
 
 
-    
+   #for product varient (not working) 
 class ProductVariant(models.Model):
     product = models.ForeignKey(Product, related_name="variants", on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
@@ -69,11 +62,8 @@ class ProductVariant(models.Model):
     def __str__(self):
         return f"{self.product.name} - {self.name}"
     
-
     def reduce_stock(self, quantity):
-        """
-        Reduces the stock of the variant. Ensures no negative stock.
-        """
+        
         if self.stock >= quantity:
             self.stock -= quantity
             self.save()

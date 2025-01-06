@@ -32,17 +32,17 @@ urlpatterns = [
     path('categories/<int:category_id>/edit/', views.edit_category, name='edit_category'),
     path('category/toggle/<int:category_id>/', views.toggle_category_status, name='toggle_category_status'),  #for soft delete
 
-
+    #ur for admin order management
     path('admin_order-management/', views.admin_order_management, name='admin_order_management'),
     path('order/<int:order_id>/status/<str:status>/', views.admin_update_order_status, name='admin_update_order_status'),
     path('order/<int:order_id>/cancel/', views.admin_cancel_order, name='admin_cancel_order'),
 
-
+    #url for admin inventry management
     path('inventory/', views.inventory_management, name='inventory_management'),
     path('update_stock/<int:product_id>/', views.update_stock, name='update_stock'),
-    path('update_stock/<int:variant_id>/', views.update_variant_stock, name='update_variant_stock'),
+    path('update_stock/<int:variant_id>/', views.update_variant_stock, name='update_variant_stock'),  #not
      path('create_order/<int:product_id>/', views.create_order, name='create_order'),
-    path('create_order/<int:product_id>/<int:variant_id>/', views.create_order, name='create_order_variant'),
+    path('create_order/<int:product_id>/<int:variant_id>/', views.create_order, name='create_order_variant'),  #not
 ]
 
 urlpatterns += static(settings.MEDIA_URL,document_root=settings.MEDIA_ROOT)

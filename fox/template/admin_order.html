@@ -37,7 +37,6 @@
                                         <th>User ID</th>
                                         <th>User</th>
                                         <th>Product Item Name</th>
-                                        <th>Quantity</th>
                                         <th>Status</th>
                                         <th>Total Price</th>
                                         <th>Created At</th>
@@ -51,34 +50,31 @@
                                         <td>{{ order.user.id }}</td>
                                         <td>{{ order.user.username }}</td>
                                         <td>
-                                            {% if order.variant %}
-                                                {{ order.variant.name }} 
-                                            {% else %}
-                                                {{ order.product.name }} 
-                                            {% endif %}
+                                            {% for item in order.items.all %}
+                                            {{ item.product.name }} (x{{ item.quantity }})<br>
+                                            {% endfor %}
                                         </td>
-                                        <td>{{ order.quantity }}</td>
                                         <td>
                                             {% if order.status == "Cancelled" %}
-                                            <span class="badge badge-danger">{{ order.get_status_display }}</span>
+                                                <span class="badge badge-danger">{{ order.get_status_display }}</span>
                                             {% elif order.status == "Delivered" %}
-                                            <span class="badge badge-success">{{ order.status }}</span>
+                                                <span class="badge badge-success">{{ order.status }}</span>
                                             {% elif order.status == "Shipped" %}
-                                            <span class="badge badge-primary">{{ order.status }}</span>
+                                                <span class="badge badge-primary">{{ order.status }}</span>
                                             {% elif order.status == "Out for Delivery" %}
-                                            <span class="badge badge-info">{{ order.status }}</span>
+                                                <span class="badge badge-info">{{ order.status }}</span>
                                             {% elif order.status == "Processing" %}
-                                            <span class="badge badge-secondary">{{ order.status }}</span>
+                                                <span class="badge badge-secondary">{{ order.status }}</span>
                                             {% elif order.status == "Pending" %}
-                                            <span class="badge badge-warning">{{ order.status }}</span>
+                                                <span class="badge badge-warning">{{ order.status }}</span>
                                             {% else %}
-                                            <span class="badge badge-light">{{ order.status }}</span>
+                                                <span class="badge badge-light">{{ order.status }}</span>
                                             {% endif %}
                                         </td>
                                         <td>₹{{ order.total_price }}</td>
                                         <td>{{ order.created_at|date:"d M Y, H:i" }}</td>
                                         <td>
-                                            {% if order.status != "Delivered" %}
+                                            {% if order.status not in "Cancelled,Delivered" %}
                                                 <!-- Dropdown Button -->
                                                 <div class="dropdown">
                                                     <button class="btn btn-sm btn-primary dropdown-toggle" type="button" id="orderActions{{ order.id }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -95,7 +91,7 @@
                                                     </div>
                                                 </div>
                                             {% else %}
-                                                <span class="badge badge-success">Delivered</span>
+                                                <span class="badge badge-light">Completed</span>
                                             {% endif %}
                                         </td>
                                     </tr>
@@ -114,11 +110,11 @@
     </div>
 </div>
 
-<script src="{%static 'assets/js/jquery-3.6.0.min.js' %}"></script>
-<script src="{%static 'assets/js/popper.min.js' %}"></script>
-<script src="{%static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
-<script src="{%static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
-<script src="{%static 'assets/js/script.js' %}"></script>
+<script src="{% static 'assets/js/jquery-3.6.0.min.js' %}"></script>
+<script src="{% static 'assets/js/popper.min.js' %}"></script>
+<script src="{% static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
+<script src="{% static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
+<script src="{% static 'assets/js/script.js' %}"></script>
 </body>
 </html>
 {% endblock %}

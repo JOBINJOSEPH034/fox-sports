@@ -3,21 +3,12 @@ from admin_app.models import Category ,Product,ProductVariant,Brand
 from .models import Cart, CartItem,Address, Order,OrderItem
 from django.db.models import Sum
 from django.contrib import messages
-from django.contrib.auth.forms import PasswordChangeForm
-from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
 from django.db.models import Q
-from django.http import JsonResponse
 
-
-
-
-
-# Create your views here.
 
 #USER HOME PAGE
-
 @never_cache
 def home_page(request):
     categories=Category.objects.all()
@@ -34,7 +25,7 @@ def home_page(request):
 def main_page(request):
 
     categories=Category.objects.filter(is_active=True)
-    featured_products=Product.objects.filter(stock__gt=0,is_active=True)[:8]   # Showing the first 6 products
+    featured_products=Product.objects.filter(stock__gt=0,is_active=True)[:8]   
 
     cart_items = CartItem.objects.filter(user=request.user)
     total_items = cart_items.aggregate(total_items=Sum('quantity'))['total_items'] or 0
@@ -87,6 +78,7 @@ def product_page(request):
 
 
     brands = Brand.objects.all()
+
     # Sorting functionality
 
     if sort_option:
@@ -145,11 +137,9 @@ def shop_men(request):
         elif sort_option == 'reverse_alphabetical':
             products = products.order_by('-name')
         elif sort_option == 'popularity':
-            products = products.order_by('-popularity')  # Assuming popularity is a field in Product
+            products = products.order_by('-popularity') 
         elif sort_option == 'new_arrivals':
-            products = products.order_by('-created_at')  # Assuming created_at is a field in Product
-        
-
+            products = products.order_by('-created_at')  
 
     return render(request, 'shop_men.html', {
         'products': products,
@@ -191,12 +181,10 @@ def shop_women(request):
         elif sort_option == 'reverse_alphabetical':
             products = products.order_by('-name')
         elif sort_option == 'popularity':
-            products = products.order_by('-popularity')  # Assuming popularity is a field in Product
+            products = products.order_by('-popularity')  
         elif sort_option == 'new_arrivals':
-            products = products.order_by('-created_at')  # Assuming created_at is a field in Product
+            products = products.order_by('-created_at')  
         
-
-
     return render(request, 'shop_women.html', {
         'products': products,
         'categories': categories,
@@ -213,7 +201,7 @@ def shop_women(request):
 def product_detail(request,product_id):
     product = Product.objects.get(id=product_id)
     is_out_of_stock = product.stock == 0
-    variants = product.variants.all()  # Fetch variants for this product
+    variants = product.variants.all()  # not
 
     return render(request, 'detail.html', {
         'product': product,
@@ -226,17 +214,10 @@ def product_detail(request,product_id):
 
 @login_required
 def cart_page(request):
-    # Get the cart for the logged-in user
     cart, created = Cart.objects.get_or_create(user=request.user)
-    
-    # Get all cart items
     cart_items = CartItem.objects.filter(cart=cart)
-
-    # Calculate the total price of the cart
     cart_total = sum(item.total_price for item in cart_items)
     total_items = cart_items.aggregate(total_items=Sum('quantity'))['total_items'] or 0
-    
-    # Pass the cart items and total to the template
     return render(request, 'cart.html', {
         'cart_items': cart_items,
         'cart_total': cart_total,
@@ -250,24 +231,16 @@ def cart_page(request):
 @login_required
 def add_to_cart(request, product_id):
     product = get_object_or_404(Product, id=product_id)
-    variant_id = request.POST.get('variant')  # Variant is optional
+    variant_id = request.POST.get('variant') 
     quantity = int(request.POST.get('quantity', 1))
-
-    # Get or create the user's cart
     cart, _ = Cart.objects.get_or_create(user=request.user)
-
-    # Handle variant if it exists
     variant = ProductVariant.objects.filter(id=variant_id).first() if variant_id else None
-
-    # Check if the item is already in the cart
     cart_item, created = CartItem.objects.get_or_create(
         cart=cart,
         product=product,
         variant=variant,
         defaults={'quantity': quantity}
     )
-
-    # If item exists, update the quantity
     if not created:
         cart_item.quantity += quantity
         cart_item.save()
@@ -294,11 +267,10 @@ def update_cart_item(request, item_id):
 def remove_cart_item(request, item_id):
     try:
         cart_item = CartItem.objects.get(id=item_id)
-        cart_item.delete()  # Delete the item from the cart
-        return redirect('cart_page')  # Redirect back to the cart page
+        cart_item.delete()  
+        return redirect('cart_page')  
     except CartItem.DoesNotExist:
-        # Handle the case where the item doesn't exist (optional)
-        return redirect('cart_page')  # Or return an error page
+        return redirect('cart_page')  
     
 
 
@@ -306,11 +278,10 @@ def remove_cart_item(request, item_id):
 
 @login_required
 def manage_addresses(request):
-    
     if request.method == 'POST':
-        # Add or update address manually
+        
         address_id = request.POST.get('address_id')
-        if address_id:  # Update existing address
+        if address_id:  
             address = get_object_or_404(Address, id=address_id, user=request.user)
             address.name = request.POST.get('name')
             address.phone = request.POST.get('phone')
@@ -320,7 +291,7 @@ def manage_addresses(request):
             address.postal_code = request.POST.get('postal_code')
             address.is_default = request.POST.get('is_default') == 'on'
             address.save()
-        else:  # Create a new address
+        else:  
             Address.objects.create(
                 user=request.user,
                 name=request.POST.get('name'),
@@ -332,8 +303,6 @@ def manage_addresses(request):
                 is_default=request.POST.get('is_default') == 'on'
             )
         return redirect('manage_addresses')
-
-    # Display all addresses for the user
     addresses = Address.objects.filter(user=request.user)
     return render(request, 'manage_addresses.html', {'addresses': addresses})
 
@@ -343,7 +312,6 @@ def edit_address(request, address_id):
     address = get_object_or_404(Address, id=address_id, user=request.user)
 
     if request.method == 'POST':
-        # Handle address editing logic
         address.name = request.POST['name']
         address.phone = request.POST['phone']
         address.address_line = request.POST['address_line']
@@ -351,14 +319,12 @@ def edit_address(request, address_id):
         address.state = request.POST['state']
         address.postal_code = request.POST['postal_code']
 
-        # Check if the 'default' option was selected
         is_default = request.POST.get('is_default') == 'on'
         if is_default:
-            # Unset other default addresses
             Address.objects.filter(user=request.user).update(is_default=False)
         address.is_default = is_default
         address.save()
-        return redirect('manage_addresses')  # After editing, redirect to the manage addresses page
+        return redirect('manage_addresses')  
 
     return render(request, 'edit_address.html', {'address': address})
 
@@ -366,7 +332,6 @@ def edit_address(request, address_id):
 
 @login_required
 def delete_address(request, address_id):
-    # Delete an address
     address = get_object_or_404(Address, id=address_id, user=request.user)
     address.delete()
     return redirect('profile')
@@ -374,8 +339,7 @@ def delete_address(request, address_id):
 
 
 
-#chechout
-
+#chechout page
 @login_required
 def checkout(request):
     cart, created = Cart.objects.get_or_create(user=request.user)
@@ -384,58 +348,40 @@ def checkout(request):
 
     if not cart_items.exists():
         messages.error(request, "Your cart is empty. Please add items to your cart before checking out.")
-        return redirect('shop')  # Replace with your actual shop page URL name
+        return redirect('shop')
 
     addresses = Address.objects.filter(user=request.user)
 
     if request.method == 'POST':
         address_id = request.POST.get('selected_address')
+        if not address_id:
+            messages.error(request, "Please select an address.")
+            return redirect('checkout')
+
         selected_address = get_object_or_404(Address, id=address_id, user=request.user)
 
-        # Create the order
         order = Order.objects.create(
             user=request.user,
             address=selected_address,
             total_price=cart_total,
         )
 
-        # Iterate through cart items and create individual order items
         for item in cart_items:
-            # Check if the cart item has a product variant
-            if item.variant:
-                # Update stock for the product variant
-                if item.variant.stock >= item.quantity:
-                    item.variant.stock -= item.quantity  # Reduce the stock by the ordered quantity
-                    item.variant.save()  # Save the updated variant stock
-                    OrderItem.objects.create(
-                        order=order,
-                        product=item.variant.product,
-                        variant=item.variant,
-                        quantity=item.quantity,
-                        total_price=item.total_price
-                    )
-                else:
-                    messages.error(request, f"Insufficient stock for {item.variant.name}.")
-                    return redirect('checkout')  # Redirect back to checkout page if stock is insufficient
-            else:
-                # Update stock for the product if no variant
-                if item.product.stock >= item.quantity:
-                    item.product.stock -= item.quantity  # Reduce the stock by the ordered quantity
-                    item.product.save()  # Save the updated product stock
-                    OrderItem.objects.create(
-                        order=order,
-                        product=item.product,
-                        quantity=item.quantity,
-                        total_price=item.total_price
-                    )
-                else:
-                    messages.error(request, f"Insufficient stock for {item.product.name}.")
-                    return redirect('checkout')  # Redirect back to checkout page if stock is insufficient
-
-        # Clear cart after order is placed
+            try:
+                order_item = OrderItem.objects.create(
+                    order=order,
+                    product=item.product,
+                    variant=item.variant,
+                    quantity=item.quantity,
+                    total_price=item.total_price
+                )
+                order_item.reduce_stock()
+            except ValueError as e:
+                messages.error(request, f"Stock error for {item.product.name}: {str(e)}")
+                order.delete()  
+                return redirect('checkout')
         cart_items.delete()
 
-        # Redirect to the order success page with the order ID
         return redirect('order_success', order_id=order.id)
 
     return render(request, 'checkout.html', {
@@ -443,26 +389,18 @@ def checkout(request):
         'cart_total': cart_total,
         'addresses': addresses,
     })
+
+#display order sucess messg 
 @login_required
 def order_success(request, order_id):
-    # Display order confirmation
     order = get_object_or_404(Order, id=order_id)
     return render(request, 'order_success.html', {'order': order})
 
 
 
-
-
-
-
 #order management for user
 @login_required
-def is_admin(user):
-    return user.is_superuser
-
-@login_required
 def order_management(request):
-    # Fetch all orders for the logged-in user, ordered by creation date (latest first)
     orders = Order.objects.filter(user=request.user).order_by('-created_at')
     return render(request, 'profile/orders.html', {'orders': orders})
 
@@ -470,20 +408,14 @@ def order_management(request):
 @login_required
 def cancel_order(request, order_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
-
     if order.status in ['Pending', 'Processing', 'Shipped','Out for Delivery']:
-        
-      
         order.status = 'Cancelled'
         order.save()
-
         messages.success(request, f"Order {order.id} has been successfully canceled and stock has been updated.")
     else:
         messages.error(request, f"Order {order.id} cannot be canceled.")
 
     return redirect('order_management')
-
-
 
 
 
@@ -494,23 +426,20 @@ def profile(request):
 
     if request.method == 'POST':
         try:
-            # Update the user model fields
             user.first_name = request.POST.get('first_name')
             user.last_name = request.POST.get('last_name')
             user.email = request.POST.get('email')
 
-            # If you have a Profile model with additional fields, update that as well
             if hasattr(user, 'profile'):
                 user.profile.phone = request.POST.get('phone')
                 user.profile.bio = request.POST.get('bio', '')
 
-            # Save the updated user and profile
             user.save()
             if hasattr(user, 'profile'):
                 user.profile.save()
 
             messages.success(request, "Your profile has been updated successfully.")
-            return redirect('profile')  # Redirect to the same page after saving
+            return redirect('profile') 
         except Exception as e:
             messages.error(request, f"Error occurred: {e}")
             return redirect('profile')
