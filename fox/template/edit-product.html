@@ -73,21 +73,31 @@
                                        <input type="text" class="form-control" name = "price" id="price" value="{{ product.price }}" required>
                                     </div>
                                  </div>
-                                
                                  
-                                
                         
+                                 <div class="form-group">
+                                    <label for="image2">Product Image 1</label>
+                                    {% if product.image2 %}
+                                        <div>
+                                            <img src="{{ product.image1.url }}" alt="Current Image 2" style="max-width: 200px; margin-bottom: 10px;">
+                                            <p>Current Image</p>
+                                        </div>
+                                    {% endif %}
+                                    <input type="file" class="form-control" name="image1">
+                                    <small class="form-text text-muted">If you want to update the image, choose a new one.</small>
+                                </div>
                                  <div class="col-12 col-sm-6">
                                     <div class="form-group">
-                                       <label for="Image1" >product Image 1</label>
-                                       <input type="file" class="form-control" name="Image1" id="Image1" >
-                                    </div>
-                                 </div>
-                                 <div class="col-12 col-sm-6">
-                                    <div class="form-group">
-                                       <label for="Image2" >product Image 2</label>
-                                       <input type="file" class="form-control" name="image2" id="image2">
-                                    </div>
+                                       <label for="Image2" >Product Image 2</label>
+            
+                                       {% if product.image1 %}
+                                           <div>
+                                               <img src="{{ product.image2.url }}" alt="Current Image 1" style="max-width: 200px; margin-bottom: 10px;">
+                                               <p>Current Image</p>
+                                           </div>
+                                       {% endif %}
+                                       <input type="file" class="form-control" name="image2">
+                                       <small class="form-text text-muted">If you want to update the image, choose a new one.</small>                                    </div>
                                  </div>
                                  <div class="col-12">
                                     <h5 class="form-title"><span>Product Variants</span></h5>

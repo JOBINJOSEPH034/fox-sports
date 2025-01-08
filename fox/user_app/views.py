@@ -1,11 +1,18 @@
 from django.shortcuts import render ,redirect,get_object_or_404
 from admin_app.models import Category ,Product,ProductVariant,Brand
 from .models import Cart, CartItem,Address, Order,OrderItem
+from django.http import JsonResponse
+
+from django.core.paginator import Paginator
 from django.db.models import Sum
+from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
 from django.db.models import Q
+
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
 
 
 #USER HOME PAGE
@@ -46,41 +53,39 @@ def main_page_search(request):
             return render(request, 'main.html', {'error': 'Product not found!'})
     return render(request, 'main.html')
         
-
 # USER PRODUCT PAGE
 @login_required
 @never_cache
 def product_page(request):
-
     categories = Category.objects.filter(is_active=True)
-    products = Product.objects.filter(stock__gt=0,is_active=True) 
+    products = Product.objects.filter(stock__gt=0, is_active=True)
 
     cart_items = CartItem.objects.filter(user=request.user)
     total_items = cart_items.aggregate(total_items=Sum('quantity'))['total_items'] or 0
-   
+
     search_query = request.GET.get('search', '').strip()
-    selected_category = request.GET.get('category')
-    selected_brand = request.GET.get('brand')
+    selected_categories = request.GET.getlist('category')  # Multi-select for categories
+    selected_brands = request.GET.getlist('brand')  # Multi-select for brands
     sort_option = request.GET.get('sort')
+
     # Search functionality
     if search_query:
         products = products.filter(
-            Q(name__icontains=search_query) | 
+            Q(name__icontains=search_query) |
             Q(description__icontains=search_query)
         )
 
-    # Filter by category
-    if selected_category:
-        products = products.filter(category_id=selected_category)
+    # Filter by selected categories
+    if selected_categories:
+        products = products.filter(category_id__in=selected_categories)
 
-    if selected_brand:
-        products = products.filter(brand_id=selected_brand)    
-
+    # Filter by selected brands
+    if selected_brands:
+        products = products.filter(brand_id__in=selected_brands)
 
     brands = Brand.objects.all()
 
     # Sorting functionality
-
     if sort_option:
         if sort_option == 'low_to_high':
             products = products.order_by('price')
@@ -94,21 +99,26 @@ def product_page(request):
             products = products.order_by('-popularity')  # Assuming popularity is a field in Product
         elif sort_option == 'new_arrivals':
             products = products.order_by('-created_at')  # Assuming created_at is a field in Product
-    
-    
-    return render(request,'shop.html',{
-        'categories': categories,
-        'products': products,
-        'search_query': search_query,
-        'selected_category': selected_category,
-        'selected_brand': selected_brand,
-        'sort_option': sort_option,
-        'total_items': total_items
 
+    # Pagination logic
+    paginator = Paginator(products, 9)  # Show 9 products per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'shop.html', {
+        'categories': categories,
+        'products': page_obj,  # Pass paginated products to the template
+        'search_query': search_query,
+        'selected_categories': selected_categories,
+        'selected_brands': selected_brands,
+        'sort_option': sort_option,
+        'brands': brands,
+        'total_items': total_items,
+        'page_obj': page_obj  # Pass page_obj for pagination
     })
 
-
 @login_required
+
 def shop_men(request):
     categories = Category.objects.filter(is_active=True)
     men_category = get_object_or_404(Category, name="Men")
@@ -117,16 +127,24 @@ def shop_men(request):
     cart_items = CartItem.objects.filter(user=request.user)
     total_items = cart_items.aggregate(total_items=Sum('quantity'))['total_items'] or 0
 
+    # Search functionality
     search_query = request.GET.get('search', '').strip()
-    sort_option = request.GET.get('sort')
-
     if search_query:
         products = products.filter(
             Q(name__icontains=search_query) | 
             Q(description__icontains=search_query)
         )
-
     
+    # Filter by category and brand
+    selected_categories = request.GET.getlist('category')
+    selected_brands = request.GET.getlist('brand')
+    if selected_categories:
+        products = products.filter(category_id__in=selected_categories)
+    if selected_brands:
+        products = products.filter(brand_id__in=selected_brands)
+
+    # Sorting functionality
+    sort_option = request.GET.get('sort')
     if sort_option:
         if sort_option == 'low_to_high':
             products = products.order_by('price')
@@ -137,19 +155,27 @@ def shop_men(request):
         elif sort_option == 'reverse_alphabetical':
             products = products.order_by('-name')
         elif sort_option == 'popularity':
-            products = products.order_by('-popularity') 
+            products = products.order_by('-popularity')
         elif sort_option == 'new_arrivals':
-            products = products.order_by('-created_at')  
+            products = products.order_by('-created_at')
+
+    # Pagination setup
+    paginator = Paginator(products, 9)  # Show 9 products per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    brands = Brand.objects.all()
 
     return render(request, 'shop_men.html', {
-        'products': products,
+        'products': page_obj,
         'categories': categories,
+        'brands': brands,
         'total_items': total_items,
         'search_query': search_query,
+        'selected_categories': selected_categories,  # Pass selected categories
+        'selected_brands': selected_brands,          # Pass selected brands
         'sort_option': sort_option,
-        
-        })
-
+    })
 
 
 @login_required
@@ -161,16 +187,24 @@ def shop_women(request):
     cart_items = CartItem.objects.filter(user=request.user)
     total_items = cart_items.aggregate(total_items=Sum('quantity'))['total_items'] or 0
 
+    # Search functionality
     search_query = request.GET.get('search', '').strip()
-    sort_option = request.GET.get('sort')
-
     if search_query:
         products = products.filter(
             Q(name__icontains=search_query) | 
             Q(description__icontains=search_query)
         )
-
     
+    # Filter by category and brand
+    selected_categories = request.GET.getlist('category')
+    selected_brands = request.GET.getlist('brand')
+    if selected_categories:
+        products = products.filter(category_id__in=selected_categories)
+    if selected_brands:
+        products = products.filter(brand_id__in=selected_brands)
+
+    # Sorting functionality
+    sort_option = request.GET.get('sort')
     if sort_option:
         if sort_option == 'low_to_high':
             products = products.order_by('price')
@@ -181,18 +215,27 @@ def shop_women(request):
         elif sort_option == 'reverse_alphabetical':
             products = products.order_by('-name')
         elif sort_option == 'popularity':
-            products = products.order_by('-popularity')  
+            products = products.order_by('-popularity')
         elif sort_option == 'new_arrivals':
-            products = products.order_by('-created_at')  
-        
+            products = products.order_by('-created_at')
+
+    # Pagination setup
+    paginator = Paginator(products, 9)  # Show 9 products per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    brands = Brand.objects.all()
+
     return render(request, 'shop_women.html', {
-        'products': products,
+        'products': page_obj,
         'categories': categories,
+        'brands': brands,
         'total_items': total_items,
         'search_query': search_query,
+        'selected_categories': selected_categories,  # Pass selected categories
+        'selected_brands': selected_brands,          # Pass selected brands
         'sort_option': sort_option,
-        
-        })
+    })
 
 
 
@@ -331,13 +374,62 @@ def edit_address(request, address_id):
 
 
 @login_required
+def get_address(request, address_id):
+    address = get_object_or_404(Address, id=address_id, user=request.user)
+    return JsonResponse({
+        'id': address.id,
+        'name': address.name,
+        'phone': address.phone,
+        'address_line': address.address_line,
+        'city': address.city,
+        'state': address.state,
+        'postal_code': address.postal_code,
+    })
+
+
+@login_required
+def update_address(request, address_id):
+    address = get_object_or_404(Address, id=address_id, user=request.user)
+    if request.method == 'POST':
+        try:
+            # Debugging print statements
+            print("Received POST data:", request.POST)
+
+            address.name = request.POST.get('name')
+            address.phone = request.POST.get('phone')
+            address.address_line = request.POST.get('address_line')
+            address.city = request.POST.get('city')
+            address.state = request.POST.get('state')
+            address.postal_code = request.POST.get('postal_code')
+            address.save()
+
+            # Check if the data was saved
+            print(f"Updated Address: {address.name}, {address.phone}, {address.address_line}")
+
+            return JsonResponse({
+                'success': True,
+                'id': address.id,
+                'name': address.name,
+                'phone': address.phone,
+                'address_line': address.address_line,
+                'city': address.city,
+                'state': address.state,
+                'postal_code': address.postal_code,
+            })
+        except Exception as e:
+            # Handle any unexpected errors
+            print("Error:", str(e))
+            return JsonResponse({'success': False, 'error': str(e)})
+
+    return JsonResponse({'success': False, 'error': 'Invalid request'})
+
+
+
+@login_required
 def delete_address(request, address_id):
     address = get_object_or_404(Address, id=address_id, user=request.user)
     address.delete()
     return redirect('profile')
-
-
-
 
 #chechout page
 @login_required

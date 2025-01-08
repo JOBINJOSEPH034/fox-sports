@@ -25,26 +25,6 @@
 
     <!-- Customized Bootstrap Stylesheet -->
     <link href="{% static 'css/style.css' %}" rel="stylesheet">
-    
-    <style>
-        #profile-menu .menu-item {
-            display: flex;
-            align-items: center;
-            text-decoration: none;
-            transition: all 0.3s ease;
-        }
-        #profile-menu .menu-item:hover {
-            background-color: #f8f9fa;
-            border-radius: 4px;
-        }
-        #profile-menu .menu-item.active {
-            font-weight: bold;
-            background-color: #e9ecef;
-            border-left: 4px solid #007bff;
-            padding-left: 15px;
-        }
-    </style>
-
 
 </head>
 
@@ -59,18 +39,9 @@
                     <span class="h1 text-uppercase text-dark bg-primary px-2 ml-n1">Sports</span>
                 </a>
             </div>
-              <!-- Search Bar Section -->
-              <div class="col-lg-4">
-                <form action="{% url 'shop' %}" method="get" class="d-flex">
-                    <input type="text" name="search" class="form-control" value="{{ search_query }}" placeholder="Search Products...">
-                    <button type="submit" class="btn btn-primary ml-2">Search</button>
-                </form>
-            </div>
-    
            
           
         </div>
-                     
     </div>
     <!-- Topbar End -->
 
@@ -144,64 +115,87 @@
     </div>
     <!-- Navbar End -->
 
+    
+<!-- Breadcrumb Start -->
+<div class="container-fluid">
+    <div class="row px-xl-5">
+        <div class="col-12">
+            <nav class="breadcrumb bg-light mb-30">
+                <a class="breadcrumb-item text-dark" href="{% url 'main' %}">Home</a>
+                <a class="breadcrumb-item text-dark" href="{% url 'shop' %}">Shop</a>
+                <a class="breadcrumb-item text-dark" href="{% url 'cart_page' %}">Cart</a>
+                <span class="breadcrumb-item active">Checkout</span>
+            </nav>
+        </div>
+    </div>
+</div>
+<!-- Breadcrumb End -->
 
-    <!-- Breadcrumb Start -->
-    <div class="container-fluid">
-        <div class="row px-xl-5">
-            <div class="col-12">
-                <nav class="breadcrumb bg-light mb-30">
-                    <a class="breadcrumb-item text-dark" href="{% url  'main' %}">Home</a>
-                    <a class="breadcrumb-item text-dark" href="{% url  'shop' %}">Shop</a>
-                    <span class="breadcrumb-item active">Shop Detail</span>
-                </nav>
+<div class="container-fluid">
+    <div class="row px-xl-5">
+        <!-- Select Address Section -->
+        <div class="col-lg-8">
+            <h5 class="section-title position-relative text-uppercase mb-3">
+                <span class="bg-secondary pr-3">Select Address</span>
+            </h5>
+            <div class="bg-light p-3 mb-5">
+                <form method="POST" action="{% url 'checkout' %}">
+                    {% csrf_token %}
+                    {% for address in addresses %}
+                        <div class="border-bottom pb-3 mb-3">
+                            <p><strong>Name:</strong> {{ address.name }}</p>
+                            <p><strong>Phone:</strong> {{ address.phone }}</p>
+                            <p><strong>Address:</strong> {{ address.address_line }}, {{ address.city }}, {{ address.state }} - {{ address.postal_code }}</p>
+                            <div class="form-check">
+                                <input type="radio" name="selected_address" value="{{ address.id }}" id="address-{{ address.id }}" class="form-check-input">
+                                <label for="address-{{ address.id }}" class="form-check-label">Select this address</label>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <p>No addresses found. <a href="{% url 'manage_addresses' %}">Add Address</a></p>
+                    {% endfor %}
+            </div>
+            <a href="{% url 'manage_addresses' %}" class="btn btn-primary mb-3">Add/Edit Address</a>
+            
+        </div>
+
+        <!-- Payment and Confirm Order Section -->
+        <div class="col-lg-4">
+            <div class="bg-light p-30 mb-5">
+                <h5 class="section-title position-relative text-uppercase mb-3">
+                    <span class="bg-secondary pr-3">Order Summary</span>
+                </h5>
+                <div class="border-bottom pb-2">
+                    <div class="d-flex justify-content-between mb-3">
+                        <h6>Subtotal</h6>
+                        <h6>₹{{ cart_total }}</h6>
+                    </div>
+                </div>
+                <div class="pt-2">
+                    <h5 class="section-title position-relative text-uppercase mb-3">
+                        <span class="bg-secondary pr-3">Payment Options</span>
+                    </h5>
+                    <div class="form-check">
+                        <input type="radio" name="payment_method" value="cod" id="cod" class="form-check-input" checked>
+                        <label for="cod" class="form-check-label">Cash on Delivery</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="radio" name="payment_method" value="online" id="online" class="form-check-input" disabled>
+                        <label for="online" class="form-check-label">Online Payment (Coming Soon)</label>
+                    </div>
+                    <div class="pt-2">
+                        <button type="submit" class="btn btn-block btn-primary font-weight-bold my-3 py-3">Place Order</button>
+                    </div>
+                </div>
             </div>
         </div>
+        </form>
     </div>
-    <!-- Breadcrumb End -->
+</div>
 
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Sidebar -->
-            <nav class="col-lg-3 col-md-4 col-sm-12 bg-light" style="min-height: 100vh;">
-                <div class="p-4">
-                    <h5 class="text-uppercase mb-4" style="font-weight: bold;">Profile Menu</h5>
-                    <ul class="list-group list-group-flush" id="profile-menu">
-                        <li class="list-group-item px-3 py-2">
-                            <a href="{% url 'profile' %}" class="d-flex align-items-center text-dark menu-item">
-                                <i class="bi bi-person-circle me-2"></i> Profile
-                            </a>
-                        </li>
-                        <li class="list-group-item px-3 py-2">
-                            <a href="{% url 'manage_addresses' %}" class="d-flex align-items-center text-dark menu-item">
-                                <i class="bi bi-house-door me-2"></i> Manage Addresses
-                            </a>
-                        </li>
-                        <li class="list-group-item px-3 py-2">
-                            <a href="{% url 'order_management' %}" class="d-flex align-items-center text-dark menu-item">
-                                <i class="bi bi-box me-2"></i> Orders
-                            </a>
-                        </li>
-                        <li class="list-group-item px-3 py-2">
-                            <a href="{% url 'change_password' %}" class="d-flex align-items-center text-dark menu-item">
-                                <i class="bi bi-key me-2"></i> Change Password
-                            </a>
-                        </li>
-                    </ul>
-                </div>
-            </nav>
-            <!-- Main Content -->
-            <main class="col-lg-9 col-md-8 col-sm-12">
-                {% block content %}
-                {% endblock %}
-            </main>
-        </div>
-    </div>
-    
 
 
     
-
-
     <!-- Footer Start -->
     <div class="container-fluid bg-dark text-secondary mt-5 pt-5">
         <div class="row px-xl-5 pt-5">
@@ -271,8 +265,26 @@
             </div>
         </div>
     </div>
-
     
+    <script>
+        // Inline script to update the hidden input value when an address is selected
+        function selectAddress(addressId) {
+            document.getElementById('selected-address-input').value = addressId;
+        }
+    </script>
+
+ 
+
+    <script>
+        document.querySelectorAll('.size-option').forEach(function(element) {
+            element.addEventListener('click', function() {
+                const sizeId = element.getAttribute('data-size-id');
+                const priceAdjustment = element.getAttribute('data-price-adjust');
+                alert('You selected size ID: ' + sizeId + ' with a price adjustment of ₹' + priceAdjustment);
+                // Here you can update your UI or send data to the server if needed
+            });
+        });
+    </script>
     <!-- Footer End -->
 
 
@@ -293,18 +305,6 @@
     <!-- Template Javascript -->
     <script src="{% static 'js/main.js' %}"></script>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const menuItems = document.querySelectorAll('.menu-item');
-            menuItems.forEach(item => {
-                item.addEventListener('click', function () {
-                    menuItems.forEach(el => el.classList.remove('active'));
-                    this.classList.add('active');
-                });
-            });
-        });
-    </script>
-    
 </body>
 
 </html>

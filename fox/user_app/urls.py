@@ -40,6 +40,8 @@ urlpatterns = [
         ),
         name='change_password'
     ),
-    
+    path('addresses/<int:address_id>/',views.get_address, name='get_address'),
+    path('addresses/<int:address_id>/edit/',views.update_address, name='update_address'),
+
 ]
 urlpatterns += static(settings.MEDIA_URL,document_root=settings.MEDIA_ROOT)

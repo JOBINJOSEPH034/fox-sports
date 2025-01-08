@@ -25,7 +25,44 @@
 
     <!-- Customized Bootstrap Stylesheet -->
     <link href="{% static 'css/style.css' %}" rel="stylesheet">
+<style>
+    /* Custom styling for cart summary */
+.cart-summary-item {
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+}
 
+.cart-summary-item h6 {
+    margin: 0;
+}
+
+.cart-summary-item h6:last-child {
+    font-weight: bold;
+}
+
+/* Adjust width of elements for better formatting */
+.table td {
+    vertical-align: middle;
+    padding: 15px;
+}
+
+.table th {
+    padding: 10px;
+}
+
+/* Make sure the cart summary has a nice margin and padding */
+.bg-light {
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.section-title {
+    margin-bottom: 15px;
+    font-size: 20px;
+}
+
+</style>
 </head>
 
 <body>
@@ -134,7 +171,6 @@
 
 
 
-
 <!-- cart.html -->
 <div class="container-fluid">
     <div class="row px-xl-5">
@@ -155,7 +191,7 @@
                         <td class="align-middle">
                             <img src="{{ item.product.image1.url }}" alt="" style="width: 50px;"> {{ item.product.name }}
                         </td>
-                        <td class="align-middle">₹{{  item.total_price }}</td>
+                        <td class="align-middle">₹{{ item.total_price|floatformat:2 }}</td>
                         <td class="align-middle">
                             <form method="POST" action="{% url 'update_cart_item' item.id %}">
                                 {% csrf_token %}
@@ -163,7 +199,7 @@
                                 <button type="submit" class="btn btn-sm btn-primary">Update</button>
                             </form>
                         </td>
-                        <td class="align-middle">₹{{ item.total_price }}</td>
+                        <td class="align-middle">₹{{ item.total_price|floatformat:2 }}</td>
                         <td class="align-middle">
                             <a href="{% url 'remove_cart_item' item.id %}" class="btn btn-sm btn-danger">
                                 <i class="fa fa-trash"></i>
@@ -184,11 +220,49 @@
                     <span class="bg-secondary pr-3">Cart Summary</span>
                 </h5>
                 <div class="border-bottom pb-2">
+                    <!-- Items and Quantities -->
+                    <div class="d-flex justify-content-between mb-3">
+                        <h6>Items</h6>
+                        <h6>
+                            {% for item in cart_items %}
+                                <div>{{ item.quantity }} x {{ item.product.name }}</div>
+                            {% endfor %}
+                        </h6>
+                    </div>
+
+                    <!-- Subtotal -->
                     <div class="d-flex justify-content-between mb-3">
                         <h6>Subtotal</h6>
-                        <h6>₹{{ cart_total }}</h6>
+                        <h6>₹{{ cart_total|floatformat:2 }}</h6>
+                    </div>
+
+                    <!-- Discount -->
+                    <div class="d-flex justify-content-between mb-3">
+                        <h6>Discount</h6>
+                        <h6>- ₹ 0</h6>
+                    </div>
+
+                    <!-- Platform Fee -->
+                    <div class="d-flex justify-content-between mb-3">
+                        <h6>Platform Fee</h6>
+                        <h6>₹ 0</h6>
+                    </div>
+
+                    <!-- Delivery Charge -->
+                    <div class="d-flex justify-content-between mb-3">
+                        <h6>Delivery Charge</h6>
+                        <h6>₹ 0</h6>
                     </div>
                 </div>
+
+                <!-- Total Amount -->
+                <div class="border-top pt-3">
+                    <div class="d-flex justify-content-between">
+                        <h5>Total Amount</h5>
+                        <h5>₹{{cart_total|floatformat:2 }}</h5>
+                    </div>
+                </div>
+
                 <div class="pt-2">
                     <a href="{% url 'checkout' %}" class="btn btn-block btn-primary font-weight-bold my-3 py-3">Proceed To Checkout</a>
                 </div>

@@ -268,7 +268,7 @@ def toggle_category_status(request, category_id):
 @login_required
 @never_cache
 def admin_order_management(request):
-    orders = Order.objects.select_related('user', 'address').prefetch_related('items__product', 'items__variant')
+    orders = Order.objects.select_related('user', 'address').prefetch_related('items__product', 'items__variant').order_by('-created_at')
     return render(request, 'admin_order.html', {'orders': orders})
 
 

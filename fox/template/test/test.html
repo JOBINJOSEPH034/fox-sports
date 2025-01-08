@@ -1,0 +1,101 @@
+path('verify_otp_login/', views.verify_otp_login, name='verify_otp_login'),
+
+
+
+
+
+@never_cache
+# login view
+def login_page(request):
+    if request.method == 'POST':
+        username = request.POST.get('name')
+        password = request.POST.get("password")
+
+        if not username or not password:
+            messages.error(request, 'Both username and password are required!')
+            return render(request, 'accounts/login.html')
+
+        user = authenticate(request, username=username, password=password)
+        
+        if user is not None:
+            if user.is_active:
+                # Check if OTP verification is needed
+                last_login = user.last_login
+                otp_verified = request.session.get('otp_verified', False)
+
+                if (not otp_verified or not last_login or 
+                    (request.session.get('last_user') and request.session['last_user'] != user.username)):
+                    # Trigger OTP flow
+                    otp = random.randint(100000, 999999)
+                    cache.set(f'otp_{user.email}', otp, timeout=300)  # Cache OTP for 5 minutes
+                    send_mail(
+                        'Login OTP Verification',
+                        f'Your OTP is {otp}',
+                        settings.DEFAULT_FROM_EMAIL,
+                        [user.email],
+                    )
+                    request.session['otp_pending_user'] = user.id  # Save user for OTP
+                    return redirect('verify_otp_login')  # Redirect to OTP verification page
+                
+                # Normal login flow if OTP is not needed
+                login(request, user)
+                request.session['username'] = user.username
+                request.session['last_user'] = user.username
+                request.session['otp_verified'] = False  # Reset OTP session flag
+                messages.success(request, f"Welcome {user.username}!")
+                
+                if user.is_superuser:
+                    return redirect('admin_home')
+                else:
+                    return redirect('main')
+            else:
+                messages.error(request, 'Your account has been blocked. Please contact support.')
+        else:
+            messages.error(request, 'Invalid credentials. Please try again.')
+
+    return render(request, 'accounts/login.html')
+
+
+
+
+
+
+@never_cache
+def verify_otp_login(request):
+    user_id = request.session.get('otp_pending_user')
+    if not user_id:
+        return redirect('login')
+
+    user = User.objects.filter(id=user_id).first()
+    if not user:
+        messages.error(request, 'User not found!')
+        return redirect('login')
+
+    if request.method == 'POST':
+        otp = request.POST.get('otp')
+        cached_otp = cache.get(f'otp_{user.email}')
+
+        if cached_otp and str(cached_otp) == otp:
+            cache.delete(f'otp_{user.email}')  # Clear OTP after use
+            login(request, user)
+            request.session['otp_verified'] = True
+            request.session['last_user'] = user.username
+            messages.success(request, 'OTP verified successfully! Welcome.')
+            
+            if user.is_superuser:
+                return redirect('admin_home')
+            else:
+                return redirect('main')
+        else:
+            messages.error(request, 'Invalid OTP or OTP expired!')
+
+    return render(request, 'accounts/verify_otp_login.html', {'email': user.email})
+
+
+
+
+
+
+
+
+

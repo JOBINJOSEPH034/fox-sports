@@ -36,6 +36,7 @@
                                     <tr>
                                         <th>Product ID</th>
                                         <th>Product Name</th>
+                                        <th>Brand</th> 
                                         <th>Variant</th>
                                         <th>Stock</th>
                                         <th>Actions</th>
@@ -46,6 +47,7 @@
                                     <tr>
                                         <td>{{ product.id }}</td>
                                         <td>{{ product.name }}</td>
+                                        <td>{{ product.brand.name }}</td> 
                                         <td>
                                             {% if product.variant %}
                                                 {{ product.variant.name }}

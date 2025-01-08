@@ -134,113 +134,131 @@
 
 
     <!-- Breadcrumb Start -->
-    <div class="container-fluid">
-        <div class="row px-xl-5">
-            <div class="col-12">
-                <nav class="breadcrumb bg-light mb-30">
-                    <a class="breadcrumb-item text-dark" href="{% url  'main' %}">Home</a>
-                    <a class="breadcrumb-item text-dark" href="{% url  'shop' %}">Shop</a>
-                    <span class="breadcrumb-item active">Women</span>
-                   
-                </nav>
-            </div>
+<div class="container-fluid">
+    <div class="row px-xl-5">
+        <div class="col-12">
+            <nav class="breadcrumb bg-light mb-30">
+                <a class="breadcrumb-item text-dark" href="{% url 'main' %}">Home</a>
+                <a class="breadcrumb-item text-dark" href="{% url 'shop' %}">Shop</a>
+                <span class="breadcrumb-item active">Women</span>
+            </nav>
         </div>
     </div>
-    <!-- Breadcrumb End -->
-
-
-    <!-- Shop Start -->
-    <div class="container-fluid">
-        <div class="row px-xl-5">
-            
-            <!-- Shop Product Start -->
-            <div class="col-lg-12 col-md-8">
-                <h2 class="section-title position-relative text-uppercase mx-xl-5 mb-4"><span class="bg-secondary pr-3">Women Collections</span></h2>
-                <!-- Filter and Sort Options -->
-    <div class="d-flex justify-content-between mb-4">
-        <!-- Filter Options -->
-        <form method="get" action="" class="d-flex">
-           
-            
-            <select name="brand" class="form-control mr-2" style="width: 200px;">
-                <option value="">Filter by Brand</option>
-                {% for brand in brands %}
-                <option value="{{ brand.id }}" {% if request.GET.brand == brand.id|stringformat:"s" %}selected{% endif %}>
-                    {{ brand.name }}
-                </option>
-                {% endfor %}
-            </select>
-            
-            <button type="submit" class="btn btn-primary">Filter</button>
-        </form>
-
-        <!-- Sort Options -->
-        <form method="get" action="">
-            <select name="sort" class="form-control" onchange="this.form.submit();" style="width: 200px;">
-                <option value="">Sort by</option>
-                <option value="low_to_high" {% if request.GET.sort == 'low_to_high' %}selected{% endif %}>Price: Low to High</option>
-                <option value="high_to_low" {% if request.GET.sort == 'high_to_low' %}selected{% endif %}>Price: High to Low</option>
-                <option value="alphabetical" {% if request.GET.sort == 'alphabetical' %}selected{% endif %}>A to Z</option>
-                <option value="reverse_alphabetical" {% if request.GET.sort == 'reverse_alphabetical' %}selected{% endif %}>Z to A</option>
-                <option value="popularity" {% if request.GET.sort == 'popularity' %}selected{% endif %}>Popularity</option>                <option value="new_arrivals" {% if request.GET.sort == 'new_arrivals' %}selected{% endif %}>New Arrivals</option>
-            </select>
-        </form>
-    </div>
-                <div class="row pb-4">
-                    {% for product in products %}
-                    {% if product.is_active %}
-
-                    <div class="col-lg-4 col-md-6 col-sm-6 pb-1">
-                        <div class="product-item bg-light mb-4">
-                            <div class="product-img position-relative overflow-hidden">
-                               <a href="{% url 'product_details' product_id=product.id %}">
-                                <img class="img-fluid w-100" src="{{ product.image2.url }}"  alt="{{ product.name }}" style="width: 300px; height: 300px; object-fit: cover;">
-                               </a>
-                            </div>
-                            <div class="text-center py-4">
-                                <a class="h6 text-decoration-none text-truncate" href="">{{ product.name }}</a>
-                                <div class="d-flex align-items-center justify-content-center mt-2">
-                                    <h5>₹{{ product.price }}</h5><h6 class="text-muted ml-2"><del></del></h6>
+</div>
+<!-- Breadcrumb End -->
+<!-- Shop Start -->
+<div class="container-fluid">
+    <div class="row px-xl-5">
+        <!-- Sidebar Start (Filter and Sort Options) -->
+        <div class="col-lg-3 col-md-4 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Filter & Sort</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" id="filterForm">
+                        <!-- Filter by Brand -->
+                        <h6 class="mb-3">Filter by Brand</h6>
+                        <div id="brands">
+                            {% for brand in brands %}
+                                <div class="form-check">
+                                    <input 
+                                        type="checkbox" 
+                                        name="brand" 
+                                        class="form-check-input" 
+                                        id="brand-{{ brand.id }}" 
+                                        value="{{ brand.id }}" 
+                                        {% if brand.id|stringformat:"s" in selected_brands %}checked{% endif %}
+                                    >
+                                    <label class="form-check-label" for="brand-{{ brand.id }}">{{ brand.name }}</label>
                                 </div>
-                                <div class="d-flex align-items-center justify-content-center mb-1">
-                                    <small class="fa fa-star text-primary mr-1"></small>
-                                    <small class="fa fa-star text-primary mr-1"></small>
-                                    <small class="fa fa-star text-primary mr-1"></small>
-                                    <small class="fa fa-star text-primary mr-1"></small>
-                                    <small class="fa fa-star text-primary mr-1"></small>
-                                    <small>(241)</small>
-                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <hr>
+
+                        <!-- Sort Options -->
+                        <h6 class="mb-3">Sort by</h6>
+                        <select name="sort" class="form-control" onchange="document.getElementById('filterForm').submit();">
+                            <option value="">Select</option>
+                            <option value="low_to_high" {% if request.GET.sort == 'low_to_high' %}selected{% endif %}>Price: Low to High</option>
+                            <option value="high_to_low" {% if request.GET.sort == 'high_to_low' %}selected{% endif %}>Price: High to Low</option>
+                            <option value="alphabetical" {% if request.GET.sort == 'alphabetical' %}selected{% endif %}>A to Z</option>
+                            <option value="reverse_alphabetical" {% if request.GET.sort == 'reverse_alphabetical' %}selected{% endif %}>Z to A</option>
+                            <option value="popularity" {% if request.GET.sort == 'popularity' %}selected{% endif %}>Popularity</option>
+                            <option value="new_arrivals" {% if request.GET.sort == 'new_arrivals' %}selected{% endif %}>New Arrivals</option>
+                        </select>
+                        <button type="submit" class="btn btn-primary mt-3">Apply</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <!-- Sidebar End -->
+
+        <!-- Shop Product Start -->
+        <div class="col-lg-9 col-md-8">
+            <h2 class="section-title position-relative text-uppercase mx-xl-5 mb-4">
+                <span class="bg-secondary pr-3">Women Collections</span>
+            </h2>
+            
+            <div class="row pb-4">
+                {% for product in products %}
+                <div class="col-lg-4 col-md-6 col-sm-6 pb-1">
+                    <div class="product-item bg-light mb-4">
+                        <div class="product-img position-relative overflow-hidden">
+                            <a href="{% url 'product_details' product_id=product.id %}">
+                                <img class="img-fluid w-100" src="{{ product.image2.url }}" alt="{{ product.name }}" style="width: 300px; height: 300px; object-fit: cover;">
+                            </a>
+                        </div>
+                        <div class="text-center py-4">
+                            <a class="h6 text-decoration-none text-truncate" href="">{{ product.name }}</a>
+                            <div class="d-flex align-items-center justify-content-center mt-2">
+                                <h5>₹{{ product.price|floatformat:2 }}</h5>
                             </div>
                         </div>
                     </div>
-                    {% else %}
-                <!-- Optionally, you can display a message for soft-deleted products -->
-                <div class="product-deleted">
-                    <p>{{ product.name }} - Not Available</p>
                 </div>
-
-                    {% endif %}
-                         
-                    {% endfor %}
-                      
-                    
-                    <div class="col-12">
-                        <nav>
-                          <ul class="pagination justify-content-center">
-                            <li class="page-item disabled"><a class="page-link" href="#">Previous</span></a></li>
-                            <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                            <li class="page-item"><a class="page-link" href="#">2</a></li>
-                            <li class="page-item"><a class="page-link" href="#">3</a></li>
-                            <li class="page-item"><a class="page-link" href="#">Next</a></li>
-                          </ul>
-                        </nav>
-                    </div>
+                {% empty %}
+                <div class="col-12">
+                    <p class="text-center">No products found.</p>
                 </div>
+                {% endfor %}
             </div>
-            <!-- Shop Product End -->
+
+            <!-- Pagination Start -->
+            <div class="col-12">
+                <nav>
+                    <ul class="pagination justify-content-center">
+                        {% if products.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1&{% if request.GET %}{{ request.GET.urlencode }}{% endif %}">First</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ products.previous_page_number }}&{% if request.GET %}{{ request.GET.urlencode }}{% endif %}">Previous</a>
+                        </li>
+                        {% endif %}
+                        {% for num in products.paginator.page_range %}
+                        <li class="page-item {% if products.number == num %}active{% endif %}">
+                            <a class="page-link" href="?page={{ num }}&{% if request.GET %}{{ request.GET.urlencode }}{% endif %}">{{ num }}</a>
+                        </li>
+                        {% endfor %}
+                        {% if products.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ products.next_page_number }}&{% if request.GET %}{{ request.GET.urlencode }}{% endif %}">Next</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ products.paginator.num_pages }}&{% if request.GET %}{{ request.GET.urlencode }}{% endif %}">Last</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            <!-- Pagination End -->
         </div>
+        <!-- Shop Product End -->
     </div>
-    <!-- Shop End -->
+</div>
+<!-- Shop End -->
 
 
     <!-- Footer Start -->
