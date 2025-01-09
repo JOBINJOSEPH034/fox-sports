@@ -2,38 +2,74 @@
 from django.shortcuts import render,redirect
 from . models import *
 from django.contrib.auth import authenticate,login,logout
+from django.contrib.auth import login as auth_login
 from django.contrib.auth.models import User
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
 from django.core.mail import send_mail
+from django.utils import timezone
+from datetime import timedelta
 from django.core.cache import cache
 from django.urls import reverse
-
 from django.conf import settings
 import random
 import re
 
 
-
-@never_cache
-#login view
 def login_page(request):
-    
-    if request.method =='POST':
-        username=request.POST.get('name')
-        password=request.POST.get("password")
+    if request.method == 'POST':
+        username = request.POST.get('name')
+        password = request.POST.get("password")
+
         if not username or not password:
             messages.error(request, 'Both username and password are required!')
             return render(request, 'accounts/login.html')
-        user = authenticate(request,username=username,password=password)
+
+        user = authenticate(request, username=username, password=password)
         
         if user is not None:
             if user.is_active:
-                login(request,user)
-                request.session['username'] = user.username 
+                # Get the last login time and other necessary session values
+                last_login = user.last_login
+                otp_verified = request.session.get('otp_verified', False)
+                now = timezone.now()
+
+                # Check if OTP is required (first-time login or after long inactivity or another user logged in)
+                otp_needed = False
+
+                # Condition 1: If first-time login (last_login is None)
+                if last_login is None:
+                    otp_needed = True
+
+                # Condition 2: If last login was more than 30 days ago, OTP is required
+                if last_login and now - last_login > timedelta(days=30):
+                    otp_needed = True
+
+                # Condition 3: If the user logged in after another user (session management)
+                if (request.session.get('last_user') and request.session['last_user'] != user.username):
+                    otp_needed = True
+
+                if otp_needed and not otp_verified:
+                    # Trigger OTP flow if OTP is needed
+                    otp = random.randint(100000, 999999)
+                    cache.set(f'otp_{user.email}', otp, timeout=300)  # Cache OTP for 5 minutes
+                    send_mail(
+                        'Login OTP Verification',
+                        f'Your OTP is {otp}',
+                        settings.DEFAULT_FROM_EMAIL,
+                        [user.email],
+                    )
+                    request.session['otp_pending_user'] = user.id  # Save user for OTP
+                    return redirect('verify_otp_login')  # Redirect to OTP verification page
+                
+                # Normal login flow if OTP is not needed
+                auth_login(request, user, backend='django.contrib.auth.backends.ModelBackend')  # Specify backend here
+                request.session['username'] = user.username
+                request.session['last_user'] = user.username
+                request.session['otp_verified'] = False  # Reset OTP session flag
                 messages.success(request, f"Welcome {user.username}!")
-        
+                
                 if user.is_superuser:
                     return redirect('admin_home')
                 else:
@@ -43,9 +79,39 @@ def login_page(request):
         else:
             messages.error(request, 'Invalid credentials. Please try again.')
 
-    return render(request,'accounts/login.html')            
-        
-    
+    return render(request, 'accounts/login.html')
+
+
+@never_cache
+def verify_otp_login(request):
+    user_id = request.session.get('otp_pending_user')
+    if not user_id:
+        return redirect('login')
+
+    user = User.objects.filter(id=user_id).first()
+    if not user:
+        messages.error(request, 'User not found!')
+        return redirect('login')
+
+    if request.method == 'POST':
+        otp = request.POST.get('otp')
+        cached_otp = cache.get(f'otp_{user.email}')
+
+        if cached_otp and str(cached_otp) == otp:
+            cache.delete(f'otp_{user.email}')  # Clear OTP after use
+            auth_login(request, user, backend='django.contrib.auth.backends.ModelBackend')  # Specify backend here
+            request.session['otp_verified'] = True
+            request.session['last_user'] = user.username
+            messages.success(request, 'OTP verified successfully! Welcome.')
+            
+            if user.is_superuser:
+                return redirect('admin_home')
+            else:
+                return redirect('main')
+        else:
+            messages.error(request, 'Invalid OTP or OTP expired!')
+
+    return render(request, 'accounts/verify_otp_login.html', {'email': user.email})
 
 
 @never_cache

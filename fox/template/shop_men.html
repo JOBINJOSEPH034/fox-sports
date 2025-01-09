@@ -25,6 +25,7 @@
 
     <!-- Customized Bootstrap Stylesheet -->
     <link href="{% static 'css/style.css' %}" rel="stylesheet">
+    <link href="{% static 'css/new.css' %}" rel="stylesheet">
 
 
 </head>
@@ -49,14 +50,19 @@
                     <span class="h1 text-uppercase text-dark bg-primary px-2 ml-n1">Sports</span>
                 </a>
             </div>
-                  <!-- Search Bar Section -->
-        <div class="col-lg-4">
-            <form action="{% url 'shop' %}" method="get" class="d-flex">
-                <input type="text" name="search" class="form-control" value="{{ search_query }}" placeholder="Search Products...">
-                <button type="submit" class="btn btn-primary ml-2">Search</button>
-            </form>
+                    <!-- Search Bar Section -->
+<div class="col-lg-4">
+    <form action="{% url 'shop' %}" method="get" class="d-flex">
+        <div class="input-group">
+            <input type="text" name="search" class="form-control rounded-pill" value="{{ search_query }}" placeholder="Search Products..." aria-label="Search">
+            <div class="input-group-append">
+                <button type="submit" class="btn btn-primary rounded-pill">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
         </div>
-           
+    </form>
+</div>
            
         </div>
     </div>

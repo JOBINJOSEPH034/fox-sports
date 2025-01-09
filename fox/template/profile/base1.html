@@ -25,6 +25,9 @@
 
     <!-- Customized Bootstrap Stylesheet -->
     <link href="{% static 'css/style.css' %}" rel="stylesheet">
+    <link href="{% static 'css/new.css' %}" rel="stylesheet">
+
+    
     
     <style>
         #profile-menu .menu-item {
@@ -60,13 +63,20 @@
                 </a>
             </div>
               <!-- Search Bar Section -->
-              <div class="col-lg-4">
-                <form action="{% url 'shop' %}" method="get" class="d-flex">
-                    <input type="text" name="search" class="form-control" value="{{ search_query }}" placeholder="Search Products...">
-                    <button type="submit" class="btn btn-primary ml-2">Search</button>
-                </form>
+             <!-- Search Bar Section -->
+<div class="col-lg-4">
+    <form action="{% url 'shop' %}" method="get" class="d-flex">
+        <div class="input-group">
+            <input type="text" name="search" class="form-control rounded-pill" value="{{ search_query }}" placeholder="Search Products..." aria-label="Search">
+            <div class="input-group-append">
+                <button type="submit" class="btn btn-primary rounded-pill">
+                    <i class="fas fa-search"></i>
+                </button>
             </div>
-    
+        </div>
+    </form>
+</div>
+
            
           
         </div>
@@ -303,6 +313,32 @@
                 });
             });
         });
+    </script>
+
+    <script>
+        // scripts.js
+
+// Smooth Scroll on Anchor Clicks
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+
+        document.querySelector(this.getAttribute('href')).scrollIntoView({
+            behavior: 'smooth'
+        });
+    });
+});
+
+// Floating Action Button Scroll Event
+window.onscroll = function () {
+    var fab = document.querySelector('.btn-circle');
+    if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
+        fab.style.display = "block";
+    } else {
+        fab.style.display = "none";
+    }
+};
+
     </script>
     
 </body>

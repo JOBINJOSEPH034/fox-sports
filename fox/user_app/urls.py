@@ -43,5 +43,12 @@ urlpatterns = [
     path('addresses/<int:address_id>/',views.get_address, name='get_address'),
     path('addresses/<int:address_id>/edit/',views.update_address, name='update_address'),
 
+
+
+    path('edit-address/<int:address_id>/', views.edit_address, name='edit_address'),
+
+
+
+
 ]
 urlpatterns += static(settings.MEDIA_URL,document_root=settings.MEDIA_ROOT)

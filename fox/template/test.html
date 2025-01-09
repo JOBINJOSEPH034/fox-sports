@@ -1,23 +1,55 @@
-class Order(models.Model):
-    STATUS_CHOICES = [
-        ('Pending', 'Pending'),
-        ('Processing', 'Processing'),
-        ('Shipped', 'Shipped'),
-        ('Out for Delivery', 'Out for Delivery'),
-        ('Delivered', 'Delivered'),
-        ('Cancelled', 'Cancelled'),
-    ]
+<!-- Sidebar Start (Filter and Sort Options) -->
+<div class="col-lg-3 col-md-4 mb-4">
+    <div class="card">
+        <div class="card-header">
+            <h5>Filter & Sort</h5>
+        </div>
+        <div class="card-body">
+            <!-- Filter by Category -->
+            <h6 class="mb-3">Filter by Category</h6>
+            <form method="get" action="" id="filter-form">
+                <div id="categories">
+                    {% for category in categories %}
+                        <div class="form-check">
+                            <input type="checkbox" name="category" class="form-check-input" id="category-{{ category.id }}" value="{{ category.id }}"
+                                {% if category.id|stringformat:"s" in request.GET.getlist('category') %}checked{% endif %}>
+                            <label class="form-check-label" for="category-{{ category.id }}">{{ category.name }}</label>
+                        </div>
+                    {% endfor %}
+                </div>
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    address = models.ForeignKey(Address, on_delete=models.SET_NULL, null=True, blank=True) 
-    product_name = models.CharField(max_length=100,null=True, blank=True)
-    quantity = models.IntegerField(default=1)
-    total_price = models.FloatField()
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
-    created_at = models.DateTimeField(auto_now_add=True)
+                <hr>
 
+                <!-- Filter by Brand -->
+                <h6 class="mb-3">Filter by Brand</h6>
+                <div id="brands">
+                    {% for brand in brands %}
+                        <div class="form-check">
+                            <input type="checkbox" name="brand" class="form-check-input" id="brand-{{ brand.id }}" value="{{ brand.id }}"
+                                {% if brand.id|stringformat:"s" in request.GET.getlist('brand') %}checked{% endif %}>
+                            <label class="form-check-label" for="brand-{{ brand.id }}">{{ brand.name }}</label>
+                        </div>
+                    {% endfor %}
+                </div>
 
-   
+                <hr>
 
-    def __str__(self):
-        return f"Order {self.id} - {self.user.username}"
+                <!-- Sort Options -->
+                <h6 class="mb-3">Sort by</h6>
+                <select name="sort" class="form-control">
+                    <option value="">Select</option>
+                    <option value="low_to_high" {% if request.GET.sort == 'low_to_high' %}selected{% endif %}>Price: Low to High</option>
+                    <option value="high_to_low" {% if request.GET.sort == 'high_to_low' %}selected{% endif %}>Price: High to Low</option>
+                    <option value="alphabetical" {% if request.GET.sort == 'alphabetical' %}selected{% endif %}>A to Z</option>
+                    <option value="reverse_alphabetical" {% if request.GET.sort == 'reverse_alphabetical' %}selected{% endif %}>Z to A</option>
+                    <option value="popularity" {% if request.GET.sort == 'popularity' %}selected{% endif %}>Popularity</option>
+                    <option value="new_arrivals" {% if request.GET.sort == 'new_arrivals' %}selected{% endif %}>New Arrivals</option>
+                </select>
+
+                <!-- Filter Button -->
+                <button type="submit" class="btn btn-primary mt-3">Apply Filters</button>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- Sidebar End -->

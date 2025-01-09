@@ -2,6 +2,7 @@ from django.shortcuts import render ,redirect,get_object_or_404
 from admin_app.models import Category ,Product,ProductVariant,Brand
 from .models import Cart, CartItem,Address, Order,OrderItem
 from django.http import JsonResponse
+from django.template.loader import render_to_string
 
 from django.core.paginator import Paginator
 from django.db.models import Sum
@@ -117,8 +118,9 @@ def product_page(request):
         'page_obj': page_obj  # Pass page_obj for pagination
     })
 
-@login_required
 
+
+@login_required
 def shop_men(request):
     categories = Category.objects.filter(is_active=True)
     men_category = get_object_or_404(Category, name="Men")
@@ -316,44 +318,53 @@ def remove_cart_item(request, item_id):
         return redirect('cart_page')  
     
 
+from django.http import JsonResponse
+from django.template.loader import render_to_string
+from django.shortcuts import get_object_or_404, render
+from .models import Address
+from django.contrib.auth.decorators import login_required
 
-
-
+# Manage Addresses View
 @login_required
 def manage_addresses(request):
     if request.method == 'POST':
-        
+        # Handle Add/Edit Address logic
         address_id = request.POST.get('address_id')
-        if address_id:  
-            address = get_object_or_404(Address, id=address_id, user=request.user)
-            address.name = request.POST.get('name')
-            address.phone = request.POST.get('phone')
-            address.address_line = request.POST.get('address_line')
-            address.city = request.POST.get('city')
-            address.state = request.POST.get('state')
-            address.postal_code = request.POST.get('postal_code')
-            address.is_default = request.POST.get('is_default') == 'on'
-            address.save()
-        else:  
-            Address.objects.create(
-                user=request.user,
-                name=request.POST.get('name'),
-                phone=request.POST.get('phone'),
-                address_line=request.POST.get('address_line'),
-                city=request.POST.get('city'),
-                state=request.POST.get('state'),
-                postal_code=request.POST.get('postal_code'),
-                is_default=request.POST.get('is_default') == 'on'
-            )
-        return redirect('manage_addresses')
-    addresses = Address.objects.filter(user=request.user)
-    return render(request, 'manage_addresses.html', {'addresses': addresses})
+        name = request.POST.get('name')
+        phone = request.POST.get('phone')
+        address_line = request.POST.get('address_line')
+        city = request.POST.get('city')
+        state = request.POST.get('state')
+        postal_code = request.POST.get('postal_code')
+        is_default = request.POST.get('is_default') == 'on'
 
+        if address_id:  # Editing existing address
+            address = get_object_or_404(Address, id=address_id, user=request.user)
+        else:  # Adding new address
+            address = Address(user=request.user)
+
+        # Update the address details
+        address.name = name
+        address.phone = phone
+        address.address_line = address_line
+        address.city = city
+        address.state = state
+        address.postal_code = postal_code
+        address.is_default = is_default
+
+        if is_default:
+            Address.objects.filter(user=request.user).update(is_default=False)
+
+        address.save()
+
+        return redirect('manage_addresses')
+
+    addresses = Address.objects.filter(user=request.user)
+    return render(request, "profile/addresses.html", {"addresses": addresses})
 
 @login_required
 def edit_address(request, address_id):
     address = get_object_or_404(Address, id=address_id, user=request.user)
-
     if request.method == 'POST':
         address.name = request.POST['name']
         address.phone = request.POST['phone']
@@ -361,16 +372,10 @@ def edit_address(request, address_id):
         address.city = request.POST['city']
         address.state = request.POST['state']
         address.postal_code = request.POST['postal_code']
-
-        is_default = request.POST.get('is_default') == 'on'
-        if is_default:
-            Address.objects.filter(user=request.user).update(is_default=False)
-        address.is_default = is_default
+        address.is_default = 'is_default' in request.POST
         address.save()
-        return redirect('manage_addresses')  
-
-    return render(request, 'edit_address.html', {'address': address})
-
+        return redirect('manage_addresses')
+    return render(request, 'profile/addresses.html', {'address': address})
 
 
 @login_required
@@ -384,6 +389,8 @@ def get_address(request, address_id):
         'city': address.city,
         'state': address.state,
         'postal_code': address.postal_code,
+        "is_default": address.is_default,
+
     })
 
 
@@ -424,12 +431,13 @@ def update_address(request, address_id):
     return JsonResponse({'success': False, 'error': 'Invalid request'})
 
 
-
 @login_required
 def delete_address(request, address_id):
     address = get_object_or_404(Address, id=address_id, user=request.user)
     address.delete()
-    return redirect('profile')
+    return redirect('manage_addresses')
+
+
 
 #chechout page
 @login_required

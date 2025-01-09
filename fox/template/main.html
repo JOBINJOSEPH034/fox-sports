@@ -23,8 +23,13 @@
     <link href="{% static 'lib/animate/animate.min.css' %}" rel="stylesheet">
     <link href="{% static 'lib/owlcarousel/assets/owl.carousel.min.css' %}" rel="stylesheet">
 
+    
+
     <!-- Customized Bootstrap Stylesheet -->
     <link href="{% static 'css/style.css' %}" rel="stylesheet">
+    <link href="{% static 'css/new.css' %}" rel="stylesheet">
+    
+
 </head>
 {% if messages %}
 <div class="messages">
@@ -46,14 +51,19 @@
                     <span class="h1 text-uppercase text-dark bg-primary px-2 ml-n1">Sports</span>
                 </a>
             </div>
-                     <!-- Search Bar Section -->
-        <div class="col-lg-4">
-            <form action="{% url 'shop' %}" method="get" class="d-flex">
-                <input type="text" name="search" class="form-control" value="{{ search_query }}" placeholder="Search Products...">
-                <button type="submit" class="btn btn-primary ml-2">Search</button>
-            </form>
+                    <!-- Search Bar Section -->
+<div class="col-lg-4">
+    <form action="{% url 'shop' %}" method="get" class="d-flex">
+        <div class="input-group">
+            <input type="text" name="search" class="form-control rounded-pill" value="{{ search_query }}" placeholder="Search Products..." aria-label="Search">
+            <div class="input-group-append">
+                <button type="submit" class="btn btn-primary rounded-pill">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
         </div>
-
+    </form>
+</div>
             
             
            
@@ -238,65 +248,7 @@
     <!-- Featured End -->
 
 
-    <!-- Categories Start -->
-    <div class="container-fluid pt-5">
-        <h2 class="section-title position-relative text-uppercase mx-xl-5 mb-4"><span class="bg-secondary pr-3">Categories</span></h2>
-        <div class="row px-xl-5 pb-3">
-            {% for category in categories %}
-                {% if category.is_active %}
-            <div class="col-lg-3 col-md-4 col-sm-6 pb-1">
-                <a class="text-decoration-none" href="">
-                    <div class="cat-item img-zoom d-flex align-items-center mb-4">
-                        <div class="overflow-hidden" style="width: 100px; height: 100px;">
-                            <img class="img-fluid" src="" alt="">
-                        </div>
-                        <div class="flex-fill pl-3">
-                            <h6>{{ category.name }}</h6>
-                           
-                        </div>
-                    </div>
-                </a>
-            </div>
-            {% else %}
-                <!-- Optionally, you can display a message for soft-deleted categories -->
-                <div class="category-deleted">
-                    <p>{{ category.name }} - Not available</p>
-                </div>
-            {% endif %}
-          
-            {% endfor %}
-           
-            
-        </div>
-    </div>
-    <!-- Categories End -->
 
-    <!-- Offer Start -->
-    <div class="container-fluid pt-5 pb-3">
-        <div class="row px-xl-5">
-            <div class="col-md-6">
-                <div class="product-offer mb-30" style="height: 300px;">
-                    <img class="img-fluid" src="{% static 'img/offer-1.jpg' %}" alt="">
-                    <div class="offer-text">
-                        <h6 class="text-white text-uppercase">Save 20%</h6>
-                        <h3 class="text-white mb-3">Christmas & New Year Offer</h3>
-                        <a href="" class="btn btn-primary">Shop Now</a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="product-offer mb-30" style="height: 300px;">
-                    <img class="img-fluid" src="{% static 'img/offer-2.jpg' %}" alt="">
-                    <div class="offer-text">
-                        <h6 class="text-white text-uppercase">Save 20%</h6>
-                        <h3 class="text-white mb-3">Christmas & New Year Offer</h3>
-                        <a href="" class="btn btn-primary">Shop Now</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- Offer End -->
 
 
     <!-- Products Start -->

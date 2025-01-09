@@ -25,6 +25,7 @@
 
     <!-- Customized Bootstrap Stylesheet -->
     <link href="{% static 'css/style.css' %}" rel="stylesheet">
+    <link href="{% static 'css/new.css' %}" rel="stylesheet">
     
 
 
@@ -41,6 +42,19 @@
                     <span class="h1 text-uppercase text-dark bg-primary px-2 ml-n1">Sports</span>
                 </a>
             </div>
+                         <!-- Search Bar Section -->
+<div class="col-lg-4">
+    <form action="{% url 'shop' %}" method="get" class="d-flex">
+        <div class="input-group">
+            <input type="text" name="search" class="form-control rounded-pill" value="{{ search_query }}" placeholder="Search Products..." aria-label="Search">
+            <div class="input-group-append">
+                <button type="submit" class="btn btn-primary rounded-pill">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
            
           
         </div>
@@ -159,7 +173,7 @@
                                 {% if address.is_default %}checked{% endif %}>
                             <label for="address-radio-{{ address.id }}" class="form-check-label">Select this address</label>
                         </div>
-                        <button type="button" class="btn btn-sm btn-secondary mt-2" onclick="editAddress({{ address.id }})">Edit</button>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="editAddress('{{ address.id }}')">Edit</button>
                         
                     </div>
                     {% empty %}
