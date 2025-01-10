@@ -1,101 +1,132 @@
-path('verify_otp_login/', views.verify_otp_login, name='verify_otp_login'),
+{% extends 'base.html' %}
+{% load static %}
+{% block body %}
 
 
+<div class="page-wrapper">
+   <div class="content container-fluid">
+      <h3 class="page-title">Add Product</h3>
+
+      <form method="POST" enctype="multipart/form-data">
+         {% csrf_token %}
+         {{ product_form.as_p }}
+
+         <!-- Product Variant Fields -->
+         <h5 class="form-title"><span>Product Variants</span></h5>
+
+         <div class="form-group">
+            <label for="size">Size</label>
+            <input type="text" class="form-control" name="size" placeholder="E.g., S, M, L, XL" required>
+         </div>
+         <div class="col-md-4">
+            <label for="stock">Stock</label>
+            <input type="number" class="form-control" name="variants[{{ variantCount }}][stock]" placeholder="Enter stock quantity" required>
+         </div>
+         
+
+         <div class="form-group">
+            <label for="color">Color</label>
+            <input type="text" class="form-control" name="color" placeholder="E.g., Red, Blue, Green" required>
+         </div>
+
+         <div class="form-group">
+            <label for="additional_price">Additional Price</label>
+            <input type="number" class="form-control" name="additional_price" placeholder="Enter additional price" required>
+         </div>
+
+         <button type="submit" class="btn btn-primary">Submit</button>
+      </form>
+   </div>
+</div>
 
 
+<script src="{% static 'assets/js/jquery-3.6.0.min.js' %}"></script>
+<script src="{% static 'assets/js/popper.min.js' %}"></script>
+<script src="{% static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
+<script src="{% static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
+<script src="{% static 'assets/js/script.js' %}"></script>
 
-@never_cache
-# login view
-def login_page(request):
-    if request.method == 'POST':
-        username = request.POST.get('name')
-        password = request.POST.get("password")
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" />
 
-        if not username or not password:
-            messages.error(request, 'Both username and password are required!')
-            return render(request, 'accounts/login.html')
+<!-- Cropper.js JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
 
-        user = authenticate(request, username=username, password=password)
-        
-        if user is not None:
-            if user.is_active:
-                # Check if OTP verification is needed
-                last_login = user.last_login
-                otp_verified = request.session.get('otp_verified', False)
+{% endblock %}
+{% block extra_css %}
+<style>
+   .preview-container {
+      max-width: 100%;
+      max-height: 400px; /* Control max height */
+      margin-top: 10px;
+   }
 
-                if (not otp_verified or not last_login or 
-                    (request.session.get('last_user') and request.session['last_user'] != user.username)):
-                    # Trigger OTP flow
-                    otp = random.randint(100000, 999999)
-                    cache.set(f'otp_{user.email}', otp, timeout=300)  # Cache OTP for 5 minutes
-                    send_mail(
-                        'Login OTP Verification',
-                        f'Your OTP is {otp}',
-                        settings.DEFAULT_FROM_EMAIL,
-                        [user.email],
-                    )
-                    request.session['otp_pending_user'] = user.id  # Save user for OTP
-                    return redirect('verify_otp_login')  # Redirect to OTP verification page
-                
-                # Normal login flow if OTP is not needed
-                login(request, user)
-                request.session['username'] = user.username
-                request.session['last_user'] = user.username
-                request.session['otp_verified'] = False  # Reset OTP session flag
-                messages.success(request, f"Welcome {user.username}!")
-                
-                if user.is_superuser:
-                    return redirect('admin_home')
-                else:
-                    return redirect('main')
-            else:
-                messages.error(request, 'Your account has been blocked. Please contact support.')
-        else:
-            messages.error(request, 'Invalid credentials. Please try again.')
-
-    return render(request, 'accounts/login.html')
+   .preview-container img {
+      width: 100%; /* Make image fit the container */
+      height: auto;
+   }
+</style>
+{% endblock %}
 
 
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
 
+<script>
+   document.addEventListener('DOMContentLoaded', function() {
+      let cropper1, cropper2;
 
+      // Function to initialize cropper for each image
+      function initCropper(imageId, canvasId) {
+         const imageInput = document.getElementById(imageId);
+         const canvas = document.getElementById(canvasId);
+         const previewContainer = document.createElement('div');
+         previewContainer.classList.add('preview-container');
 
+         imageInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+               const reader = new FileReader();
+               reader.onload = function(e) {
+                  const img = new Image();
+                  img.src = e.target.result;
 
-@never_cache
-def verify_otp_login(request):
-    user_id = request.session.get('otp_pending_user')
-    if not user_id:
-        return redirect('login')
+                  // Create a preview and insert it into the canvas
+                  img.onload = function() {
+                     // Clear previous canvas
+                     canvas.innerHTML = '';
+                     canvas.appendChild(img);  // Add the image to the canvas
+                     img.classList.add('img-fluid'); // Make the image responsive
 
-    user = User.objects.filter(id=user_id).first()
-    if not user:
-        messages.error(request, 'User not found!')
-        return redirect('login')
+                     // Initialize the cropper for the image
+                     if (imageId === 'image1') {
+                        if (cropper1) cropper1.destroy(); // Destroy previous cropper if any
+                        cropper1 = new Cropper(img, {
+                           aspectRatio: 1,  // Set desired aspect ratio (e.g., 1:1 for square crop)
+                           viewMode: 1,
+                           ready: function() {
+                              console.log('Cropper is ready for image 1');
+                           }
+                        });
+                     } else if (imageId === 'image2') {
+                        if (cropper2) cropper2.destroy(); // Destroy previous cropper if any
+                        cropper2 = new Cropper(img, {
+                           aspectRatio: 1,  // Set desired aspect ratio
+                           viewMode: 1,
+                           ready: function() {
+                              console.log('Cropper is ready for image 2');
+                           }
+                        });
+                     }
+                  };
+               };
+               reader.readAsDataURL(file);
+            }
+         });
+      }
 
-    if request.method == 'POST':
-        otp = request.POST.get('otp')
-        cached_otp = cache.get(f'otp_{user.email}')
-
-        if cached_otp and str(cached_otp) == otp:
-            cache.delete(f'otp_{user.email}')  # Clear OTP after use
-            login(request, user)
-            request.session['otp_verified'] = True
-            request.session['last_user'] = user.username
-            messages.success(request, 'OTP verified successfully! Welcome.')
-            
-            if user.is_superuser:
-                return redirect('admin_home')
-            else:
-                return redirect('main')
-        else:
-            messages.error(request, 'Invalid OTP or OTP expired!')
-
-    return render(request, 'accounts/verify_otp_login.html', {'email': user.email})
-
-
-
-
-
-
-
-
-
+      // Initialize the cropper for both images
+      initCropper('image1', 'image1-canvas');
+      initCropper('image2', 'image2-canvas');
+   });
+</script>
+{% endblock %}

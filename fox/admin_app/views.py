@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
 import json
-
+from .forms import ProductForm, ProductVariantFormSet
 
 
 # Create your views here.
@@ -55,59 +55,42 @@ def product_list(request):
 @login_required
 @never_cache
 def add_product(request):
-    print("first line") 
-    if request.method == "POST":
-        try:
-            # Create the new product
-            name = request.POST.get('name')
-            description = request.POST.get('description')
-            category = Category.objects.get(id=request.POST.get('category'))
-            stock = request.POST.get('stock')
-            brand, _ = Brand.objects.get_or_create(name=request.POST.get('brand'))
-            price = request.POST.get('price')
-            image1 = request.FILES.get('image1')
-            image2 = request.FILES.get('image2')
+    if request.method == 'POST':
+        product_form = ProductForm(request.POST, request.FILES)
+        variant_formset = ProductVariantFormSet(request.POST, queryset=ProductVariant.objects.none())
 
+        if product_form.is_valid() and variant_formset.is_valid():
             # Save the product
-            product = Product.objects.create(
-                name=name,
-                description=description,
-                category=category,
-                stock=stock,
-                brand=brand,
-                price=price,
-                image1=image1,
-                image2=image2,
-            )
+            product = product_form.save()
 
-            # Process product variants
-            variants_json = request.POST.get('variants_data')  
-            print('in side of variant')
-            if variants_json:
-                variants = json.loads(variants_json)  
-                print("indide of variant if ")
-                for variant in variants:
-                    print(f"Saving variant: {variant}")
-                    ProductVariant.objects.create(
-                        product=product,
-                        size=variant['size'],
-                        additional_price=variant['additional_price'],
-                    )
-            else:
-                print("No variants data found")        
+            # Save the variants
+            variants = variant_formset.save(commit=False)
+            for variant in variants:
+                variant.product = product
+                variant.save()
 
-            messages.success(request, "Product added successfully!")
-            return redirect('add_product') 
+            # Handle deleted variants
+            for variant in variant_formset.deleted_objects:
+                variant.delete()
 
-        except Exception as e:
-            messages.error(request, f"Error: {str(e)}")
-            return redirect('add_product') 
+            messages.success(request, "Product and variants added successfully!")
+            return redirect('add_product')
+        else:
+            messages.error(request, "Error adding product or variants. Please try again.")
+    else:
+        product_form = ProductForm()
+        variant_formset = ProductVariantFormSet(queryset=ProductVariant.objects.none())
 
     categories = Category.objects.all()
     brands = Brand.objects.all()
-    return render(request, 'add-product.html', {'categories': categories, 'brands': brands})
 
-      
+    return render(request, 'add-product.html', {
+        'product_form': product_form,
+        'variant_formset': variant_formset,
+        'categories': categories,
+        'brands': brands,
+    })
+
 @login_required
 @never_cache
 def edit_product(request, product_id):

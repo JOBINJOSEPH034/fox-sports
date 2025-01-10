@@ -55,8 +55,9 @@ class Product(models.Model):
    #for product varient (not working) 
 class ProductVariant(models.Model):
     product = models.ForeignKey(Product, related_name="variants", on_delete=models.CASCADE)
-    name = models.CharField(max_length=100)
-    price_difference = models.DecimalField(max_digits=10, decimal_places=2, help_text="Use negative values for price reductions.")
+    size = models.CharField(max_length=50, null=True, blank=True)
+    color = models.CharField(max_length=50, null=True, blank=True)
+    additional_price = models.DecimalField(max_digits=10, decimal_places=2, help_text="Use negative values for price reductions.")
     stock = models.IntegerField()
 
     def __str__(self):
