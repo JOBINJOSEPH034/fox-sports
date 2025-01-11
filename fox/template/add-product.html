@@ -1,47 +1,116 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block body %}
+
 <div class="page-wrapper">
-   <div class="content container-fluid">
-       <div class="page-header">
-           <h3 class="page-title">Add Product</h3>
-       </div>
+    <div class="container mt-5">
+        <h3 class="text-center mb-4">Add Product</h3>
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
 
-       <div class="row">
-           <div class="col-sm-12">
-               <div class="card">
-                   <div class="card-body">
-                       <form method="POST" enctype="multipart/form-data">
-                           {% csrf_token %}
-                           <h5>Product Details</h5>
-                           {{ product_form.as_p }}
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h4>Product Details</h4>
+                    <div class="form-group">
+                        {{ product_form.as_p }}
+                    </div>
+                    
+                    
+                </div>
+            </div>
 
-                           <h5>Product Variants</h5>
-                           <div id="variants">
-                               {{ variant_formset.management_form }}
-                               {% for form in variant_formset %}
-                                   <div class="variant">
-                                       <h6>Variant {{ forloop.counter }}</h6>
-                                       {{ form.as_p }}
-                                       {% if form.DELETE %}
-                                           <label>Delete Variant:</label> {{ form.DELETE }}
-                                       {% endif %}
-                                   </div>
-                                   <hr>
-                               {% endfor %}
-                           </div>
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h4>Product Variants</h4>
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Size</th>
+                                    <th>Color</th>
+                                    <th>Additional Price</th>
+                                    <th>Stock</th>
+                                    <th>Remove</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{ variant_formset.management_form }}
+                                {% for form in variant_formset %}
+                                    <tr>
+                                        <td>{{ form.size }}</td>
+                                        <td>{{ form.color }}</td>
+                                        <td>{{ form.additional_price }}</td>
+                                        <td>{{ form.stock }}</td>
+                                        <td>{{ form.DELETE }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
 
-                           <p><strong>Note:</strong> You can add multiple variants by filling in additional forms.</p>
-
-                           <button type="submit" class="btn btn-primary">Save Product</button>
-                       </form>
-                   </div>
-               </div>
-           </div>
-       </div>
-   </div>
+            <button type="submit" class="btn btn-success">Save Product</button>
+        </form>
+    </div>
 </div>
 
+<!-- Custom Styles -->
+<style>
+    .card {
+        border-radius: 8px;
+    }
+
+    .card-body {
+        padding: 20px;
+    }
+
+    .table th, .table td {
+        vertical-align: middle;
+    }
+
+    .btn-block {
+        font-size: 16px;
+        padding: 15px;
+    }
+
+    .container {
+        max-width: 1000px;
+    }
+
+    h4 {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .table-striped tbody tr:nth-child(odd) {
+        background-color: #f9f9f9;
+    }
+
+    .form-group input, .form-group select {
+        border-radius: 6px;
+        padding: 8px;
+        font-size: 14px;
+    }
+
+    .table th, .table td {
+        font-size: 14px;
+    }
+
+    .table thead {
+        background-color: #f1f1f1;
+    }
+
+    .table th {
+        color: #444;
+        font-weight: 500;
+    }
+
+    .table td {
+        color: #666;
+    }
+</style>
 
 <script src="{% static 'assets/js/jquery-3.6.0.min.js' %}"></script>
 <script src="{% static 'assets/js/popper.min.js' %}"></script>
@@ -50,10 +119,6 @@
 <script src="{% static 'assets/js/script.js' %}"></script>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" />
-
-<!-- Cropper.js JS -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
 
 {% endblock %}
-
-

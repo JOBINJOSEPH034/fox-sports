@@ -3,15 +3,14 @@
 
 {% block body %}
 {% if messages %}
-<div class="messages">
-    {% for message in messages %}
-        <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
-            {{ message }}
-        </div>
-    {% endfor %}
-</div>
+    <div class="messages">
+        {% for message in messages %}
+            <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    </div>
 {% endif %}
-
 <div class="page-wrapper">
     <div class="content container-fluid">
         <div class="page-header">
@@ -49,17 +48,36 @@
                                         <td>{{ product.name }}</td>
                                         <td>{{ product.brand.name }}</td> 
                                         <td>
-                                            {% if product.variant %}
-                                                {{ product.variant.name }}
+                                            {% if product.variants.exists %}
+                                               <ul class="list-unstyled">
+                                                  {% for variant in product.variants.all %}
+                                                  <li>
+                                                     {{ variant.size }} - {{ variant.color }}
+                                                     <br>
+                                                     <strong>Stock:</strong> {{ variant.stock }}
+                                                     <br>
+                                                     <form method="POST" action="{% url 'update_variant_stock' variant.id %}">
+                                                         {% csrf_token %}
+                                                         <div class="form-group">
+                                                             <label for="stockCount{{ variant.id }}">Stock Count</label>
+                                                             <input type="number" class="form-control" id="stockCount{{ variant.id }}" name="stock" value="{{ variant.stock }}" min="0" required>
+                                                         </div>
+                                                         <button type="submit" class="btn btn-primary">Update Stock</button>
+                                                     </form>
+                                                  </li>
+                                                  {% endfor %}
+                                               </ul>
                                             {% else %}
-                                                Default
+                                               No Variants
                                             {% endif %}
-                                        </td>
+                                         </td>
                                         <td>
-                                            {% if product.stock > 0 %}
+                                            {% if product.variants.count == 1 %}
+                                                <!-- Only one variant: product stock should equal variant stock -->
                                                 <span class="badge badge-success">{{ product.stock }}</span>
                                             {% else %}
-                                                <span class="badge badge-danger">Out of Stock</span>
+                                                <!-- Multiple variants: Sum of variant stock equals product stock -->
+                                                <span class="badge badge-success">{{ product.stock }}</span>
                                             {% endif %}
                                         </td>
                                         <td>
@@ -72,36 +90,9 @@
                                             </button>
                                         </td>
                                     </tr>
-
-                                    <!-- Edit Stock Modal -->
-                                    <div class="modal fade" id="editStockModal{{ product.id }}" tabindex="-1" role="dialog" aria-labelledby="editStockModalLabel" aria-hidden="true">
-                                        <div class="modal-dialog" role="document">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title" id="editStockModalLabel">Edit Stock for {{ product.name }}</h5>
-                                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                        <span aria-hidden="true">&times;</span>
-                                                    </button>
-                                                </div>
-                                                <form method="POST" action="{% url 'update_stock' product.id %}">
-                                                    {% csrf_token %}
-                                                    <div class="modal-body">
-                                                        <div class="form-group">
-                                                            <label for="stockCount{{ product.id }}">Stock Count</label>
-                                                            <input type="number" class="form-control" id="stockCount{{ product.id }}" name="stock" value="{{ product.stock }}" min="0" required>
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer">
-                                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                                                        <button type="submit" class="btn btn-primary">Save Changes</button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="5" class="text-center">No products found</td>
+                                        <td colspan="6" class="text-center">No products found</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -113,6 +104,33 @@
         </div>
     </div>
 </div>
+
+<!-- Modal for editing product stock -->
+{% for product in products %}
+<div class="modal fade" id="editStockModal{{ product.id }}" tabindex="-1" role="dialog" aria-labelledby="editStockModalLabel{{ product.id }}" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editStockModalLabel{{ product.id }}">Edit Stock for {{ product.name }}</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form method="POST" action="{% url 'update_stock' product.id %}">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="stock{{ product.id }}">Product Stock</label>
+                        <input type="number" class="form-control" id="stock{{ product.id }}" name="stock" value="{{ product.stock }}" min="0" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Update Product Stock</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
 
 <script src="{% static 'assets/js/jquery-3.6.0.min.js' %}"></script>
 <script src="{% static 'assets/js/popper.min.js' %}"></script>

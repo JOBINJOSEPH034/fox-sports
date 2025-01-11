@@ -2,109 +2,155 @@
 {% load static %}
 
 {% block body %}
-{% if messages %}
-<div class="messages">
-    {% for message in messages %}
-        <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
-            {{ message }}
-        </div>
-    {% endfor %}
-</div>
-{% endif %}
-
 <div class="page-wrapper">
-   <div class="content container-fluid">
-      <div class="page-header">
-         <div class="row align-items-center">
-            <div class="col">
-               <h3 class="page-title">Product</h3>
-               <ul class="breadcrumb">
-                  <li class="breadcrumb-item"><a href="">Dashboard</a></li>
-                  <li class="breadcrumb-item active">Product</li>
-               </ul>
+    <div class="content container-fluid">
+        <div class="page-header">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h3 class="page-title">Product List</h3>
+                    <ul class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
+                        <li class="breadcrumb-item active">Products</li>
+                    </ul>
+                </div>
+                <div class="col-auto text-right float-right ml-auto">
+                    <a href="{% url 'add_product' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Add Product</a>
+                </div>
             </div>
-            <div class="col-auto text-right float-right ml-auto">
-               <a href="#" class="btn btn-outline-primary mr-2"><i class="fas fa-download"></i> Download</a>
-               <a href="{% url 'add_product' %}" class="btn btn-primary"><i class="fas fa-plus"></i></a>
-            </div>
-         </div>
-      </div>
+        </div>
 
-      <div class="row">
-         <div class="col-sm-12">
-            <div class="card card-table">
-               <div class="card-body">
-                  <div class="table-responsive">
-                     <table class="table table-hover table-center mb-0 datatable">
+        <!-- Product Table -->
+        <div class="row">
+            <div class="col-sm-12">
+                <div class="card card-table">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-center mb-0 datatable">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Name</th>
+                                        <th>Category</th>
+                                        <th>Brand</th>
+                                        <th>Stock</th>
+                                        <th>Price</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for product in products %}
+                                    <tr>
+                                        <td>{{ product.id }}</td>
+                                        <td>{{ product.name }}</td>
+                                        <td>{{ product.category.name }}</td>
+                                        <td>{{ product.brand.name }}</td>
+                                        <td>{{ product.stock }}</td>
+                                        <td>{{ product.price }}</td>
+                                        <td>
+                                            <div class="actions">
+                                                <!-- Edit Button -->
+                                                <a href="{% url 'edit_product' product.id %}" class="btn btn-sm bg-success-light mr-2">
+                                                    <i class="fas fa-pen"></i> Edit
+                                                </a>
+                                                <!-- Toggle Active/Inactive -->
+                                                <a href="{% url 'toggle_product_status' product.id %}" class="btn btn-sm bg-warning-light mr-2">
+                                                    {% if product.is_active %}
+                                                    <i class="fas fa-toggle-on"></i> Deactivate
+                                                    {% else %}
+                                                    <i class="fas fa-toggle-off"></i> Activate
+                                                    {% endif %}
+                                                </a>
+                                                <!-- View Variants -->
+                                                <button class="btn btn-sm bg-info-light view-variants-btn" data-id="{{ product.id }}">
+                                                    <i class="fas fa-eye"></i> View
+                                                </button>
+                                                <!-- Delete Button -->
+                                                <form action="{% url 'delete_product' product.id %}" method="POST" style="display:inline;">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-sm bg-danger-light">
+                                                        <i class="fas fa-trash"></i> Delete
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Variant Details Modal -->
+<div class="modal fade" id="viewVariantsModal" tabindex="-1" role="dialog" aria-labelledby="variantModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="variantModalLabel">Product Variants</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="variant-details">
+                    <table class="table table-bordered">
                         <thead>
-                           <tr>
-                              <th>ID</th>
-                              <th>Name</th>
-                              <th>Category</th>
-                              <th>Brand</th> 
-                              <th>Stock</th>
-                              <th>Price</th>
-                              <th>Status</th>
-                              <th>Actions</th>
-                           </tr>
+                            <tr>
+                                <th>Size</th>
+                                <th>Color</th>
+                                <th>Stock</th>
+                                <th>Total Price</th>
+                            </tr>
                         </thead>
-                        <tbody>
-                           {% for product in products %}
-                           <tr>
-                              <td>{{ product.id }}</td>
-                              <td>{{ product.name }}</td>
-                              <td>{{ product.category.name }}</td>
-                              <td>{{ product.brand.name }}</td> 
-                              <td>{{ product.stock }}</td>
-                              <td>{{ product.price }}</td>
-                              <td>
-                                 {% if product.is_active %}
-                                    Active
-                                 {% else %}
-                                    Deactivated
-                                 {% endif %}
-                              </td>
-                              <td>
-                                 <div class="actions">
-                                    <a href="{% url 'edit_product' product.id %}" class="btn btn-sm bg-success-light mr-2">
-                                       <i class="fas fa-pen"></i> Edit
-                                    </a>
-                                    
-                                    <!-- Toggle Active/Inactive -->
-                                    <a href="{% url 'toggle_product_status' product.id %}" class="btn btn-sm bg-danger mr-2">
-                                       <i class="fas fa-toggle-on"></i>
-                                       {% if product.is_active %}
-                                          Deactivate
-                                       {% else %}
-                                          Activate
-                                       {% endif %}
-                                    </a>
-
-                                    <!-- Permanent Delete -->
-                                    <form action="{% url 'permanent_delete_product' product.id %}" method="POST" style="display:inline;">
-                                       {% csrf_token %}
-                                       <button type="submit" class="btn btn-sm bg-danger">
-                                          <i class="fas fa-trash"></i> Delete 
-                                       </button>
-                                    </form>
-                                 </div>
-                              </td>
-                           </tr>
-                           {% endfor %}
+                        <tbody id="variant-table-body">
+                            <!-- Dynamically loaded via JS -->
                         </tbody>
-                     </table>
-                  </div>
-               </div>
+                    </table>
+                </div>
             </div>
-         </div>
-      </div>
-   </div>
+        </div>
+    </div>
 </div>
 
 <script src="{% static 'assets/js/jquery-3.6.0.min.js' %}"></script>
-<script src="{% static 'assets/js/popper.min.js' %}"></script>
 <script src="{% static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
-<script src="{% static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
-<script src="{% static 'assets/plugins/datatables/datatables.min.js' %}"></script>
-<script src="{% static 'assets/js/script.js' %}"></script>
+<script>
+    $(document).ready(function() {
+        $('.view-variants-btn').on('click', function() {
+            const productId = $(this).data('id'); // Get product ID dynamically
+            $('#variant-table-body').html('<tr><td colspan="4">Loading...</td></tr>'); // Placeholder while loading
+            $.ajax({
+                url: `{% url 'product_variant_list' 0 %}`.replace('0', productId), // Call the new view for variants
+                method: 'GET',
+                success: function(data) {
+                    const variants = data.variants;
+                    const tbody = $('#variant-table-body');
+                    tbody.empty();
+                    if (variants.length > 0) {
+                        variants.forEach(variant => {
+                            tbody.append(`
+                                <tr>
+                                    <td>${variant.size}</td>
+                                    <td>${variant.color}</td>
+                                    <td>${variant.stock}</td>
+                                    <td>${variant.total_price}</td>
+                                </tr>
+                            `);
+                        });
+                    } else {
+                        tbody.append('<tr><td colspan="4">No variants available</td></tr>');
+                    }
+                },
+                error: function() {
+                    alert('Error loading variant details!');
+                }
+            });
+            $('#viewVariantsModal').modal('show');
+        });
+    });
+</script>
 {% endblock %}

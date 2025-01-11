@@ -243,7 +243,7 @@ def shop_women(request):
 
 @login_required
 @never_cache
-def product_detail(request,product_id):
+def product_details(request,product_id):
     product = Product.objects.get(id=product_id)
     is_out_of_stock = product.stock == 0
     variants = product.variants.all()  # not
@@ -318,11 +318,7 @@ def remove_cart_item(request, item_id):
         return redirect('cart_page')  
     
 
-from django.http import JsonResponse
-from django.template.loader import render_to_string
-from django.shortcuts import get_object_or_404, render
-from .models import Address
-from django.contrib.auth.decorators import login_required
+
 
 # Manage Addresses View
 @login_required
@@ -437,9 +433,6 @@ def delete_address(request, address_id):
     address.delete()
     return redirect('manage_addresses')
 
-
-
-#chechout page
 @login_required
 def checkout(request):
     cart, created = Cart.objects.get_or_create(user=request.user)
@@ -454,6 +447,8 @@ def checkout(request):
 
     if request.method == 'POST':
         address_id = request.POST.get('selected_address')
+        payment_method = request.POST.get('payment_method')
+        
         if not address_id:
             messages.error(request, "Please select an address.")
             return redirect('checkout')
@@ -464,6 +459,7 @@ def checkout(request):
             user=request.user,
             address=selected_address,
             total_price=cart_total,
+            payment_method=payment_method
         )
 
         for item in cart_items:
@@ -480,8 +476,11 @@ def checkout(request):
                 messages.error(request, f"Stock error for {item.product.name}: {str(e)}")
                 order.delete()  
                 return redirect('checkout')
+        
+        # Clear the cart after order creation
         cart_items.delete()
 
+        # Redirect to order success page
         return redirect('order_success', order_id=order.id)
 
     return render(request, 'checkout.html', {
@@ -489,7 +488,6 @@ def checkout(request):
         'cart_total': cart_total,
         'addresses': addresses,
     })
-
 #display order sucess messg 
 @login_required
 def order_success(request, order_id):
