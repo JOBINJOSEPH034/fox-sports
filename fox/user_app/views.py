@@ -446,6 +446,7 @@ def checkout(request):
     addresses = Address.objects.filter(user=request.user)
 
     if request.method == 'POST':
+        print(request.POST)
         address_id = request.POST.get('selected_address')
         payment_method = request.POST.get('payment_method')
         
@@ -488,6 +489,9 @@ def checkout(request):
         'cart_total': cart_total,
         'addresses': addresses,
     })
+
+
+
 #display order sucess messg 
 @login_required
 def order_success(request, order_id):

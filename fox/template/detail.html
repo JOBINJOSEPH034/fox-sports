@@ -143,6 +143,8 @@
         </div>
     </div>
     <!-- Breadcrumb End -->
+
+
 <!-- Shop Detail Start -->
 <div class="container-fluid pb-5">
     <div class="row px-xl-5">
@@ -193,12 +195,13 @@
                 <p class="mb-4"><strong>Stock Available:</strong> {{ product.stock }}</p>
 
                 <!-- Display Variants (Single Selection, Rounded Style) -->
-                <h4 class="mb-3">Available Sizes:</h4>
+               
                 <form method="POST" action="{% url 'add_to_cart' product.id %}">
                     {% csrf_token %}
                     
                     {% if product.variants.exists %}
                     <div class="d-flex flex-wrap mb-3">
+                        <h4 class="mb-3">Available Sizes:</h4>
                         {% for variant in product.variants.all %}
                         <div class="variant-option rounded p-2 mr-2 mb-2" data-id="{{ variant.id }}" data-price="{{ variant.additional_price }}">
                             <input type="radio" name="variant" value="{{ variant.id }}" id="variant-{{ variant.id }}" class="variant-radio" />
@@ -206,7 +209,10 @@
                         </div>
                         {% endfor %}
                     </div>
+                
                     {% endif %}
+
+                    
 
 
                     <div class="form-group mb-4">

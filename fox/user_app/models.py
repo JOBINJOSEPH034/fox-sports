@@ -55,12 +55,18 @@ class Order(models.Model):
         ('Cancelled', 'Cancelled'),
     ]
 
+    PAYMENT_CHOICES = [
+        ('cod', 'Cash on Delivery'),
+        ('online', 'Online Payment'),
+    ]
+
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     address = models.ForeignKey(Address, on_delete=models.SET_NULL, null=True, blank=True,related_name='address') 
     variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, null=True, blank=True)  # variant field (not)
     product_name = models.CharField(max_length=100,null=True, blank=True)
     quantity = models.IntegerField(default=1)
     total_price = models.FloatField()
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_CHOICES,default='cod')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
     created_at = models.DateTimeField(auto_now_add=True)
 

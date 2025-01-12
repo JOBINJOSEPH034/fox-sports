@@ -106,4 +106,9 @@ class ProductVariant(models.Model):
             self.save()
         else:
             raise ValueError("Insufficient stock!")
+    
 
+    @property
+    def total_price(self):
+        # Calculate the total price for the variant (base product price + additional price)
+        return self.product.price + self.additional_price

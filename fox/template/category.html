@@ -1,135 +1,106 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block body %}
-
-<div class="page-wrapper">
-    <div class="container mt-5">
-        <h3 class="text-center mb-4">Add Product</h3>
-        <form method="POST" enctype="multipart/form-data">
-            {% csrf_token %}
-            
-            <div class="card shadow-sm mb-4">
-                <div class="card-body">
-                    <h4>Product Details</h4>
-                    <div class="form-group">
-                        {{ product_form.as_p }}
-                    </div>
-
-                    <!-- Manually render image fields -->
-                    <div class="form-group">
-                        <label for="id_image1">Image 1</label>
-                        {{ product_form.image1 }}
-                    </div>
-
-                    <div class="form-group">
-                        <label for="id_image2">Image 2</label>
-                        {{ product_form.image2 }}
-                    </div>
-                </div>
-            </div>
-
-            <div class="card shadow-sm mb-4">
-                <div class="card-body">
-                    <h4>Product Variants</h4>
-                    <div class="table-responsive">
-                        <table class="table table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Size</th>
-                                    <th>Color</th>
-                                    <th>Additional Price</th>
-                                    <th>Stock</th>
-                                    <th>Remove</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {{ variant_formset.management_form }}
-                                {% for form in variant_formset %}
-                                    <tr>
-                                        <td>{{ form.size }}</td>
-                                        <td>{{ form.color }}</td>
-                                        <td>{{ form.additional_price }}</td>
-                                        <td>{{ form.stock }}</td>
-                                        <td>{{ form.DELETE }}</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <button type="submit" class="btn btn-success">Save Product</button>
-        </form>
-    </div>
+{% if messages %}
+<div class="messages">
+    {% for message in messages %}
+        <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
+            {{ message }}
+        </div>
+    {% endfor %}
 </div>
+{% endif %}
+         <div class="page-wrapper">
+            <div class="content container-fluid">
+               <div class="page-header">
+                  <div class="row align-items-center">
+                     <div class="col">
+                        <h3 class="page-title">Category</h3>
+                        <ul class="breadcrumb">
+                           <li class="breadcrumb-item"><a href="">Dashboard</a></li>
+                           <li class="breadcrumb-item active">Category</li>
+                        </ul>
+                     </div>
+                     <div class="col-auto text-right float-right ml-auto">
+                        <a href="#" class="btn btn-outline-primary mr-2"><i class="fas fa-download"></i> Download</a>
+                        <a href="{% url 'add_category' %}" class="btn btn-primary"><i class="fas fa-plus"></i></a>
+                     </div>
+                  </div>
+               </div>
+               <div class="row">
+                  <div class="col-sm-12">
+                     <div class="card card-table">
+                        <div class="card-body">
+                           <div class="table-responsive">
+                              <table class="table table-hover table-center mb-0 datatable">
+                                 <thead>
+                                    <tr>
+                                       <th>ID</th>
+                                       <th>Name</th>
+                                       <th>Description</th>
+                                       <th>Status</th>
+                                       <th class="">Action</th>
+                                    </tr>
+                                 </thead>
+                                 <tbody>
+                                    {% for category in categories %}
+                                    <tr>
+                                       <td>{{ category.id}}</td>
+                                       <td>{{ category.name }}</td>
+                                       <td>{{ category.description}}</td>
+                                       <td>
+                                          {% if category.is_active %}
+                                                Active
+                                          {% else %}
+                                               Deactivate
+                                           {% endif %}
 
-<!-- Custom Styles -->
-<style>
-    .card {
-        border-radius: 8px;
-    }
+                                       </td>
+                              
+                                       <td class="">
+                                          <div class="actions">
+                                             <a href="{% url 'edit_category' category.id  %}" class="btn btn-sm bg-success-light mr-2">
+                                                 <i class="fas fa-pen"></i>edit
+                                             </a>
+                                             
+                                         </div>
+                                         <div class="actions">
+                                          <a href="{% url 'toggle_category_status' category.id  %}" class="btn btn-sm bg-danger mr-2">
+                                              <i class="fas fa-trash"></i>
+                                              {% if category.is_active %}
+                                              Deactivate
+                                              {% else %}
+                                              Activate
+                                              {% endif %}
+                          
+                                          </a>
+                                          
+                                      </div>
+                                       </td>
+                                    </tr>
+                                    {% endfor %}
+                                 </tbody>
+                              </table>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+            <footer>
+               
+            </footer>
+         </div>
+      </div>
+      <script src="{%static 'assets/js/jquery-3.6.0.min.js' %}"></script>
+      <script src="{%static 'assets/js/popper.min.js' %}"></script>
+      <script src="{%static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
+      <script src="{%static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
+      <script src="{%static 'assets/plugins/datatables/datatables.min.js' %}"></script>
+      <script src="{%static 'assets/js/script.js' %}"></script>
+   </body>
+   <!-- Mirrored from preschool.dreamguystech.com/html-template/students.html by HTTrack Website Copier/3.x [XR&CO'2014], Thu, 28 Oct 2021 11:11:49 GMT -->
+</html>
 
-    .card-body {
-        padding: 20px;
-    }
-
-    .table th, .table td {
-        vertical-align: middle;
-    }
-
-    .btn-block {
-        font-size: 16px;
-        padding: 15px;
-    }
-
-    .container {
-        max-width: 1000px;
-    }
-
-    h4 {
-        font-size: 1.2rem;
-        font-weight: 600;
-        color: #333;
-    }
-
-    .table-striped tbody tr:nth-child(odd) {
-        background-color: #f9f9f9;
-    }
-
-    .form-group input, .form-group select {
-        border-radius: 6px;
-        padding: 8px;
-        font-size: 14px;
-    }
-
-    .table th, .table td {
-        font-size: 14px;
-    }
-
-    .table thead {
-        background-color: #f1f1f1;
-    }
-
-    .table th {
-        color: #444;
-        font-weight: 500;
-    }
-
-    .table td {
-        color: #666;
-    }
-</style>
-
-<script src="{% static 'assets/js/jquery-3.6.0.min.js' %}"></script>
-<script src="{% static 'assets/js/popper.min.js' %}"></script>
-<script src="{% static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
-<script src="{% static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
-<script src="{% static 'assets/js/script.js' %}"></script>
-
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" />
-
-<!-- Cropper.js JS -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
 
 {% endblock %}
