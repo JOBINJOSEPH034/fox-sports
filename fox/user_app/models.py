@@ -62,7 +62,7 @@ class Order(models.Model):
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     address = models.ForeignKey(Address, on_delete=models.SET_NULL, null=True, blank=True,related_name='address') 
-    variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, null=True, blank=True)  # variant field (not)
+    variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, null=True, blank=True)  
     product_name = models.CharField(max_length=100,null=True, blank=True)
     quantity = models.IntegerField(default=1)
     total_price = models.FloatField()
@@ -81,7 +81,7 @@ class Order(models.Model):
     def restore_inventory(self):  
        
         for item in self.items.all():
-            if item.variant:                                 #not
+            if item.variant:                                 
                 item.variant.stock += item.quantity
                 item.variant.save()
             elif item.product:

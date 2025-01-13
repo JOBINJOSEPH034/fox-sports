@@ -6,11 +6,9 @@ from user_app.models import Order
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
-import json
 from .forms import ProductForm, ProductVariantForm
 from django.forms import modelformset_factory
 from django.http import JsonResponse
-from django.template.loader import render_to_string
 
 
 # Create your views here.
@@ -55,37 +53,31 @@ def product_list(request):
     return render(request,'product.html', {'products': products})
 
 
+@login_required
+@never_cache
 def add_product(request):
-    # Create a formset for the product variants (you can adjust extra to match the desired default empty forms)
-    VariantFormSet = modelformset_factory(ProductVariant, form=ProductVariantForm, extra=4, can_delete=True)
-
+    VariantFormSet = modelformset_factory(ProductVariant, form=ProductVariantForm, extra=4, can_delete=True) # extra 4 is varient nos that can increase if want more varient 
     if request.method == "POST":
-        # Handle the product form and the variant formset
-        product_form = ProductForm(request.POST, request.FILES)  # Include files for image upload
+        product_form = ProductForm(request.POST, request.FILES)  
         variant_formset = VariantFormSet(request.POST)
 
         if product_form.is_valid() and variant_formset.is_valid():
-            # Save the product form
             product = product_form.save()
 
-            # Save each variant form, associating it with the created product
             for variant_form in variant_formset:
                 if variant_form.cleaned_data and not variant_form.cleaned_data.get('DELETE', False):
                     variant = variant_form.save(commit=False)
                     variant.product = product
                     variant.save()
 
-            # Redirect to the product list or another page after saving
-            return redirect('product')  # Adjust to the correct redirect URL
+            return redirect('product')  
 
     else:
-        # Initialize the form for GET request
         product_form = ProductForm()
         variant_formset = VariantFormSet(queryset=ProductVariant.objects.none())
 
-    # Retrieve categories and brands for the dropdown
     categories = Category.objects.all()
-    brands = Brand.objects.all()
+    brands = Brand.objects.filter(is_active=True)
 
     return render(request, 'add-product.html', {
         'product_form': product_form,
@@ -93,12 +85,12 @@ def add_product(request):
         'categories': categories,
         'brands': brands,
     })
+
+
 @login_required
 @never_cache
 def edit_product(request, product_id):
     product = get_object_or_404(Product, id=product_id)
-    
-    # Check if we need to add an extra variant form
     extra_forms = int(request.GET.get('extra', 0))  # Default to 0
     VariantFormSet = modelformset_factory(ProductVariant, form=ProductVariantForm, extra=extra_forms, can_delete=True)
 
@@ -109,7 +101,6 @@ def edit_product(request, product_id):
         if product_form.is_valid() and variant_formset.is_valid():
             product = product_form.save()
 
-            # Save variants
             for form in variant_formset:
                 if form.cleaned_data.get('DELETE'):
                     if form.instance.id:
@@ -136,7 +127,7 @@ def edit_product(request, product_id):
         'categories': categories,
         'brands': brands,
         'product': product,
-        'extra_forms': extra_forms,  # Pass the extra_forms to template
+        'extra_forms': extra_forms, 
     })
 
 
@@ -161,14 +152,11 @@ def permanent_delete_product(request, product_id):
     
     return redirect('product') 
 
-
+# product list view button 
 def product_variant_list(request, product_id):
-    # Get the product object by product_id
     product = get_object_or_404(Product, id=product_id)
-    # Get all variants related to this product
     variants = ProductVariant.objects.filter(product=product)
-    
-    # Prepare the response data
+
     variant_data = [{
         'size': variant.size,
         'color': variant.color,
@@ -177,6 +165,8 @@ def product_variant_list(request, product_id):
     } for variant in variants]
 
     return JsonResponse({'variants': variant_data})
+
+
 #ADMIN CUSTOMER
 @login_required
 @never_cache
@@ -266,9 +256,7 @@ def admin_update_order_status(request, order_id, status):
 
 @login_required
 def admin_cancel_order(request, order_id):
-   
     order = get_object_or_404(Order, id=order_id)
-
     if order.status in ['Pending', 'Processing', 'Shipped', 'Out for Delivery']:
         
         for item in order.items.all():
@@ -290,7 +278,7 @@ def admin_cancel_order(request, order_id):
     return redirect('admin_order_management')
 
 
-# for inventory management
+# for admin inventory management
 @login_required
 @never_cache
 def inventory_management(request):
@@ -308,13 +296,11 @@ def update_stock(request, product_id, variant_id=None):
             new_stock = int(request.POST.get('stock', variant.stock))
             variant.stock = new_stock
             variant.save()
-            # Sync the product stock if it's a single variant
-            if variant.product.variants.count() == 1:  # If only one variant, sync the product stock
+            if variant.product.variants.count() == 1:  # If only one variant sync the product stock
                 variant.product.stock = new_stock
                 variant.product.save()
-            else:
-                # Ensure product stock is the sum of all variant stocks
-                total_variant_stock = sum(v.stock for v in variant.product.variants.all())
+            else:                                                               
+                total_variant_stock = sum(v.stock for v in variant.product.variants.all())     # Ensure product stock is the sum of all variant stocks
                 variant.product.stock = total_variant_stock
                 variant.product.save()
             messages.success(request, f"Stock updated for variant: {variant.size} - {variant.color}")
@@ -324,8 +310,7 @@ def update_stock(request, product_id, variant_id=None):
         if request.method == 'POST':
             new_stock = int(request.POST.get('stock', product.stock))
             product.stock = new_stock
-            # Ensure the product stock is in sync with variant stock if there are variants
-            if product.variants.exists():
+            if product.variants.exists():                                        # Ensure the product stock is in sync with variant stock if there are variants
                 total_variant_stock = sum(variant.stock for variant in product.variants.all())
                 if total_variant_stock != product.stock:
                     messages.error(request, "Total variant stock doesn't match product stock!")
@@ -336,21 +321,19 @@ def update_stock(request, product_id, variant_id=None):
 
 def update_variant_stock(request, variant_id):
     variant = get_object_or_404(ProductVariant, id=variant_id)
-    product = variant.product  # Get the associated product
-    old_variant_stock = variant.stock  # Keep track of the old stock value
+    product = variant.product  
+    old_variant_stock = variant.stock  
 
     if request.method == 'POST':
         new_stock = int(request.POST.get('stock', variant.stock))
         variant.stock = new_stock
         variant.save()
 
-        # Adjust product stock based on variant stock changes
         if product.variants.count() > 1:
-            # For multiple variants, ensure total variant stock matches product stock
             total_variant_stock = sum(v.stock for v in product.variants.all())
             product.stock = total_variant_stock
         else:
-            # If only one variant, set product stock to match the variant stock
+
             product.stock = new_stock
 
         product.save()
@@ -368,8 +351,7 @@ def create_order(request, product_id, variant_id=None):
             variant.stock -= quantity
             variant.save()
 
-            # Reduce the product stock as well
-            variant.product.stock -= quantity
+            variant.product.stock -= quantity           # Reduce the product stock as well
             variant.product.save()
 
             Order.objects.create(
@@ -411,8 +393,7 @@ def create_order_with_variant(request, variant_id):
         variant.stock -= quantity
         variant.save()
 
-        # Reduce the product stock as well
-        product = variant.product
+        product = variant.product          # Reduce the product stock as well
         product.stock -= quantity
         product.save()
 
@@ -429,3 +410,61 @@ def create_order_with_variant(request, variant_id):
         messages.error(request, f"Insufficient stock for {variant.product.name} ({variant.size} - {variant.color}).")
 
     return redirect('product_detail', variant.product.id)
+
+
+#admin brand management
+def brand_management(request):
+    if request.method == "POST":
+        name = request.POST.get("name")
+        description = request.POST.get("description")
+        if name:
+            Brand.objects.create(name=name, description=description)
+            messages.success(request, "Brand added successfully!")
+            return redirect("brand_management")
+        else:
+            messages.error(request, "Brand name is required.")
+
+    brands = Brand.objects.all()
+    brand_data = []
+
+    for brand in brands:
+        products = Product.objects.filter(brand=brand)
+        total_stock = sum(product.stock for product in products)
+        brand_data.append({
+            "brand": brand,
+            "product_count": products.count(),
+            "total_stock": total_stock,
+        })
+
+    context = {
+        "brand_data": brand_data,
+    }
+    return render(request, "brand_management.html", context)
+
+
+# Deactivate Brand
+def deactivate_brand(request, brand_id):
+    brand = get_object_or_404(Brand, id=brand_id)
+    brand.is_active = False  
+    brand.save()
+    messages.success(request, f"Brand {brand.name} has been deactivated.")
+    return redirect("brand_management")
+
+# Delete Brand
+def delete_brand(request, brand_id):
+    brand = get_object_or_404(Brand, id=brand_id)
+    brand.delete()
+    messages.success(request, f"Brand {brand.name} has been deleted.")
+    return redirect("brand_management")
+
+
+def toggle_brand_status(request, brand_id):
+    brand = get_object_or_404(Brand, id=brand_id)
+    
+    brand.is_active = not brand.is_active  #
+    brand.save()
+
+    status = "deactivated" if not brand.is_active else "activated"
+    messages.success(request, f"Brand {brand.name} has been {status}.")
+    
+    return redirect("brand_management")

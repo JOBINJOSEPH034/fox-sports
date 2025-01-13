@@ -6,6 +6,7 @@ from . import views
 from django.contrib.auth.views import PasswordChangeView
 from django.urls import reverse_lazy
 urlpatterns = [
+    
     #url for user 
     path('',views.home_page ),
     path('main/',views.main_page,name='main'),
@@ -21,10 +22,13 @@ urlpatterns = [
     path('update-cart-item/<int:item_id>/', views.update_cart_item, name='update_cart_item'),
     path('remove_item/<int:item_id>/', views.remove_cart_item, name='remove_cart_item'),
 
+    #checkout
+    path('checkout/', views.checkout, name='checkout'),
+
+
     #addrss management
     path('manage-addresses/', views.manage_addresses, name='manage_addresses'),
     path('delete-address/<int:address_id>/', views.delete_address, name='delete_address'),
-    path('checkout/', views.checkout, name='checkout'),
     path('order-success/<int:order_id>/', views.order_success, name='order_success'),
     
    
@@ -41,11 +45,10 @@ urlpatterns = [
         ),
         name='change_password'
     ),
+
+    #profile address url
     path('addresses/<int:address_id>/',views.get_address, name='get_address'),
     path('addresses/<int:address_id>/edit/',views.update_address, name='update_address'),
-
-
-
     path('edit-address/<int:address_id>/', views.edit_address, name='edit_address'),
 
 

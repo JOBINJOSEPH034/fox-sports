@@ -40,8 +40,14 @@ urlpatterns = [
     path('inventory/', views.inventory_management, name='inventory_management'),
     path('update_stock/<int:product_id>/', views.update_stock, name='update_stock'),
     path('create_order/<int:product_id>/', views.create_order, name='create_order'),
-    path('create_order/<int:product_id>/<int:variant_id>/', views.create_order, name='create_order_variant'),  #not
+    path('create_order/<int:product_id>/<int:variant_id>/', views.create_order, name='create_order_variant'),  
     path('update_variant_stock/<int:variant_id>/', views.update_variant_stock, name='update_variant_stock'),
+
+    #url for brand management
+    path('brand-management/', views.brand_management, name='brand_management'),
+    path('brand-management/delete/<int:brand_id>/', views.delete_brand, name='delete_brand'),
+    path('brand-management/deactivate/<int:brand_id>/', views.deactivate_brand, name='deactivate_brand'),
+    path('brand-management/toggle-status/<int:brand_id>/', views.toggle_brand_status, name='toggle_brand_status'),
 ]
 
 urlpatterns += static(settings.MEDIA_URL,document_root=settings.MEDIA_ROOT)

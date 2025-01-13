@@ -2,17 +2,12 @@ from django.shortcuts import render ,redirect,get_object_or_404
 from admin_app.models import Category ,Product,ProductVariant,Brand
 from .models import Cart, CartItem,Address, Order,OrderItem
 from django.http import JsonResponse
-from django.template.loader import render_to_string
-
 from django.core.paginator import Paginator
 from django.db.models import Sum
-from decimal import Decimal
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
 from django.db.models import Q
-
-from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 
 
@@ -54,6 +49,7 @@ def main_page_search(request):
             return render(request, 'main.html', {'error': 'Product not found!'})
     return render(request, 'main.html')
         
+
 # USER PRODUCT PAGE
 @login_required
 @never_cache
@@ -65,28 +61,24 @@ def product_page(request):
     total_items = cart_items.aggregate(total_items=Sum('quantity'))['total_items'] or 0
 
     search_query = request.GET.get('search', '').strip()
-    selected_categories = request.GET.getlist('category')  # Multi-select for categories
-    selected_brands = request.GET.getlist('brand')  # Multi-select for brands
+    selected_categories = request.GET.getlist('category')  
+    selected_brands = request.GET.getlist('brand')  
     sort_option = request.GET.get('sort')
 
-    # Search functionality
     if search_query:
         products = products.filter(
             Q(name__icontains=search_query) |
             Q(description__icontains=search_query)
         )
 
-    # Filter by selected categories
     if selected_categories:
         products = products.filter(category_id__in=selected_categories)
 
-    # Filter by selected brands
     if selected_brands:
         products = products.filter(brand_id__in=selected_brands)
 
     brands = Brand.objects.all()
 
-    # Sorting functionality
     if sort_option:
         if sort_option == 'low_to_high':
             products = products.order_by('price')
@@ -97,25 +89,25 @@ def product_page(request):
         elif sort_option == 'reverse_alphabetical':
             products = products.order_by('-name')
         elif sort_option == 'popularity':
-            products = products.order_by('-popularity')  # Assuming popularity is a field in Product
+            products = products.order_by('-popularity')  
         elif sort_option == 'new_arrivals':
-            products = products.order_by('-created_at')  # Assuming created_at is a field in Product
+            products = products.order_by('-created_at')  
 
-    # Pagination logic
-    paginator = Paginator(products, 9)  # Show 9 products per page
+    # Pagination 
+    paginator = Paginator(products, 9)  
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
     return render(request, 'shop.html', {
         'categories': categories,
-        'products': page_obj,  # Pass paginated products to the template
+        'products': page_obj,  
         'search_query': search_query,
         'selected_categories': selected_categories,
         'selected_brands': selected_brands,
         'sort_option': sort_option,
         'brands': brands,
         'total_items': total_items,
-        'page_obj': page_obj  # Pass page_obj for pagination
+        'page_obj': page_obj  
     })
 
 
@@ -129,7 +121,6 @@ def shop_men(request):
     cart_items = CartItem.objects.filter(user=request.user)
     total_items = cart_items.aggregate(total_items=Sum('quantity'))['total_items'] or 0
 
-    # Search functionality
     search_query = request.GET.get('search', '').strip()
     if search_query:
         products = products.filter(
@@ -137,7 +128,6 @@ def shop_men(request):
             Q(description__icontains=search_query)
         )
     
-    # Filter by category and brand
     selected_categories = request.GET.getlist('category')
     selected_brands = request.GET.getlist('brand')
     if selected_categories:
@@ -145,7 +135,6 @@ def shop_men(request):
     if selected_brands:
         products = products.filter(brand_id__in=selected_brands)
 
-    # Sorting functionality
     sort_option = request.GET.get('sort')
     if sort_option:
         if sort_option == 'low_to_high':
@@ -161,8 +150,7 @@ def shop_men(request):
         elif sort_option == 'new_arrivals':
             products = products.order_by('-created_at')
 
-    # Pagination setup
-    paginator = Paginator(products, 9)  # Show 9 products per page
+    paginator = Paginator(products, 9)  
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -174,8 +162,8 @@ def shop_men(request):
         'brands': brands,
         'total_items': total_items,
         'search_query': search_query,
-        'selected_categories': selected_categories,  # Pass selected categories
-        'selected_brands': selected_brands,          # Pass selected brands
+        'selected_categories': selected_categories,  
+        'selected_brands': selected_brands,          
         'sort_option': sort_option,
     })
 
@@ -189,7 +177,6 @@ def shop_women(request):
     cart_items = CartItem.objects.filter(user=request.user)
     total_items = cart_items.aggregate(total_items=Sum('quantity'))['total_items'] or 0
 
-    # Search functionality
     search_query = request.GET.get('search', '').strip()
     if search_query:
         products = products.filter(
@@ -197,7 +184,7 @@ def shop_women(request):
             Q(description__icontains=search_query)
         )
     
-    # Filter by category and brand
+
     selected_categories = request.GET.getlist('category')
     selected_brands = request.GET.getlist('brand')
     if selected_categories:
@@ -205,7 +192,7 @@ def shop_women(request):
     if selected_brands:
         products = products.filter(brand_id__in=selected_brands)
 
-    # Sorting functionality
+
     sort_option = request.GET.get('sort')
     if sort_option:
         if sort_option == 'low_to_high':
@@ -221,8 +208,7 @@ def shop_women(request):
         elif sort_option == 'new_arrivals':
             products = products.order_by('-created_at')
 
-    # Pagination setup
-    paginator = Paginator(products, 9)  # Show 9 products per page
+    paginator = Paginator(products, 9)  
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -234,8 +220,8 @@ def shop_women(request):
         'brands': brands,
         'total_items': total_items,
         'search_query': search_query,
-        'selected_categories': selected_categories,  # Pass selected categories
-        'selected_brands': selected_brands,          # Pass selected brands
+        'selected_categories': selected_categories,  
+        'selected_brands': selected_brands,          
         'sort_option': sort_option,
     })
 
@@ -246,7 +232,7 @@ def shop_women(request):
 def product_details(request,product_id):
     product = Product.objects.get(id=product_id)
     is_out_of_stock = product.stock == 0
-    variants = product.variants.all()  # not
+    variants = product.variants.all()  
 
     return render(request, 'detail.html', {
         'product': product,
@@ -320,11 +306,10 @@ def remove_cart_item(request, item_id):
 
 
 
-# Manage Addresses View
+# Manage Addresses View(profile)
 @login_required
 def manage_addresses(request):
     if request.method == 'POST':
-        # Handle Add/Edit Address logic
         address_id = request.POST.get('address_id')
         name = request.POST.get('name')
         phone = request.POST.get('phone')
@@ -334,12 +319,11 @@ def manage_addresses(request):
         postal_code = request.POST.get('postal_code')
         is_default = request.POST.get('is_default') == 'on'
 
-        if address_id:  # Editing existing address
+        if address_id:  
             address = get_object_or_404(Address, id=address_id, user=request.user)
-        else:  # Adding new address
+        else:  
             address = Address(user=request.user)
 
-        # Update the address details
         address.name = name
         address.phone = phone
         address.address_line = address_line
@@ -357,6 +341,7 @@ def manage_addresses(request):
 
     addresses = Address.objects.filter(user=request.user)
     return render(request, "profile/addresses.html", {"addresses": addresses})
+
 
 @login_required
 def edit_address(request, address_id):
@@ -395,9 +380,6 @@ def update_address(request, address_id):
     address = get_object_or_404(Address, id=address_id, user=request.user)
     if request.method == 'POST':
         try:
-            # Debugging print statements
-            print("Received POST data:", request.POST)
-
             address.name = request.POST.get('name')
             address.phone = request.POST.get('phone')
             address.address_line = request.POST.get('address_line')
@@ -405,9 +387,6 @@ def update_address(request, address_id):
             address.state = request.POST.get('state')
             address.postal_code = request.POST.get('postal_code')
             address.save()
-
-            # Check if the data was saved
-            print(f"Updated Address: {address.name}, {address.phone}, {address.address_line}")
 
             return JsonResponse({
                 'success': True,
@@ -420,8 +399,7 @@ def update_address(request, address_id):
                 'postal_code': address.postal_code,
             })
         except Exception as e:
-            # Handle any unexpected errors
-            print("Error:", str(e))
+
             return JsonResponse({'success': False, 'error': str(e)})
 
     return JsonResponse({'success': False, 'error': 'Invalid request'})
@@ -432,6 +410,7 @@ def delete_address(request, address_id):
     address = get_object_or_404(Address, id=address_id, user=request.user)
     address.delete()
     return redirect('manage_addresses')
+
 
 @login_required
 def checkout(request):
@@ -446,7 +425,6 @@ def checkout(request):
     addresses = Address.objects.filter(user=request.user)
 
     if request.method == 'POST':
-        print(request.POST)
         address_id = request.POST.get('selected_address')
         payment_method = request.POST.get('payment_method')
         
@@ -478,10 +456,8 @@ def checkout(request):
                 order.delete()  
                 return redirect('checkout')
         
-        # Clear the cart after order creation
         cart_items.delete()
-
-        # Redirect to order success page
+        
         return redirect('order_success', order_id=order.id)
 
     return render(request, 'checkout.html', {

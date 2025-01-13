@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block body %}
+
+<div class="page-wrapper">
+    <div class="container mt-5">
+        <h1>Brand Management</h1>
+
+        <!-- Add Brand Form -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4>Add New Brand</h4>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="name">Brand Name</label>
+                        <input type="text" id="name" name="name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea id="description" name="description" class="form-control" rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success">Add Brand</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Brand List Table -->
+        <div class="card">
+            <div class="card-header">
+                <h4>Brand List</h4>
+            </div>
+            <div class="card-body">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Brand Name</th>
+                            <th>Description</th>
+                            <th>Number of Products</th>
+                            <th>Total Stock</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for data in brand_data %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td>{{ data.brand.name }}</td>
+                            <td>{{ data.brand.description }}</td>
+                            <td>{{ data.product_count }}</td>
+                            <td>{{ data.total_stock }}</td>
+                            <td>
+                                <!-- Toggle Status Form -->
+                                <form method="post" action="{% url 'toggle_brand_status' data.brand.id %}" style="display: inline;">
+                                    {% csrf_token %}
+                                    {% if data.brand.is_active %}
+                                        <button type="submit" class="btn btn-warning btn-sm">Deactivate</button>
+                                    {% else %}
+                                        <button type="submit" class="btn btn-success btn-sm">Activate</button>
+                                    {% endif %}
+                                </form>
+
+                                <!-- Delete Form -->
+                                <form method="post" action="{% url 'delete_brand' data.brand.id %}" style="display: inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center">No Brands Found</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'assets/js/jquery-3.6.0.min.js' %}"></script>
+<script src="{% static 'assets/js/popper.min.js' %}"></script>
+<script src="{% static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
+<script src="{% static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
+<script src="{% static 'assets/js/script.js' %}"></script>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+
+{% endblock %}
