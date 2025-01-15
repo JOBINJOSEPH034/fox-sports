@@ -1,0 +1,83 @@
+/* styles.css */
+
+/* General styles for message container */
+.message-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 300px;  /* Set the width of the message bar */
+    z-index: 1050; /* Ensure messages are above other content */
+}
+
+/* Styling for the alert messages */
+.message-bar {
+    width: 100%;  /* Full width of the container */
+    margin: 10px 0;
+    padding: 15px;
+    border-radius: 10px;  /* Rounded corners */
+    font-family: 'Arial', sans-serif;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    opacity: 0; /* Start with hidden state for fade-in */
+    animation: fadeIn 0.5s forwards; /* Add fade-in effect */
+}
+
+/* Fade-in animation for the message bar */
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Success messages */
+.alert-success {
+    background-color: #28a745;
+    color: white;
+    border-left: 5px solid #218838;
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+/* Error messages */
+.alert-danger {
+    background-color: #dc3545;
+    color: white;
+    border-left: 5px solid #c82333;
+    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+}
+
+/* Info messages */
+.alert-info {
+    background-color: #17a2b8;
+    color: white;
+    border-left: 5px solid #138496;
+    box-shadow: 0 4px 8px rgba(23, 162, 184, 0.3);
+}
+
+/* Warning messages */
+.alert-warning {
+    background-color: #ffc107;
+    color: black;
+    border-left: 5px solid #e0a800;
+    box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
+}
+
+/* Close button styling */
+.alert .close {
+    color: white;
+    font-size: 20px;
+    opacity: 0.7;
+}
+
+.alert .close:hover {
+    opacity: 1;
+}
+
+/* Auto-dismiss message after 5 seconds */
+@keyframes autoDismiss {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
+}

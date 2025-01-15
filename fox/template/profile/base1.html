@@ -16,6 +16,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">  
 
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+
+
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
 
@@ -27,7 +30,14 @@
     <link href="{% static 'css/style.css' %}" rel="stylesheet">
     <link href="{% static 'css/new.css' %}" rel="stylesheet">
 
-    
+    <link href="{% static 'css/msg.css' %}" rel="stylesheet">
+
+
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
     
     <style>
         #profile-menu .menu-item {
@@ -46,6 +56,27 @@
             border-left: 4px solid #007bff;
             padding-left: 15px;
         }
+        .status-tracker {
+    display: flex;
+    justify-content: space-between;
+    margin: 10px 0;
+}
+.status-tracker .step {
+    flex: 1;
+    padding: 10px;
+    text-align: center;
+    position: relative;
+    font-size: 14px;
+    font-weight: bold;
+}
+.status-tracker .step.completed {
+    color: white;
+    background-color: #28a745;
+    border-radius: 50%;
+    padding: 15px;
+}
+
+        
     </style>
 
 
@@ -131,7 +162,7 @@
                                 <a href="{% url 'logout' %}" class="nav-item nav-link">Log Out</a>
                     
                             </div>
-                            <a href="" class="btn px-0">
+                            <a href="{% url 'wishlist' %}" class="btn px-0">
                                 <i class="fas fa-heart text-primary"></i>
                                 <span class="badge text-secondary border border-secondary rounded-circle" style="padding-bottom: 2px;">0</span>
                             </a>
@@ -178,7 +209,7 @@
                     <ul class="list-group list-group-flush" id="profile-menu">
                         <li class="list-group-item px-3 py-2">
                             <a href="{% url 'profile' %}" class="d-flex align-items-center text-dark menu-item">
-                                <i class="bi bi-person-circle me-2"></i> Profile
+                                <i class="bi bi-person-circle me-2"></i> Account Details
                             </a>
                         </li>
                         <li class="list-group-item px-3 py-2">
@@ -187,10 +218,25 @@
                             </a>
                         </li>
                         <li class="list-group-item px-3 py-2">
+                            <a href="{% url 'wishlist' %}" class="d-flex align-items-center text-dark menu-item">
+                                <i class="bi bi-box me-2"></i> Wishlist
+                            </a>
+                        </li>
+                        <li class="list-group-item px-3 py-2">
                             <a href="{% url 'order_management' %}" class="d-flex align-items-center text-dark menu-item">
                                 <i class="bi bi-box me-2"></i> Orders
                             </a>
                         </li>
+
+                       
+                        
+                        <li class="list-group-item px-3 py-2">
+                            <a href="{% url 'wallet_page' %}" class="d-flex align-items-center text-dark menu-item">
+                                <i class="bi bi-box me-2"></i> Wallet
+                            </a>
+                        </li>
+
+
                         <li class="list-group-item px-3 py-2">
                             <a href="{% url 'change_password' %}" class="d-flex align-items-center text-dark menu-item">
                                 <i class="bi bi-key me-2"></i> Change Password
@@ -296,6 +342,9 @@
     <script src="{% static 'lib/easing/easing.min.js' %}"></script>
     <script src="{% static 'lib/owlcarousel/owl.carousel.min.js' %}"></script>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+
     <!-- Contact Javascript File -->
     <script src="{% static 'mail/jqBootstrapValidation.min.js' %}"></script>
     <script src="{% static 'mail/contact.js' %}"></script>
@@ -340,6 +389,36 @@ window.onscroll = function () {
 };
 
     </script>
+
+
+     
+    
+<!-- base.html or your main template file -->
+{% if messages %}
+<div class="container mt-3">
+    <div class="message-container">
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show message-bar" role="alert">
+                <strong>{{ message.level_tag|title }}!</strong> {{ message }}
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+
+<script>
+// Auto-dismiss messages after 5 seconds
+$(document).ready(function() {
+    setTimeout(function () {
+        $('.message-bar').fadeOut('slow');
+    }, 5000);  // 5000 milliseconds = 5 seconds
+});
+</script>
+
     
 </body>
 

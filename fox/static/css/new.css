@@ -1,13 +1,13 @@
 /* styles.css */
 
 /* Modern Button Styles */
-.btn-primary, .btn-secondary {
+.btn-primary, .btn-secondary, .btn-danger {
     border-radius: 30px;
     padding: 10px 20px;
     transition: background-color 0.3s ease, transform 0.3s ease;
 }
 
-.btn-primary:hover, .btn-secondary:hover {
+.btn-primary:hover, .btn-secondary:hover ,.btn-danger:hover{
     transform: scale(1.05);
     background-color: #007bff;
 }

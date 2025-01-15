@@ -38,10 +38,14 @@ urlpatterns = [
 
     #url for admin inventry management
     path('inventory/', views.inventory_management, name='inventory_management'),
-    path('update_stock/<int:product_id>/', views.update_stock, name='update_stock'),
     path('create_order/<int:product_id>/', views.create_order, name='create_order'),
     path('create_order/<int:product_id>/<int:variant_id>/', views.create_order, name='create_order_variant'),  
     path('update_variant_stock/<int:variant_id>/', views.update_variant_stock, name='update_variant_stock'),
+
+
+ path('inventory/', views.inventory_management, name='inventory_management'),
+    path('update_stock/<int:product_id>/', views.update_stock_for_product, name='update_stock_for_product'),
+    path('update_variant_stock/<int:product_id>/', views.update_variant_stock, name='update_variant_stock'),
 
     #url for brand management
     path('brand-management/', views.brand_management, name='brand_management'),

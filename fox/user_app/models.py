@@ -2,6 +2,11 @@
 from django.db import models
 from admin_app.models import Product, ProductVariant
 from django.contrib.auth.models import User
+from datetime import timedelta,datetime
+from django.utils.timezone import now
+import random
+from decimal import Decimal
+import string
 
 #for user cart 
 class Cart(models.Model):
@@ -77,6 +82,14 @@ class Order(models.Model):
         
         for item in self.items.all():
             item.reduce_stock()
+
+    @property
+    def return_allowed(self):
+        # Allow return only if the order was delivered within the last 14 days
+        if self.status == 'Delivered':
+            return datetime.now() <= self.created_at + timedelta(days=14)
+        return False
+     
             
     def restore_inventory(self):  
        
@@ -87,6 +100,19 @@ class Order(models.Model):
             elif item.product:
                 item.product.stock += item.quantity
                 item.product.save()        
+
+
+
+class OrderReturn(models.Model):
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='return_request')
+    reason = models.TextField()
+    additional_comments = models.TextField(blank=True, null=True)
+    requested_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Return Request for Order {self.order.id}"
+
+
 
 
 
@@ -122,3 +148,34 @@ class UserProfile(models.Model):
     def __str__(self):
         return self.user.username
 
+
+
+#for wishlist
+class Wishlist(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)  # Correct reference to admin app
+    variant = models.ForeignKey(ProductVariant, on_delete=models.SET_NULL, null=True, blank=True)  # Correct reference to admin app
+
+    class Meta:
+        unique_together = ('user', 'product', 'variant')
+
+    def __str__(self):
+        if self.variant:
+            return f"{self.user.username}'s Wishlist - {self.product.name} ({self.variant.size})"
+        return f"{self.user.username}'s Wishlist - {self.product.name}"
+    
+
+class Wallet(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='wallet')
+    balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+
+class Transaction(models.Model):
+    TRANSACTION_TYPES = [
+        ('deposit', 'Deposit'),
+        ('withdraw', 'Withdraw'),
+    ]
+    wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE,null=True, related_name='transactions')
+    transaction_id = models.CharField(max_length=20, unique=True)
+    type = models.CharField(max_length=10, choices=TRANSACTION_TYPES)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)

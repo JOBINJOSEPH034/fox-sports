@@ -23,9 +23,19 @@
     <link href="{% static 'lib/animate/animate.min.css' %}" rel="stylesheet">
     <link href="{% static 'lib/owlcarousel/assets/owl.carousel.min.css' %}" rel="stylesheet">
 
+<!-- Add jQuery for Bootstrap JS functionality -->
+ 
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+
+
+
     <!-- Customized Bootstrap Stylesheet -->
     <link href="{% static 'css/style.css' %}" rel="stylesheet">
     <link href="{% static 'css/new.css' %}" rel="stylesheet">
+    <link href="{% static 'css/msg.css' %}" rel="stylesheet">
 <style>
     /* Custom styling for cart summary */
 .cart-summary-item {
@@ -63,7 +73,9 @@
     font-size: 20px;
 }
 
+
 </style>
+
 </head>
 
 <body>
@@ -143,7 +155,7 @@
                                 <a href="{% url 'logout' %}" class="nav-item nav-link">Log Out</a>
                     
                             </div>
-                            <a href="" class="btn px-0">
+                            <a href="{% url 'wishlist' %}" class="btn px-0">
                                 <i class="fas fa-heart text-primary"></i>
                                 <span class="badge text-secondary border border-secondary rounded-circle" style="padding-bottom: 2px;">0</span>
                             </a>
@@ -183,16 +195,16 @@
     </div>
     <!-- Breadcrumb End -->
 
-
-
 <!-- cart.html -->
 <div class="container-fluid">
     <div class="row px-xl-5">
+        <!-- Cart Items Table -->
         <div class="col-lg-8 table-responsive mb-5">
             <table class="table table-light table-borderless table-hover text-center mb-0">
                 <thead class="thead-dark">
                     <tr>
                         <th>Products</th>
+                        <th>Size</th> <!-- New column for size -->
                         <th>Price</th>
                         <th>Quantity</th>
                         <th>Total</th>
@@ -200,35 +212,80 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for item in cart_items %}
+                    {% if cart_items %}
+                        {% for item in cart_items %}
+                        <tr>
+                            <td class="align-middle">
+                                <img src="{{ item.product.image1.url }}" alt="" style="width: 50px;">
+                                {{ item.product.name }}
+                            </td>
+                            <td class="align-middle">
+                                <strong>{{ item.variant.size }}</strong> <!-- Display the size -->
+                            </td>
+                            <td class="align-middle">₹{{ item.product.price }}</td>
+                            <td class="align-middle">
+                                <form method="POST" action="{% url 'update_cart_item' item.id %}" id="update-cart-form-{{ item.id }}">
+                                    {% csrf_token %}
+                                    <div class="input-group" style="max-width: 180px; display: flex; justify-content: center; align-items: center;">
+                                        <!-- Decrement Button -->
+                                        <button type="button" class="btn btn-sm btn-primary" id="decrement-btn-{{ item.id }}" style="width: 40px; height: 40px;">-</button>
+                                        
+                                        <!-- Quantity Input -->
+                                        <input type="number" name="quantity" value="{{ item.quantity }}" id="quantity-input-{{ item.id }}" class="form-control w-25 text-center mx-2" style="max-width: 80px;" readonly>
+        
+                                        <!-- Increment Button -->
+                                        <button type="button" class="btn btn-sm btn-primary" id="increment-btn-{{ item.id }}" style="width: 40px; height: 40px;">+</button>
+                                    </div>
+                                </form>
+                            </td>
+                            <td class="align-middle">₹{{ item.total_price|floatformat:2 }}</td>
+                            <td class="align-middle">
+                                <a href="{% url 'remove_cart_item' item.id %}" class="btn btn-sm btn-danger">
+                                    <i class="fa fa-trash"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
                     <tr>
-                        <td class="align-middle">
-                            <img src="{{ item.product.image1.url }}" alt="" style="width: 50px;"> {{ item.product.name }}
-                        </td>
-                        <td class="align-middle">₹{{ item.total_price|floatformat:2 }}</td>
-                        <td class="align-middle">
-                            <form method="POST" action="{% url 'update_cart_item' item.id %}">
-                                {% csrf_token %}
-                                <input type="number" name="quantity" value="{{ item.quantity }}" min="1" class="form-control w-50 d-inline">
-                                <button type="submit" class="btn btn-sm btn-primary">Update</button>
-                            </form>
-                        </td>
-                        <td class="align-middle">₹{{ item.total_price|floatformat:2 }}</td>
-                        <td class="align-middle">
-                            <a href="{% url 'remove_cart_item' item.id %}" class="btn btn-sm btn-danger">
-                                <i class="fa fa-trash"></i>
-                            </a>
-                        </td>
+                        <td colspan="6" class="text-center">Your cart is empty.</td>
                     </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="5" class="text-center">Your cart is empty.</td>
-                    </tr>
-                    {% endfor %}
+                    {% endif %}
                 </tbody>
             </table>
         </div>
+        
+        <!-- JavaScript for Increment and Decrement -->
+        <script>
+            {% for item in cart_items %}
+                // Increment button functionality
+                document.getElementById('increment-btn-{{ item.id }}').addEventListener('click', function() {
+                    var quantityInput = document.getElementById('quantity-input-{{ item.id }}');
+                    var quantity = parseInt(quantityInput.value);
+                    quantityInput.value = quantity + 1;
+                    
+                    // Submit the form after quantity update
+                    document.getElementById('update-cart-form-{{ item.id }}').submit();
+                });
+        
+                // Decrement button functionality
+                document.getElementById('decrement-btn-{{ item.id }}').addEventListener('click', function() {
+                    var quantityInput = document.getElementById('quantity-input-{{ item.id }}');
+                    var quantity = parseInt(quantityInput.value);
+                    if (quantity > 1) {
+                        quantityInput.value = quantity - 1;
+                        
+                        // Submit the form after quantity update
+                        document.getElementById('update-cart-form-{{ item.id }}').submit();
+                    }
+                });
+            {% endfor %}
+        </script>
+        
+
+        <!-- Cart Summary -->
         <div class="col-lg-4">
+            {% if cart_items %}
             <div class="bg-light p-30 mb-5">
                 <h5 class="section-title position-relative text-uppercase mb-3">
                     <span class="bg-secondary pr-3">Cart Summary</span>
@@ -273,22 +330,25 @@
                 <div class="border-top pt-3">
                     <div class="d-flex justify-content-between">
                         <h5>Total Amount</h5>
-                        <h5>₹{{cart_total|floatformat:2 }}</h5>
+                        <h5>₹{{ cart_total|floatformat:2 }}</h5>
                     </div>
                 </div>
 
+                <!-- Checkout Button -->
                 <div class="pt-2">
                     <a href="{% url 'checkout' %}" class="btn btn-block btn-primary font-weight-bold my-3 py-3">Proceed To Checkout</a>
                 </div>
             </div>
+            {% else %}
+            <div class="text-center">
+                <p>Your cart is empty.</p>
+                <a href="{% url 'shop' %}" class="btn btn-primary">Continue Shopping</a>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
 
-
-
-
-    
     <!-- Footer Start -->
     <div class="container-fluid bg-dark text-secondary mt-5 pt-5">
         <div class="row px-xl-5 pt-5">
@@ -388,6 +448,35 @@
 
     <!-- Template Javascript -->
     <script src="{% static 'js/main.js' %}"></script>
+
+
+
+<!-- base.html or your main template file -->
+{% if messages %}
+    <div class="container mt-3">
+        <div class="message-container">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show message-bar" role="alert">
+                    <strong>{{ message.level_tag|title }}!</strong> {{ message }}
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+{% endif %}
+
+
+<script>
+    // Auto-dismiss messages after 5 seconds
+    $(document).ready(function() {
+        setTimeout(function () {
+            $('.message-bar').fadeOut('slow');
+        }, 5000);  // 5000 milliseconds = 5 seconds
+    });
+</script>
+
 
 </body>
 

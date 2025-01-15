@@ -12,6 +12,7 @@ urlpatterns = [
     path('main/',views.main_page,name='main'),
     path('shop',views.product_page,name='shop'),
      path('product/<int:product_id>/', views.product_details, name='product_details'), 
+    path('toggle_wishlist/<int:product_id>/', views.toggle_wishlist, name='toggle_wishlist'),
     path('men/', views.shop_men, name='shop_men'),
     path('women/', views.shop_women, name='shop_women'),
     
@@ -52,6 +53,16 @@ urlpatterns = [
     path('edit-address/<int:address_id>/', views.edit_address, name='edit_address'),
 
 
+    path('wishlist/', views.wishlist_view, name='wishlist'),
+   path('wishlist/add_to_cart/<int:wishlist_item_id>/', views.add_to_cart_from_wishlist, name='add_to_cart_from_wishlist'),
+    path('wishlist/remove/<int:wishlist_id>/', views.remove_from_wishlist, name='remove_from_wishlist'),
+
+    path('add_to_wishlist/<int:product_id>/', views.add_to_wishlist, name='add_to_wishlist'),
+    path('remove_from_wishlist/<int:product_id>/', views.remove_from_wishlist, name='remove_from_wishlist'),
+
+
+
+      path('wallet/', views.wallet_page, name='wallet_page'), 
 
 
 ]

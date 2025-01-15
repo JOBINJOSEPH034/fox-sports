@@ -2,86 +2,164 @@
 {% load static %}
 
 {% block body %}
-
 <div class="page-wrapper">
     <div class="container mt-5">
         <h1>Brand Management</h1>
+<!-- Add Brand Button -->
+<div class="card mb-4">
+    <div class="card-header">
+        <button class="btn btn-primary" id="addBrandButton" onclick="toggleForm()">Add New Brand</button>
+    </div>
+</div>
 
-        <!-- Add Brand Form -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h4>Add New Brand</h4>
+<!-- Add Brand Form (Initially Hidden) -->
+<div class="card mb-4" id="addBrandForm" style="display: none;">
+    <div class="card-header">
+        <h4>Add New Brand</h4>
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="name">Brand Name</label>
+                <input type="text" id="name" name="name" class="form-control" required>
             </div>
-            <div class="card-body">
-                <form method="post">
-                    {% csrf_token %}
-                    <div class="form-group">
-                        <label for="name">Brand Name</label>
-                        <input type="text" id="name" name="name" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="description">Description</label>
-                        <textarea id="description" name="description" class="form-control" rows="3"></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-success">Add Brand</button>
-                </form>
+            <div class="form-group">
+                <label for="description">Description</label>
+                <textarea id="description" name="description" class="form-control" rows="3"></textarea>
             </div>
-        </div>
+            <button type="submit" class="btn btn-success">Add Brand</button>
+        </form>
+    </div>
+</div>
 
-        <!-- Brand List Table -->
-        <div class="card">
-            <div class="card-header">
-                <h4>Brand List</h4>
-            </div>
-            <div class="card-body">
-                <table class="table table-bordered">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Brand Name</th>
-                            <th>Description</th>
-                            <th>Number of Products</th>
-                            <th>Total Stock</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for data in brand_data %}
-                        <tr>
-                            <td>{{ forloop.counter }}</td>
-                            <td>{{ data.brand.name }}</td>
-                            <td>{{ data.brand.description }}</td>
-                            <td>{{ data.product_count }}</td>
-                            <td>{{ data.total_stock }}</td>
-                            <td>
-                                <!-- Toggle Status Form -->
-                                <form method="post" action="{% url 'toggle_brand_status' data.brand.id %}" style="display: inline;">
-                                    {% csrf_token %}
-                                    {% if data.brand.is_active %}
-                                        <button type="submit" class="btn btn-warning btn-sm">Deactivate</button>
-                                    {% else %}
-                                        <button type="submit" class="btn btn-success btn-sm">Activate</button>
-                                    {% endif %}
-                                </form>
+<!-- Brand List Table -->
+<div class="card">
+    <div class="card-header">
+        <h4>Brand List</h4>
+    </div>
+    <div class="card-body">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Brand Name</th>
+                    <th>Description</th>
+                    <th>Number of Products</th>
+                    <th>Total Stock</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for data in brand_data %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ data.brand.name }}</td>
+                    <td>{{ data.brand.description }}</td>
+                    <td>{{ data.product_count }}</td>
+                    <td>{{ data.total_stock }}</td>
+                    <td>
+                        <!-- Toggle Status Form -->
+                        <form method="post" action="{% url 'toggle_brand_status' data.brand.id %}" style="display: inline;">
+                            {% csrf_token %}
+                            {% if data.brand.is_active %}
+                                <button type="submit" class="btn btn-warning btn-sm">Deactivate</button>
+                            {% else %}
+                                <button type="submit" class="btn btn-success btn-sm">Activate</button>
+                            {% endif %}
+                        </form>
 
-                                <!-- Delete Form -->
-                                <form method="post" action="{% url 'delete_brand' data.brand.id %}" style="display: inline;">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="6" class="text-center">No Brands Found</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                        <!-- Delete Form -->
+                        <form method="post" action="{% url 'delete_brand' data.brand.id %}" style="display: inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center">No Brands Found</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // Toggle the visibility of the Add Brand form
+    function toggleForm() {
+        var form = document.getElementById('addBrandForm');
+        var button = document.getElementById('addBrandButton');
+        
+        if (form.style.display === 'none') {
+            form.style.display = 'block';
+            button.textContent = 'Cancel';  // Change button text to 'Cancel' when form is shown
+        } else {
+            form.style.display = 'none';
+            button.textContent = 'Add New Brand';  // Change button text back to 'Add New Brand' when form is hidden
+        }
+    }
+</script>
+
+            
+                                             <!-- Pagination Controls -->
+<div class="pagination-container">
+    <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center">
+            <!-- First Page Link -->
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1" aria-label="First">
+                    <span aria-hidden="true">&laquo;&laquo;</span>
+                </a>
+            </li>
+            {% endif %}
+
+            <!-- Previous Page Link -->
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                    <span aria-hidden="true">&laquo;</span>
+                </a>
+            </li>
+            {% endif %}
+
+            <!-- Current Page Number -->
+            <li class="page-item active">
+                <span class="page-link">
+                    {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                    <span class="sr-only">(current)</span>
+                </span>
+            </li>
+
+            <!-- Next Page Link -->
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+                    <span aria-hidden="true">&raquo;</span>
+                </a>
+            </li>
+            {% endif %}
+
+            <!-- Last Page Link -->
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Last">
+                    <span aria-hidden="true">&raquo;&raquo;</span>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+
             </div>
         </div>
     </div>
 </div>
+
+
 
 <script src="{% static 'assets/js/jquery-3.6.0.min.js' %}"></script>
 <script src="{% static 'assets/js/popper.min.js' %}"></script>

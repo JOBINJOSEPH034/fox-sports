@@ -1,14 +1,21 @@
 from django.shortcuts import render ,redirect,get_object_or_404
 from admin_app.models import Category ,Product,ProductVariant,Brand
-from .models import Cart, CartItem,Address, Order,OrderItem
+from .models import Cart, CartItem,Address, Order,OrderItem,Wishlist,OrderReturn,Wallet,Transaction
 from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.db.models import Sum
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
+from django.views.decorators.csrf import csrf_exempt
+from .forms import ReturnRequestForm
+from datetime import timedelta
+from django.utils.timezone import now
 from django.db.models import Q
 from django.http import JsonResponse
+from decimal import Decimal
+import random
+import uuid
 
 
 #USER HOME PAGE
@@ -229,16 +236,19 @@ def shop_women(request):
 
 @login_required
 @never_cache
-def product_details(request,product_id):
-    product = Product.objects.get(id=product_id)
+def product_details(request, product_id):
+    product = get_object_or_404(Product, id=product_id)
     is_out_of_stock = product.stock == 0
-    variants = product.variants.all()  
+    variants = product.variants.all()  # Add your variants logic here
+
+    # Check if the product is in the user's wishlist
+    is_in_wishlist = Wishlist.objects.filter(user=request.user, product=product).exists()
 
     return render(request, 'detail.html', {
         'product': product,
         'is_out_of_stock': is_out_of_stock,
-        'variants': variants,  
-    
+        'variants': variants,
+        'is_in_wishlist': is_in_wishlist  # Pass this variable to the template
     })
 
 
@@ -283,17 +293,23 @@ def add_to_cart(request, product_id):
 
 
 @login_required
-def update_cart_item(request, item_id):
-    cart_item = get_object_or_404(CartItem, id=item_id)
-    quantity = int(request.POST.get('quantity', 1))
 
-    if quantity > 0:
-        cart_item.quantity = quantity
-        cart_item.save()
-    else:
-        cart_item.delete()
+def update_cart_item(request, item_id):
+    cart_item = CartItem.objects.get(id=item_id)
+    
+    # Get the updated quantity from the form
+    new_quantity = int(request.POST.get('quantity'))
+
+    # Prevent quantity from going below 1
+    if new_quantity < 1:
+        new_quantity = 1
+    
+    # Update the cart item with the new quantity
+    cart_item.quantity = new_quantity
+    cart_item.save()
 
     return redirect('cart_page')
+
 
 def remove_cart_item(request, item_id):
     try:
@@ -483,6 +499,8 @@ def order_management(request):
     return render(request, 'profile/orders.html', {'orders': orders})
 
 
+
+
 @login_required
 def cancel_order(request, order_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
@@ -496,6 +514,30 @@ def cancel_order(request, order_id):
     return redirect('order_management')
 
 
+@login_required
+def request_return(request, order_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+
+    # Check if the return is allowed
+    if not order.return_allowed:
+        messages.error(request, "Return is not allowed for this order.")
+        return redirect('order_management')
+
+    # Handle form submission
+    if request.method == "POST":
+        reason = request.POST.get("reason")
+        additional_comments = request.POST.get("additional_comments")
+        OrderReturn.objects.create(
+            order=order,
+            reason=reason,
+            additional_comments=additional_comments
+        )
+        order.status = "Return Requested"
+        order.save()
+        messages.success(request, "Your return request has been submitted.")
+        return redirect('order_management')
+
+    return render(request, 'profile/request_return.html', {'order': order})
 
 # User Profile View (Displays user details)
 @login_required
@@ -524,4 +566,144 @@ def profile(request):
 
     return render(request, 'profile/profile.html', {
         'user': user
+    })
+
+
+@login_required
+def wishlist_view(request):
+    # Fetch the wishlist items for the logged-in user
+    wishlist = Wishlist.objects.filter(user=request.user)
+
+    # Pass the wishlist to the template
+    return render(request, 'profile/wishlist.html', {'wishlist': wishlist})
+
+@login_required
+def add_to_cart_from_wishlist(request, wishlist_item_id):
+    # Get the wishlist item by ID
+    wishlist_item = Wishlist.objects.get(id=wishlist_item_id)
+
+    # Get the associated product and variant from the wishlist item
+    product = wishlist_item.product
+    variant = wishlist_item.variant
+
+    # Check if the user already has a cart, or create a new one
+    cart, created = Cart.objects.get_or_create(user=request.user)
+
+    # Check if the product (with variant) already exists in the cart
+    cart_item, created = CartItem.objects.get_or_create(
+        cart=cart,
+        product=product,
+        variant=variant
+    )
+
+    # If the product is already in the cart, update the quantity
+    if not created:
+        cart_item.quantity += 1
+        cart_item.save()
+
+    # Redirect to the cart page or wherever you want
+    return redirect('cart:cart_detail')  
+
+
+@login_required
+def remove_from_wishlist(request, wishlist_item_id):
+    # Remove item from wishlist
+    wishlist_item = Wishlist.objects.get(id=wishlist_item_id)
+    wishlist_item.delete()
+
+    return redirect('wishlist') 
+@login_required
+def toggle_wishlist(request, product_id):
+    product = Product.objects.get(id=product_id)
+    user = request.user
+
+    # Check if the product is already in the user's wishlist
+    wishlist_item, created = Wishlist.objects.get_or_create(user=user, product=product)
+
+    if not created:
+        # If the item already exists, remove it from the wishlist
+        wishlist_item.delete()
+        added = False
+    else:
+        added = True
+
+    # Return JSON response indicating the action
+    return JsonResponse({'added': added})
+
+def add_to_wishlist(request, product_id):
+    if request.method == 'POST':
+        product = Product.objects.get(id=product_id)
+        user = request.user
+        wishlist, created = Wishlist.objects.get_or_create(user=user)
+        
+        # Add product to wishlist if it's not already there
+        if product not in wishlist.products.all():
+            wishlist.products.add(product)
+            return JsonResponse({'success': True})
+        else:
+            return JsonResponse({'success': False, 'message': 'Product already in wishlist'})
+    return JsonResponse({'success': False, 'message': 'Invalid request'})
+
+@csrf_exempt
+def remove_from_wishlist(request, product_id):
+    if request.method == 'POST':
+        product = Product.objects.get(id=product_id)
+        user = request.user
+        wishlist = Wishlist.objects.get(user=user)
+        
+        # Remove product from wishlist
+        if product in wishlist.products.all():
+            wishlist.products.remove(product)
+            return JsonResponse({'success': True})
+        else:
+            return JsonResponse({'success': False, 'message': 'Product not in wishlist'})
+    return JsonResponse({'success': False, 'message': 'Invalid request'})
+
+
+@login_required
+def wallet_page(request):
+    wallet, created = Wallet.objects.get_or_create(user=request.user)
+    transactions = wallet.transactions.all().order_by('-created_at')
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        amount = request.POST.get('amount')
+
+        try:
+            # Ensure amount is properly converted to a Decimal to match Wallet's balance
+            amount = Decimal(amount)
+            if amount <= 0:
+                raise ValueError("Amount must be greater than zero.")
+            
+            if action == 'add':
+                wallet.balance += amount
+                transaction_type = 'deposit'
+            elif action == 'withdraw':
+                if amount > wallet.balance:
+                    messages.error(request, "Insufficient balance.")
+                    return redirect('wallet_page')
+                wallet.balance -= amount
+                transaction_type = 'withdraw'
+            else:
+                messages.error(request, "Invalid transaction type.")
+                return redirect('wallet_page')
+
+            wallet.save()
+
+            # Creating a transaction with a properly generated transaction ID
+            Transaction.objects.create(
+                wallet=wallet,
+                transaction_id=str(uuid.uuid4()),  # Generate a unique transaction ID
+                type=transaction_type,
+                amount=amount,
+            )
+            messages.success(request, f"{action.capitalize()} successful!")
+        except ValueError as e:
+            messages.error(request, str(e))
+
+        return redirect('wallet_page')
+
+    return render(request, 'profile/wallet_page.html', {
+        'wallet': wallet,
+        'transactions': transactions,
     })

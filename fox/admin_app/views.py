@@ -9,7 +9,7 @@ from django.views.decorators.cache import never_cache
 from .forms import ProductForm, ProductVariantForm
 from django.forms import modelformset_factory
 from django.http import JsonResponse
-
+from django.core.paginator import Paginator
 
 # Create your views here.
 
@@ -50,7 +50,12 @@ def admin_home(request):
 @never_cache
 def product_list(request):
     products = Product.objects.all()
-    return render(request,'product.html', {'products': products})
+
+    paginator = Paginator(products, 8)  # Show 10 products per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request,'product.html',{'page_obj': page_obj})
 
 
 @login_required
@@ -168,11 +173,15 @@ def product_variant_list(request, product_id):
 
 
 #ADMIN CUSTOMER
-@login_required
-@never_cache
 def customer_list(request):
     users = User.objects.filter(is_superuser=False)  # Non-admin users
-    return render(request,'customer.html', {'users': users})
+    
+    # Paginate the users
+    paginator = Paginator(users, 10)  # Show 10 users per page
+    page_number = request.GET.get('page')  # Get the page number from the request
+    page_obj = paginator.get_page(page_number)  # Get the page object
+
+    return render(request, 'customer.html', {'page_obj': page_obj})
 
 
 
@@ -201,9 +210,14 @@ def edit_customer(request):
 @login_required
 @never_cache
 def category_list(request):
-    categories = Category.objects.all()
-    return render(request, 'category.html', {'categories': categories})
-
+    categories = Category.objects.all()  # Fetch all categories
+    
+    # Paginate the categories
+    paginator = Paginator(categories, 10)  # Show 10 categories per page
+    page_number = request.GET.get('page')  # Get the page number from the request
+    page_obj = paginator.get_page(page_number)  # Get the page object
+    
+    return render(request, 'category.html', {'page_obj': page_obj})
 
 
 def add_category(request):
@@ -236,14 +250,20 @@ def toggle_category_status(request, category_id):
     return redirect('category')
 
 
+from django.core.paginator import Paginator
 
 @login_required
 @never_cache
 def admin_order_management(request):
-    orders = Order.objects.select_related('user', 'address').prefetch_related('items__product', 'items__variant').order_by('-created_at')
-    return render(request, 'admin_order.html', {'orders': orders})
+    orders = Order.objects.select_related('user', 'address') \
+        .prefetch_related('items__product', 'items__variant') \
+        .order_by('-created_at')
 
+    paginator = Paginator(orders, 10)  # Show 10 orders per page
+    page_number = request.GET.get('page')
+    orders_page = paginator.get_page(page_number)
 
+    return render(request, 'admin_order.html', {'orders': orders_page})
 @login_required
 def admin_update_order_status(request, order_id, status):
     order = get_object_or_404(Order, id=order_id)
@@ -278,70 +298,69 @@ def admin_cancel_order(request, order_id):
     return redirect('admin_order_management')
 
 
-# for admin inventory management
+
+
+
+# For admin inventory management with pagination
 @login_required
 @never_cache
 def inventory_management(request):
-    products = Product.objects.all().prefetch_related('variants') 
-   
+    # Retrieve all products and prefetch their variants to avoid extra queries
+    products = Product.objects.all().prefetch_related('variants')
+
+    # Pagination logic: Display 10 products per page
+    paginator = Paginator(products, 8)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
     return render(request, 'inventory_management.html', {
-        'products': products,
-    
+        'page_obj': page_obj,  # Paginated products
     })
-# Update stock for products and variants
-def update_stock(request, product_id, variant_id=None):
-    if variant_id:
-        variant = get_object_or_404(ProductVariant, id=variant_id)
-        if request.method == 'POST':
-            new_stock = int(request.POST.get('stock', variant.stock))
-            variant.stock = new_stock
-            variant.save()
-            if variant.product.variants.count() == 1:  # If only one variant sync the product stock
-                variant.product.stock = new_stock
-                variant.product.save()
-            else:                                                               
-                total_variant_stock = sum(v.stock for v in variant.product.variants.all())     # Ensure product stock is the sum of all variant stocks
-                variant.product.stock = total_variant_stock
-                variant.product.save()
-            messages.success(request, f"Stock updated for variant: {variant.size} - {variant.color}")
-        return redirect('inventory_management')
-    else:
-        product = get_object_or_404(Product, id=product_id)
-        if request.method == 'POST':
-            new_stock = int(request.POST.get('stock', product.stock))
-            product.stock = new_stock
-            if product.variants.exists():                                        # Ensure the product stock is in sync with variant stock if there are variants
-                total_variant_stock = sum(variant.stock for variant in product.variants.all())
-                if total_variant_stock != product.stock:
-                    messages.error(request, "Total variant stock doesn't match product stock!")
-                    return redirect('inventory_management')
-            product.save()
-            messages.success(request, f"Stock updated for product: {product.name}")
-        return redirect('inventory_management')
 
-def update_variant_stock(request, variant_id):
-    variant = get_object_or_404(ProductVariant, id=variant_id)
-    product = variant.product  
-    old_variant_stock = variant.stock  
-
+# Update stock for all variants of a product
+@login_required
+def update_stock_for_product(request, product_id):
+    product = get_object_or_404(Product, id=product_id)
+    
     if request.method == 'POST':
-        new_stock = int(request.POST.get('stock', variant.stock))
-        variant.stock = new_stock
-        variant.save()
-
-        if product.variants.count() > 1:
-            total_variant_stock = sum(v.stock for v in product.variants.all())
-            product.stock = total_variant_stock
-        else:
-
+        new_stock = int(request.POST.get('stock', product.stock))  # Get new stock value for the product
+        if new_stock != product.stock:  # Only update if the stock value has changed
             product.stock = new_stock
+            product.save()
 
-        product.save()
-        messages.success(request, f"Stock updated for variant: {variant.size} - {variant.color}")
+            # Update the stock of all variants for this product
+            for variant in product.variants.all():
+                variant.stock = new_stock
+                variant.save()
+
+            messages.success(request, f"Stock updated for product: {product.name} and all its variants.")
+        return redirect('inventory_management')
+
     return redirect('inventory_management')
 
+# AJAX-based stock update for all variants of a product
+@login_required
+def update_variant_stock(request, variant_id):
+    variant = get_object_or_404(ProductVariant, id=variant_id)
+    product = variant.product
 
-# Order Creation for Products
+    if request.method == 'POST':
+        new_stock = int(request.POST.get('stock', variant.stock))  # Get new stock value for the variant
+        if new_stock != variant.stock:  # Only update if the stock value has changed
+            variant.stock = new_stock
+            variant.save()
+
+            # Update the product stock as the sum of all variants' stock
+            total_variant_stock = sum(v.stock for v in product.variants.all())
+            product.stock = total_variant_stock
+            product.save()
+
+            messages.success(request, f"Stock updated for variant: {variant.size} - {variant.color}")
+        return redirect('inventory_management')
+
+    return redirect('inventory_management')
+  
+
 def create_order(request, product_id, variant_id=None):
     if variant_id:
         variant = get_object_or_404(ProductVariant, id=variant_id)
@@ -351,7 +370,7 @@ def create_order(request, product_id, variant_id=None):
             variant.stock -= quantity
             variant.save()
 
-            variant.product.stock -= quantity           # Reduce the product stock as well
+            variant.product.stock -= quantity  # Reduce the product stock as well
             variant.product.save()
 
             Order.objects.create(
@@ -359,7 +378,7 @@ def create_order(request, product_id, variant_id=None):
                 product=variant.product,  
                 variant=variant,  
                 quantity=quantity,
-                total_price=variant.product.price * quantity  
+                total_price=variant.product.price * quantity
             )
             messages.success(request, f"Order placed for variant: {variant.size} - {variant.color}")
         else:
@@ -377,13 +396,12 @@ def create_order(request, product_id, variant_id=None):
                 user=request.user, 
                 product=product,  
                 quantity=quantity,
-                total_price=product.price * quantity  
+                total_price=product.price * quantity
             )
             messages.success(request, f"Order placed for product: {product.name}")
         else:
             messages.error(request, f"Insufficient stock for product: {product.name}")
         return redirect('product_detail', product.id)
-
 
 def create_order_with_variant(request, variant_id):
     variant = get_object_or_404(ProductVariant, id=variant_id)
@@ -412,7 +430,6 @@ def create_order_with_variant(request, variant_id):
     return redirect('product_detail', variant.product.id)
 
 
-#admin brand management
 def brand_management(request):
     if request.method == "POST":
         name = request.POST.get("name")
@@ -424,10 +441,14 @@ def brand_management(request):
         else:
             messages.error(request, "Brand name is required.")
 
+    # Pagination logic
     brands = Brand.objects.all()
-    brand_data = []
+    paginator = Paginator(brands, 10)  # Show 10 brands per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
 
-    for brand in brands:
+    brand_data = []
+    for brand in page_obj:
         products = Product.objects.filter(brand=brand)
         total_stock = sum(product.stock for product in products)
         brand_data.append({
@@ -438,7 +459,9 @@ def brand_management(request):
 
     context = {
         "brand_data": brand_data,
+        "page_obj": page_obj,  # Pass the page object to the template
     }
+
     return render(request, "brand_management.html", context)
 
 
