@@ -11,7 +11,7 @@
             <tr>
                 <th>Order ID</th>
                 <th>Date</th>
-                <th>Address</th>
+                <th style="width: 300px;">Address</th>  <!-- Increased width for Address column -->
                 <th>Products</th>
                 <th>Status</th>
                 <th>Total</th>
@@ -19,11 +19,11 @@
             </tr>
         </thead>
         <tbody>
-            {% for order in orders %}
+            {% for order in page_obj.object_list %}
             <tr>
                 <td>{{ order.id }}</td>
                 <td>{{ order.created_at|date:"d M Y, H:i" }}</td>
-                <td>
+                <td style="max-width: 300px; word-wrap: break-word;">  <!-- Increased width and word-wrap for Address -->
                     {{ order.address.name }}<br>
                     {{ order.address.address_line }}<br>
                     {{ order.address.city }}, {{ order.address.state }}<br>
@@ -34,27 +34,34 @@
                         {{ item.product.name }} (x{{ item.quantity }})<br>
                     {% endfor %}
                 </td>
-                <td>
-                    <div class="status-tracker">
-                        <div class="step {% if order.status in ['Pending', 'Processing', 'Shipped', 'Out for Delivery', 'Delivered'] %}completed{% endif %}">Pending</div>
-                        <div class="step {% if order.status in ['Processing', 'Shipped', 'Out for Delivery', 'Delivered'] %}completed{% endif %}">Processing</div>
-                        <div class="step {% if order.status in ['Shipped', 'Out for Delivery', 'Delivered'] %}completed{% endif %}">Shipped</div>
-                        <div class="step {% if order.status in ['Out for Delivery', 'Delivered'] %}completed{% endif %}">Out for Delivery</div>
-                        <div class="step {% if order.status == 'Delivered' %}completed{% endif %}">Delivered</div>
-                    </div>
-                    {% if order.status == 'Delivered' and order.return_allowed %}
-                    <button class="btn btn-warning btn-sm mt-2" onclick="openReturnModal({{ order.id }})">Return</button>
-                    {% endif %}
+                <td class="{% if order.status == 'Delivered' %}text-success{% elif order.status == 'Cancelled' %}text-danger{% elif order.status == 'Return Pending' %}text-warning{% else %}text-dark{% endif %}">
+                    {{ order.status }}
                 </td>
                 <td>₹{{ order.total_price|floatformat:2 }}</td>
                 <td>
-                    {% if order.status not in "Delivered,Cancelled" %}
+                    {% if order.status in "Pending,Shipped,Processing,Out for Delivery" %}
                     <form action="{% url 'cancel_order' order.id %}" method="POST" style="display:inline;">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-sm btn-outline-danger">Cancel</button>
                     </form>
                     {% endif %}
-                </td>
+
+                    <!-- Return Button shows only if status is 'Delivered' -->
+                    {% if order.status == 'Delivered' %}
+                    <button class="btn btn-warning btn-sm mt-2" onclick="openReturnModal({{ order.id }})">Return</button>
+                    {% endif %}
+
+                    <!-- For Return Pending Status, Show Information About Return -->
+                    {% if order.status == 'Return Pending' %}
+                    <span class="text-warning">Return request is pending. Please wait for confirmation.</span>
+                    {% endif %}
+
+                    <!-- For Cancelled Status, Show Information About Cancellation -->
+                    {% if order.status == 'Cancelled' %}
+                    <span class="text-danger">This order has been cancelled.</span>
+                    {% endif %}
+
+                    
             </tr>
             {% empty %}
             <tr>
@@ -63,17 +70,42 @@
             {% endfor %}
         </tbody>
     </table>
+
+    <!-- Pagination -->
+    <div class="col-12">
+        <nav>
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_categories %}&category={{ selected_categories|join:',' }}{% endif %}{% if selected_brands %}&brand={{ selected_brands|join:',' }}{% endif %}{% if sort_option %}&sort={{ sort_option }}{% endif %}" tabindex="-1">Previous</a>
+                    </li>
+                {% endif %}
+                {% for page_num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == page_num %}
+                        <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
+                    {% else %}
+                        <li class="page-item"><a class="page-link" href="?page={{ page_num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_categories %}&category={{ selected_categories|join:',' }}{% endif %}{% if selected_brands %}&brand={{ selected_brands|join:',' }}{% endif %}{% if sort_option %}&sort={{ sort_option }}{% endif %}">{{ page_num }}</a></li>
+                    {% endif %}
+                {% endfor %}
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_categories %}&category={{ selected_categories|join:',' }}{% endif %}{% if selected_brands %}&brand={{ selected_brands|join:',' }}{% endif %}{% if sort_option %}&sort={{ sort_option }}{% endif %}">Next</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
 </div>
 
 <!-- Return Modal -->
-<div class="modal" id="returnModal" tabindex="-1" role="dialog">
+<div class="modal fade" id="returnModal" tabindex="-1" role="dialog" aria-labelledby="returnModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
-            <form action="{% url 'request_return' %}" method="POST">
+            <form action="{% url 'request_return' %}" method="POST" id="returnForm">
                 {% csrf_token %}
                 <input type="hidden" name="order_id" id="returnOrderId">
                 <div class="modal-header">
-                    <h5 class="modal-title">Return Request</h5>
+                    <h5 class="modal-title" id="returnModalLabel">Return Request</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
@@ -89,18 +121,53 @@
                     <textarea name="comment" class="form-control" rows="3" placeholder="Additional Comments (Optional)"></textarea>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary">Submit</button>
+                    <button type="button" class="btn btn-secondary btn-rounded" data-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary btn-rounded">Submit Return</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
+<!-- JS CDN for Bootstrap, jQuery, and Popper.js -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.min.js"></script>
+
 <script>
+    // Open return modal and set the order ID
     function openReturnModal(orderId) {
         document.getElementById('returnOrderId').value = orderId;
         $('#returnModal').modal('show');
     }
+
+    // Handle form submission
+    document.getElementById('returnForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        const formData = new FormData(this);
+        fetch("{% url 'request_return' %}", {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('Return request submitted successfully. Your order status will be updated to "Request Pending".');
+                $('#returnModal').modal('hide');  // Hide modal
+                location.reload();  // Reload page to reflect status change
+            } else {
+                alert('Failed to submit return request. Please try again.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('There was an error processing your request.');
+        });
+    });
 </script>
+
 {% endblock %}

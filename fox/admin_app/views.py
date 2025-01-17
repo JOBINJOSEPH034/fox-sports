@@ -1,15 +1,16 @@
 from django.shortcuts import render
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from . models import Category,Product,Brand,ProductVariant
+from . models import Category,Product,Brand,ProductVariant,Coupon,Offer
 from user_app.models import Order
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
-from .forms import ProductForm, ProductVariantForm
+from .forms import ProductForm, ProductVariantForm, CouponForm 
 from django.forms import modelformset_factory
 from django.http import JsonResponse
 from django.core.paginator import Paginator
+from datetime import datetime
 
 # Create your views here.
 
@@ -491,3 +492,113 @@ def toggle_brand_status(request, brand_id):
     messages.success(request, f"Brand {brand.name} has been {status}.")
     
     return redirect("brand_management")
+
+
+
+
+# Display all coupons
+def coupon_list(request):
+    coupons = Coupon.objects.all()
+    if request.method == 'POST':
+        code = request.POST.get('code')
+        discount_percentage = request.POST.get('discount_percentage')
+        description = request.POST.get('description')
+        is_active = request.POST.get('is_active') == 'on'
+
+        # Add coupon to the database
+        Coupon.objects.create(code=code, discount_percentage=discount_percentage, description=description, is_active=is_active)
+        messages.success(request, 'Coupon created successfully!')
+
+    return render(request, 'coupon_management.html', {'coupons': coupons})
+
+# Delete a coupon
+def delete_coupon(request, coupon_id):
+    coupon = Coupon.objects.get(id=coupon_id)
+    coupon.delete()
+    messages.success(request, 'Coupon deleted successfully!')
+    return redirect('coupon_list')
+
+def manage_offers(request):
+    offers = Offer.objects.all()  # Fetch all offers
+    products = Product.objects.all()  # Fetch all products
+    categories = Category.objects.all()  # Fetch all categories
+
+    # Add the related products, categories, or referral codes for each offer
+    offers_with_details = []
+    for offer in offers:
+        applied_items = []
+        if offer.offer_type == 'product':
+            applied_items = [product.name for product in offer.products.all()]
+        elif offer.offer_type == 'category':
+            applied_items = [category.name for category in offer.categories.all()]
+        elif offer.offer_type == 'referral':
+            applied_items = [f"Referral Code: {offer.referral_code}"]
+        
+        offers_with_details.append({
+            'offer': offer,
+            'applied_items': applied_items
+        })
+
+    if request.method == 'POST':
+        offer_id = request.POST.get('offer_id', None)
+        name = request.POST.get('name')
+        discount_percentage = request.POST.get('discount_percentage')
+        start_date = request.POST.get('start_date')
+        end_date = request.POST.get('end_date')
+        offer_type = request.POST.get('offer_type')
+        products_selected = request.POST.getlist('products')
+        categories_selected = request.POST.getlist('categories')
+        referral_code = request.POST.get('referral_code', '')
+
+        if offer_id:  # Edit existing offer
+            offer = get_object_or_404(Offer, id=offer_id)
+            offer.name = name
+            offer.discount_percentage = discount_percentage
+            offer.start_date = start_date
+            offer.end_date = end_date
+            offer.offer_type = offer_type
+            if offer_type == 'product':
+                offer.products.set(Product.objects.filter(id__in=products_selected))
+                offer.categories.clear()
+                offer.referral_code = ''
+            elif offer_type == 'category':
+                offer.categories.set(Category.objects.filter(id__in=categories_selected))
+                offer.products.clear()
+                offer.referral_code = ''
+            elif offer_type == 'referral':
+                offer.referral_code = referral_code
+                offer.products.clear()
+                offer.categories.clear()
+            offer.save()
+            messages.success(request, "Offer updated successfully!")
+        else:  # Create new offer
+            offer = Offer.objects.create(
+                name=name,
+                discount_percentage=discount_percentage,
+                start_date=start_date,
+                end_date=end_date,
+                offer_type=offer_type
+            )
+            if offer_type == 'product':
+                offer.products.set(Product.objects.filter(id__in=products_selected))
+            elif offer_type == 'category':
+                offer.categories.set(Category.objects.filter(id__in=categories_selected))
+            elif offer_type == 'referral':
+                offer.referral_code = referral_code
+            offer.save()
+            messages.success(request, "Offer created successfully!")
+
+        return redirect('manage_offers')
+
+    return render(request, 'offer_management.html', {
+        'offers_with_products': offers_with_details,
+        'products': products,
+        'categories': categories
+    })
+
+
+def delete_offer(request, offer_id):
+    offer = get_object_or_404(Offer, id=offer_id)
+    offer.delete()
+    messages.success(request, "Offer deleted successfully!")
+    return redirect('manage_offers')

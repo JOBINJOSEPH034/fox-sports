@@ -84,3 +84,37 @@ class ProductVariant(models.Model):
     @property
     def total_price(self):
         return self.product.price + self.additional_price     # calculate the total price for the variant (base product price + additional price)
+    
+
+
+class Coupon(models.Model):
+    code = models.CharField(max_length=50, unique=True)
+    discount_percentage = models.DecimalField(max_digits=5, decimal_places=2)
+    description = models.TextField(blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.code
+
+class Offer(models.Model):
+    PRODUCT = 'product'
+    CATEGORY = 'category'
+    REFERRAL = 'referral'
+
+    OFFER_TYPES = [
+        (PRODUCT, 'Product Offer'),
+        (CATEGORY, 'Category Offer'),
+        (REFERRAL, 'Referral Offer'),
+    ]
+
+    name = models.CharField(max_length=255)
+    discount_percentage = models.DecimalField(max_digits=5, decimal_places=2)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    offer_type = models.CharField(max_length=20, choices=OFFER_TYPES)
+    products = models.ManyToManyField(Product, blank=True)
+    categories = models.ManyToManyField(Category, blank=True)
+    referral_code = models.CharField(max_length=255, blank=True, null=True)
+
+    def __str__(self):
+        return self.name

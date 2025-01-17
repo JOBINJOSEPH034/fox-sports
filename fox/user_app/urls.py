@@ -58,11 +58,18 @@ urlpatterns = [
     path('wishlist/remove/<int:wishlist_id>/', views.remove_from_wishlist, name='remove_from_wishlist'),
 
     path('add_to_wishlist/<int:product_id>/', views.add_to_wishlist, name='add_to_wishlist'),
-    path('remove_from_wishlist/<int:product_id>/', views.remove_from_wishlist, name='remove_from_wishlist'),
+    path('remove_from_wishlist/<int:id>/', views.remove_from_wishlist, name='remove_from_wishlist'),
 
 
 
-      path('wallet/', views.wallet_page, name='wallet_page'), 
+
+    path('wallet/', views.wallet_page, name='wallet_page'), 
+
+  path('request-return/', views.request_return, name='request_return'),
+
+
+   path('apply-coupon/', views.apply_coupon, name='apply_coupon'),
+    path('remove-coupon/', views.remove_coupon, name='remove_coupon'), 
 
 
 ]

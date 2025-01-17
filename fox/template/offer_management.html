@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block body %}
+<div class="page-wrapper" >
+<div class="container mt-5">
+    <h2 class="mb-4">Manage Offers</h2>
+
+    <!-- Add New Offer Button -->
+    <a href="#addOfferModal" data-bs-toggle="modal" class="btn btn-primary mb-3">Add New Offer</a>
+
+    <!-- Offers List Table -->
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Discount</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Offer Type</th>
+                <th>Products</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for offer_data in offers_with_products %}
+                <tr>
+                    <td>{{ offer_data.offer.name }}</td>
+                    <td>{{ offer_data.offer.discount_percentage }}%</td>
+                    <td>{{ offer_data.offer.start_date }}</td>
+                    <td>{{ offer_data.offer.end_date }}</td>
+                    <td>{{ offer_data.offer.get_offer_type_display }}</td>
+                    <td>
+                      {% for item in offer_data.applied_items %}
+                          <span>{{ item }}</span><br>
+                      {% endfor %}
+                  </td>
+                  
+                    <td>
+                        <!-- Edit Button -->
+                        <a href="#addOfferModal" data-bs-toggle="modal" data-bs-target="#addOfferModal" 
+                           class="btn btn-warning btn-sm" 
+                           data-offer-id="{{ offer_data.offer.id }}"
+                           data-offer-name="{{ offer_data.offer.name }}"
+                           data-discount="{{ offer_data.offer.discount_percentage }}"
+                           data-start="{{ offer_data.offer.start_date }}"
+                           data-end="{{ offer_data.offer.end_date }}"
+                           data-type="{{ offer_data.offer.offer_type }}"
+                           data-products="{{ offer_data.products|join:', ' }}"
+                           data-categories="{{ offer_data.categories|join:', ' }}">Edit</a>
+                        
+                        <!-- Delete Button -->
+                        <a href="{% url 'delete_offer' offer_data.offer.id %}" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this offer?')">Delete</a>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Add/Edit Offer Modal -->
+    <div class="modal fade" id="addOfferModal" tabindex="-1" aria-labelledby="addOfferModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addOfferModalLabel">Add / Edit Offer</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="offer_id" id="offer_id">
+
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Offer Name</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="discount_percentage" class="form-label">Discount Percentage</label>
+                            <input type="number" class="form-control" id="discount_percentage" name="discount_percentage" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="start_date" class="form-label">Start Date</label>
+                            <input type="date" class="form-control" id="start_date" name="start_date" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="end_date" class="form-label">End Date</label>
+                            <input type="date" class="form-control" id="end_date" name="end_date" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="offer_type" class="form-label">Offer Type</label>
+                            <select class="form-select" id="offer_type" name="offer_type" required>
+                                <option value="product">Product Offer</option>
+                                <option value="category">Category Offer</option>
+                                <option value="referral">Referral Offer</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="products" class="form-label">Select Products</label>
+                            <select class="form-select" id="products" name="products" multiple required>
+                                {% for product in products %}
+                                    <option value="{{ product.id }}">{{ product.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="categories" class="form-label">Select Categories</label>
+                            <select class="form-select" id="categories" name="categories" multiple>
+                                {% for category in categories %}
+                                    <option value="{{ category.id }}">{{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                          <label for="referral_code" class="form-label">Referral Code</label>
+                          <input type="text" class="form-control" id="referral_code" name="referral_code" disabled>
+                      </div>
+                      
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" class="btn btn-primary">Save Offer</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+</div>
+
+<!-- Add Bootstrap JS for Modal -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- JavaScript to Prefill Edit Offer Modal -->
+<script>
+  document.getElementById('offer_type').addEventListener('change', function () {
+      const selectedType = this.value;
+      const productField = document.getElementById('products');
+      const categoryField = document.getElementById('categories');
+      const referralField = document.getElementById('referral_code');
+
+      if (selectedType === 'product') {
+          productField.disabled = false;
+          categoryField.disabled = true;
+          referralField.disabled = true;
+      } else if (selectedType === 'category') {
+          productField.disabled = true;
+          categoryField.disabled = false;
+          referralField.disabled = true;
+      } else if (selectedType === 'referral') {
+          productField.disabled = true;
+          categoryField.disabled = true;
+          referralField.disabled = false;
+      }
+  });
+</script>
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" />
+
+<script src="{% static 'assets/js/jquery-3.6.0.min.js' %}"></script>
+<script src="{% static 'assets/js/popper.min.js' %}"></script>
+<script src="{% static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
+<script src="{% static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
+<script src="{% static 'assets/js/script.js' %}"></script>
+
+{% endblock %}

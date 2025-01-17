@@ -1,5 +1,6 @@
+import json
 from django.shortcuts import render ,redirect,get_object_or_404
-from admin_app.models import Category ,Product,ProductVariant,Brand
+from admin_app.models import Category ,Product,ProductVariant,Brand,Coupon
 from .models import Cart, CartItem,Address, Order,OrderItem,Wishlist,OrderReturn,Wallet,Transaction
 from django.http import JsonResponse
 from django.core.paginator import Paginator
@@ -12,7 +13,10 @@ from .forms import ReturnRequestForm
 from datetime import timedelta
 from django.utils.timezone import now
 from django.db.models import Q
+from django.http import Http404
 from django.http import JsonResponse
+
+
 from decimal import Decimal
 import random
 import uuid
@@ -255,17 +259,59 @@ def product_details(request, product_id):
 
 @login_required
 def cart_page(request):
+    # Get the user's cart
     cart, created = Cart.objects.get_or_create(user=request.user)
     cart_items = CartItem.objects.filter(cart=cart)
+
+    # Calculate the cart total
     cart_total = sum(item.total_price for item in cart_items)
     total_items = cart_items.aggregate(total_items=Sum('quantity'))['total_items'] or 0
+
+    # Initialize discount and final total
+    discount_amount = 0
+    final_total = cart_total
+    coupon_code = None
+
+    # Check if a coupon is applied and handle coupon removal
+    if cart.applied_coupon:
+        coupon = cart.applied_coupon
+        discount_amount = (cart_total * coupon.discount_percentage) / 100
+        final_total = cart_total - discount_amount
+        coupon_code = coupon.code
+
+    # Handle coupon application
+    if request.method == 'POST':
+        if 'coupon_code' in request.POST:
+            coupon_code = request.POST.get('coupon_code')
+            try:
+                coupon = Coupon.objects.get(code=coupon_code, is_active=True)
+                cart.applied_coupon = coupon  # Apply the coupon to the cart
+                cart.save()
+                discount_amount = (cart_total * coupon.discount_percentage) / 100
+                final_total = cart_total - discount_amount
+                messages.success(request, f'Coupon applied! You get {coupon.discount_percentage}% off.')
+            except Coupon.DoesNotExist:
+                messages.error(request, 'Invalid or expired coupon code.')
+        
+        # Handle coupon removal
+        if 'remove_coupon' in request.POST:
+            cart.applied_coupon = None  # Remove the coupon from the cart
+            cart.save()
+            discount_amount = 0
+            final_total = cart_total
+            coupon_code = None
+            messages.success(request, 'Coupon removed successfully.')
+
+        return redirect('cart_page')  # Redirect to the same cart page to update the coupon details
+
     return render(request, 'cart.html', {
         'cart_items': cart_items,
         'cart_total': cart_total,
         'total_items': total_items,
+        'discount_amount': discount_amount,
+        'final_total': final_total,
+        'coupon_code': coupon_code,  # Pass the coupon code to the template
     })
-
-
 
 
 
@@ -289,7 +335,40 @@ def add_to_cart(request, product_id):
     messages.success(request, f"{product.name} added to cart!")
     return redirect('cart_page')
 
+@login_required
+def apply_coupon(request):
+    if request.method == "POST":
+        data = json.loads(request.body)
+        coupon_code = data.get('coupon_code')
 
+        try:
+            coupon = Coupon.objects.get(code=coupon_code)
+            cart = Cart.objects.get(user=request.user)
+            cart.applied_coupon = coupon
+            cart.save()
+
+            # Calculate discount
+            discount_amount = cart.total_price * coupon.discount_percentage / 100
+            final_total = cart.total_price - discount_amount
+
+            return JsonResponse({'success': True, 'coupon_code': coupon_code, 'final_total': final_total})
+
+        except Coupon.DoesNotExist:
+            return JsonResponse({'success': False, 'message': 'Invalid coupon code.'})
+
+@login_required
+def remove_coupon(request):
+    if request.method == "POST":
+        cart = Cart.objects.get(user=request.user)
+        cart.applied_coupon = None
+        cart.save()
+
+        # Recalculate total without discount
+        final_total = cart.total_price  # Adjust if any other logic for final total is needed
+
+        return JsonResponse({'success': True, 'final_total': final_total})
+
+    return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
 
 @login_required
@@ -426,19 +505,25 @@ def delete_address(request, address_id):
     address = get_object_or_404(Address, id=address_id, user=request.user)
     address.delete()
     return redirect('manage_addresses')
-
-
 @login_required
 def checkout(request):
     cart, created = Cart.objects.get_or_create(user=request.user)
     cart_items = CartItem.objects.filter(cart=cart)
     cart_total = sum(item.total_price for item in cart_items)
+    addresses = Address.objects.filter(user=request.user)
+
+    # Ensure the cart has an applied_coupon field
+    coupon_code = cart.applied_coupon.code if cart.applied_coupon else None
+    discount_amount = 0
+
+    if cart.applied_coupon:
+        discount_amount = (cart_total * cart.applied_coupon.discount_percentage) / 100
+
+    final_total = cart_total - discount_amount
 
     if not cart_items.exists():
         messages.error(request, "Your cart is empty. Please add items to your cart before checking out.")
         return redirect('shop')
-
-    addresses = Address.objects.filter(user=request.user)
 
     if request.method == 'POST':
         address_id = request.POST.get('selected_address')
@@ -453,7 +538,7 @@ def checkout(request):
         order = Order.objects.create(
             user=request.user,
             address=selected_address,
-            total_price=cart_total,
+            total_price=final_total,  # Use the final total
             payment_method=payment_method
         )
 
@@ -478,10 +563,12 @@ def checkout(request):
 
     return render(request, 'checkout.html', {
         'cart_items': cart_items,
-        'cart_total': cart_total,
+        'cart_total': cart_total,  # For reference, not displayed as final
+        'final_total': final_total,  # Updated value with discount
+        'discount_amount': discount_amount,  # Discount applied
+        'coupon_code': coupon_code,  # Display applied coupon code
         'addresses': addresses,
     })
-
 
 
 #display order sucess messg 
@@ -491,15 +578,16 @@ def order_success(request, order_id):
     return render(request, 'order_success.html', {'order': order})
 
 
-
-#order management for user
-@login_required
 def order_management(request):
-    orders = Order.objects.filter(user=request.user).order_by('-created_at')
-    return render(request, 'profile/orders.html', {'orders': orders})
-
-
-
+    # Get all orders
+    orders = Order.objects.all()
+    
+    # Set up pagination
+    paginator = Paginator(orders, 10)  # Show 10 orders per page
+    page_number = request.GET.get('page')  # Get the page number from the request
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'profile/orders.html', {'page_obj': page_obj})
 
 @login_required
 def cancel_order(request, order_id):
@@ -515,29 +603,29 @@ def cancel_order(request, order_id):
 
 
 @login_required
-def request_return(request, order_id):
-    order = get_object_or_404(Order, id=order_id, user=request.user)
+def request_return(request):
+    if request.method == 'POST':
+        order_id = request.POST.get('order_id')
+        reason = request.POST.get('reason')
+        additional_comments = request.POST.get('additional_comments')
+        
+        try:
+            order = Order.objects.get(id=order_id, user=request.user)
+            if order.status == 'Delivered':
+                # Create a return request
+                OrderReturn.objects.create(order=order, reason=reason, additional_comments=additional_comments)
+                order.status = 'Return Pending'
+                order.return_requested_at = now()
+                order.save()
+                return JsonResponse({'message': 'Return request has been submitted successfully.', 'status': 'success'})
+            else:
+                return JsonResponse({'message': 'Return is not allowed for this order.', 'status': 'error'})
+        except Order.DoesNotExist:
+            return JsonResponse({'message': 'Order not found.', 'status': 'error'})
+    
+    return JsonResponse({'message': 'Invalid request.', 'status': 'error'})
 
-    # Check if the return is allowed
-    if not order.return_allowed:
-        messages.error(request, "Return is not allowed for this order.")
-        return redirect('order_management')
 
-    # Handle form submission
-    if request.method == "POST":
-        reason = request.POST.get("reason")
-        additional_comments = request.POST.get("additional_comments")
-        OrderReturn.objects.create(
-            order=order,
-            reason=reason,
-            additional_comments=additional_comments
-        )
-        order.status = "Return Requested"
-        order.save()
-        messages.success(request, "Your return request has been submitted.")
-        return redirect('order_management')
-
-    return render(request, 'profile/request_return.html', {'order': order})
 
 # User Profile View (Displays user details)
 @login_required
@@ -577,23 +665,22 @@ def wishlist_view(request):
     # Pass the wishlist to the template
     return render(request, 'profile/wishlist.html', {'wishlist': wishlist})
 
+
 @login_required
 def add_to_cart_from_wishlist(request, wishlist_item_id):
     # Get the wishlist item by ID
     wishlist_item = Wishlist.objects.get(id=wishlist_item_id)
 
-    # Get the associated product and variant from the wishlist item
+    # Get the associated product from the wishlist item
     product = wishlist_item.product
-    variant = wishlist_item.variant
 
     # Check if the user already has a cart, or create a new one
     cart, created = Cart.objects.get_or_create(user=request.user)
 
-    # Check if the product (with variant) already exists in the cart
+    # Check if the product already exists in the cart
     cart_item, created = CartItem.objects.get_or_create(
         cart=cart,
-        product=product,
-        variant=variant
+        product=product
     )
 
     # If the product is already in the cart, update the quantity
@@ -602,16 +689,19 @@ def add_to_cart_from_wishlist(request, wishlist_item_id):
         cart_item.save()
 
     # Redirect to the cart page or wherever you want
-    return redirect('cart:cart_detail')  
+    return redirect('cart:cart_detail')
+
+def remove_from_wishlist(request, product_id):
+    try:
+        product = get_object_or_404(Product, id=product_id)
+        Wishlist.objects.filter(user=request.user, product=product).delete()
+        return redirect('wishlist_view')  # Replace with the name of your wishlist view
+    except Http404:
+        # If the product doesn't exist, optionally display a message or handle it
+        return redirect('wishlist_view')  # Or show an error page
 
 
-@login_required
-def remove_from_wishlist(request, wishlist_item_id):
-    # Remove item from wishlist
-    wishlist_item = Wishlist.objects.get(id=wishlist_item_id)
-    wishlist_item.delete()
 
-    return redirect('wishlist') 
 @login_required
 def toggle_wishlist(request, product_id):
     product = Product.objects.get(id=product_id)
@@ -644,20 +734,11 @@ def add_to_wishlist(request, product_id):
             return JsonResponse({'success': False, 'message': 'Product already in wishlist'})
     return JsonResponse({'success': False, 'message': 'Invalid request'})
 
-@csrf_exempt
-def remove_from_wishlist(request, product_id):
-    if request.method == 'POST':
-        product = Product.objects.get(id=product_id)
-        user = request.user
-        wishlist = Wishlist.objects.get(user=user)
-        
-        # Remove product from wishlist
-        if product in wishlist.products.all():
-            wishlist.products.remove(product)
-            return JsonResponse({'success': True})
-        else:
-            return JsonResponse({'success': False, 'message': 'Product not in wishlist'})
-    return JsonResponse({'success': False, 'message': 'Invalid request'})
+@login_required
+def remove_from_wishlist(request, id):  # Matches <int:id> in URL pattern
+    wishlist_item = Wishlist.objects.get(id=id, user=request.user)
+    wishlist_item.delete()
+    return redirect('wishlist')
 
 
 @login_required

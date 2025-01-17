@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block body %}
+
+<div  class="page-wrapper">
+<div class="container mt-4">
+    <div class="page-header">
+        <h3>Coupon Management</h3>
+        <a href="#" class="btn btn-outline-primary float-right mb-3" data-bs-toggle="modal" data-bs-target="#createCouponModal"><i class="fas fa-plus"></i> Create Coupon</a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Coupon Code</th>
+                    <th>Discount</th>
+                    <th>Description</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for coupon in coupons %}
+                <tr>
+                    <td>{{ coupon.code }}</td>
+                    <td>{{ coupon.discount_percentage }}%</td>
+                    <td>{{ coupon.description }}</td>
+                    <td>{% if coupon.is_active %}Active{% else %}Inactive{% endif %}</td>
+                    <td>
+                        <a href="{% url 'delete_coupon' coupon.id %}" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this coupon?')"><i class="fas fa-trash"></i> Delete</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Modal for Creating Coupon -->
+    <div class="modal fade" id="createCouponModal" tabindex="-1" aria-labelledby="createCouponModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createCouponModalLabel">Create New Coupon</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="POST" class="p-4">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="code" class="form-label">Coupon Code</label>
+                        <input type="text" class="form-control" id="code" name="code" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="discount_percentage" class="form-label">Discount Percentage</label>
+                        <input type="number" class="form-control" id="discount_percentage" name="discount_percentage" required min="1" max="100">
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description"></textarea>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="is_active" name="is_active" checked>
+                        <label class="form-check-label" for="is_active">Active</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create Coupon</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- Include JS dependencies -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" />
+
+<script src="{% static 'assets/js/jquery-3.6.0.min.js' %}"></script>
+<script src="{% static 'assets/js/popper.min.js' %}"></script>
+<script src="{% static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
+<script src="{% static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
+<script src="{% static 'assets/js/script.js' %}"></script>
+
+
+{% endblock %}

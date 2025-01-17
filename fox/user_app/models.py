@@ -1,8 +1,9 @@
 
 from django.db import models
-from admin_app.models import Product, ProductVariant
+from admin_app.models import Product, ProductVariant,Coupon
 from django.contrib.auth.models import User
 from datetime import timedelta,datetime
+from django.utils.timezone import now, make_aware
 from django.utils.timezone import now
 import random
 from decimal import Decimal
@@ -11,7 +12,17 @@ import string
 #for user cart 
 class Cart(models.Model):
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE)
+    applied_coupon = models.ForeignKey(Coupon, null=True, blank=True, on_delete=models.SET_NULL)
     created_at = models.DateTimeField(auto_now_add=True)
+    total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00) 
+
+     
+    def update_total_price(self):
+        """Method to recalculate the total price based on cart items"""
+        total = sum(item.total_price for item in self.cartitem_set.all())
+        self.total_price = total
+        self.save()
+
 
     def __str__(self):
         return f"Cart of {self.user.username}"
@@ -58,6 +69,8 @@ class Order(models.Model):
         ('Out for Delivery', 'Out for Delivery'),
         ('Delivered', 'Delivered'),
         ('Cancelled', 'Cancelled'),
+        ('Return Pending', 'Return Pending'),
+        ('Return Accepted', 'Return Accepted'),
     ]
 
     PAYMENT_CHOICES = [
@@ -74,6 +87,7 @@ class Order(models.Model):
     payment_method = models.CharField(max_length=20, choices=PAYMENT_CHOICES,default='cod')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
     created_at = models.DateTimeField(auto_now_add=True)
+    return_requested_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"Order {self.id} - {self.user.username}"
@@ -85,9 +99,9 @@ class Order(models.Model):
 
     @property
     def return_allowed(self):
-        # Allow return only if the order was delivered within the last 14 days
         if self.status == 'Delivered':
-            return datetime.now() <= self.created_at + timedelta(days=14)
+            # Directly compare with timezone-aware datetime
+            return now() <= self.created_at + timedelta(days=14)
         return False
      
             
@@ -150,20 +164,18 @@ class UserProfile(models.Model):
 
 
 
-#for wishlist
 class Wishlist(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)  # Correct reference to admin app
-    variant = models.ForeignKey(ProductVariant, on_delete=models.SET_NULL, null=True, blank=True)  # Correct reference to admin app
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    added_on = models.DateField(default=now)
 
     class Meta:
-        unique_together = ('user', 'product', 'variant')
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'product'], name='unique_user_product')
+        ]
 
     def __str__(self):
-        if self.variant:
-            return f"{self.user.username}'s Wishlist - {self.product.name} ({self.variant.size})"
         return f"{self.user.username}'s Wishlist - {self.product.name}"
-    
 
 class Wallet(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='wallet')

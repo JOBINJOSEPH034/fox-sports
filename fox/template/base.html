@@ -160,12 +160,25 @@
                               <li><a href="{% url 'brand_management' %}">Brand Management</a></li>
                           </ul>
                       </li>
+
+                      <li class="submenu">
+                        <a href="#"><i class="fas fa-warehouse"></i> <span> Coupon</span> <span class="menu-arrow"></span></a>
+                        <ul>
+                            <li><a href="{% url 'coupon_list' %}">Coupon Management</a></li>
+                        </ul>
+                    </li>
                       <li class="submenu">
                           <a href="#"><i class="fas fa-shopping-cart"></i> <span> Orders</span> <span class="menu-arrow"></span></a>
                           <ul>
                               <li><a href="{% url 'admin_order_management' %}">Order Management</a></li>
                           </ul>
                       </li>
+                      <li class="submenu">
+                        <a href="#"><i class="fas fa-warehouse"></i> <span> Offers</span> <span class="menu-arrow"></span></a>
+                        <ul>
+                            <li><a href="{% url 'manage_offers' %}">Offers Management</a></li>
+                        </ul>
+                    </li>
                       <li class="submenu">
                           <a href="#"><i class="fas fa-warehouse"></i> <span> Inventory</span> <span class="menu-arrow"></span></a>
                           <ul>

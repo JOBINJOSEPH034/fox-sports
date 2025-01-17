@@ -52,6 +52,15 @@ urlpatterns = [
     path('brand-management/delete/<int:brand_id>/', views.delete_brand, name='delete_brand'),
     path('brand-management/deactivate/<int:brand_id>/', views.deactivate_brand, name='deactivate_brand'),
     path('brand-management/toggle-status/<int:brand_id>/', views.toggle_brand_status, name='toggle_brand_status'),
+
+
+
+    path('coupons/', views.coupon_list, name='coupon_list'),
+    path('coupons/delete/<int:coupon_id>/', views.delete_coupon, name='delete_coupon'),
+
+
+    path('manage-offers/', views.manage_offers, name='manage_offers'),
+    path('delete-offer/<int:offer_id>/', views.delete_offer, name='delete_offer'),
 ]
 
 urlpatterns += static(settings.MEDIA_URL,document_root=settings.MEDIA_ROOT)
