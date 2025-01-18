@@ -537,12 +537,14 @@ def checkout(request):
         payment_method = request.POST.get('payment_method')
         address_id = request.POST.get('selected_address')
 
+        # Address validation
         if not address_id:
             messages.error(request, "Please select an address.")
             return redirect('checkout')
 
         selected_address = get_object_or_404(Address, id=address_id, user=request.user)
 
+        # Create Order for the selected payment method
         if payment_method == 'razorpay':
             return JsonResponse({'order_id': razorpay_order['id'], 'final_total': final_total})
 
@@ -552,6 +554,9 @@ def checkout(request):
                 user=request.user,
                 address=selected_address,
                 total_price=final_total,
+                subtotal=cart_total,  # Store cart total before discounts
+                discount_percentage=cart.applied_coupon.discount_percentage if cart.applied_coupon else 0,
+                coupon_discount=discount_amount,
                 payment_method='cod'
             )
             for item in cart_items:
@@ -579,6 +584,9 @@ def checkout(request):
                 user=request.user,
                 address=selected_address,
                 total_price=final_total,
+                subtotal=cart_total,  # Store cart total before discounts
+                discount_percentage=cart.applied_coupon.discount_percentage if cart.applied_coupon else 0,
+                coupon_discount=discount_amount,
                 payment_method='wallet'
             )
             for item in cart_items:
@@ -602,9 +610,8 @@ def checkout(request):
         'addresses': addresses,
         'razorpay_order_id': razorpay_order['id'],
         'razorpay_key_id': settings.RAZORPAY_KEY_ID,
-         'final_total_in_paise': final_total * 100,
+        'final_total_in_paise': final_total * 100,
     })
-
 
 from django.views.decorators.csrf import csrf_exempt
 
@@ -655,7 +662,7 @@ def order_success(request, order_id):
 
 def order_management(request):
     # Get all orders
-    orders = Order.objects.all()
+    orders = Order.objects.all().order_by('-created_at')
     
     # Set up pagination
     paginator = Paginator(orders, 10)  # Show 10 orders per page
@@ -735,7 +742,7 @@ def profile(request):
 @login_required
 def wishlist_view(request):
     # Fetch the wishlist items for the logged-in user
-    wishlist = Wishlist.objects.filter(user=request.user)
+    wishlist = Wishlist.objects.filter(user=request.user).order_by('-created_at')
 
     # Pass the wishlist to the template
     return render(request, 'profile/wishlist.html', {'wishlist': wishlist})
@@ -821,6 +828,12 @@ def wallet_page(request):
     wallet, created = Wallet.objects.get_or_create(user=request.user)
     transactions = wallet.transactions.all().order_by('-created_at')
 
+      # Pagination
+    paginator = Paginator(transactions, 8)  # Show 10 transactions per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+   
     if request.method == 'POST':
         action = request.POST.get('action')
         amount = request.POST.get('amount')
@@ -862,6 +875,7 @@ def wallet_page(request):
     return render(request, 'profile/wallet_page.html', {
         'wallet': wallet,
         'transactions': transactions,
+         'page_obj': page_obj, 
     })
 
 

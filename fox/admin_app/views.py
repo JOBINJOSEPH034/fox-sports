@@ -51,7 +51,7 @@ def admin_home(request):
 @login_required
 @never_cache
 def product_list(request):
-    products = Product.objects.all()
+    products = Product.objects.all().order_by('-created_at')
 
     paginator = Paginator(products, 8)  # Show 10 products per page
     page_number = request.GET.get('page')
@@ -524,6 +524,12 @@ def manage_offers(request):
     products = Product.objects.all()  # Fetch all products
     categories = Category.objects.all()  # Fetch all categories
 
+    
+    # Pagination
+    paginator = Paginator(offers, 10)  # Show 10 transactions per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
     # Add the related products, categories, or referral codes for each offer
     offers_with_details = []
     for offer in offers:
@@ -605,7 +611,8 @@ def manage_offers(request):
     return render(request, 'offer_management.html', {
         'offers_with_products': offers_with_details,
         'products': products,
-        'categories': categories
+        'categories': categories,
+         'page_obj': page_obj,
     })
 
 
@@ -695,30 +702,32 @@ import openpyxl
 from user_app.models import Order, OrderItem  # Import Order and OrderItem from user_app
 import io
 
-
+from django.db.models import F, Sum
+from datetime import datetime, timedelta
+from django.utils import timezone
+@login_required
 def sales_report(request):
+
+   
     # Default filters
     date_filter = request.GET.get('date_filter', 'today')  # Default to today
+    
     
     # Date range filters
     if date_filter == 'today':
         start_date = timezone.make_aware(datetime.combine(datetime.today(), datetime.min.time()))
         end_date = timezone.make_aware(datetime.combine(datetime.today(), datetime.max.time()))
-    
     elif date_filter == 'this_week':
         today = datetime.today()
         start_date = timezone.make_aware(datetime.combine(today - timedelta(days=today.weekday()), datetime.min.time()))
         end_date = timezone.make_aware(datetime.combine(today + timedelta(days=(6 - today.weekday())), datetime.max.time()))
-    
     elif date_filter == 'this_month':
         today = datetime.today()
         start_date = timezone.make_aware(datetime.combine(today.replace(day=1), datetime.min.time()))
         end_date = timezone.make_aware(datetime.combine(today.replace(day=1) + timedelta(days=32), datetime.min.time()) - timedelta(seconds=1))
-    
     else:  # custom date range
         start_date_str = request.GET.get('start_date', '')
         end_date_str = request.GET.get('end_date', '')
-        
         if start_date_str and end_date_str:
             start_date = timezone.make_aware(datetime.combine(datetime.strptime(start_date_str, '%Y-%m-%d'), datetime.min.time()))
             end_date = timezone.make_aware(datetime.combine(datetime.strptime(end_date_str, '%Y-%m-%d'), datetime.max.time()))
@@ -726,31 +735,41 @@ def sales_report(request):
             start_date = end_date = None
 
     # Filter Orders based on the selected date range
-    orders = Order.objects.all()
+    orders = Order.objects.all().order_by('-created_at')
     if start_date and end_date:
         orders = orders.filter(created_at__range=[start_date, end_date])
+
+    # Filter out canceled orders from the summary calculations
+    non_canceled_orders = orders.exclude(status='canceled')
 
     # Price range filters
     min_price = request.GET.get('min_price')
     max_price = request.GET.get('max_price')
     if min_price:
-        orders = orders.filter(total_price__gte=float(min_price))
+        non_canceled_orders = non_canceled_orders.filter(total_price__gte=float(min_price))
     if max_price:
-        orders = orders.filter(total_price__lte=float(max_price))
+        non_canceled_orders = non_canceled_orders.filter(total_price__lte=float(max_price))
 
-    # Aggregation for summary statistics
-    total_sales = orders.aggregate(Sum('total_price'))['total_price__sum'] or 0
-    total_orders = orders.count()
-    total_discount = orders.aggregate(Sum('offer_discount'))['offer_discount__sum'] or 0
+    # Aggregation for summary statistics (excluding canceled orders)
+    total_sales = non_canceled_orders.aggregate(total_sales=Sum('total_price'))['total_sales'] or 0
+    total_orders = non_canceled_orders.count()
+    
+    # Calculate total discounts (excluding canceled orders)
+    total_discount = non_canceled_orders.aggregate(
+        total_discount=Sum(F('offer_discount') + F('coupon_discount'))
+    )['total_discount'] or 0
+
     average_order_value = total_sales / total_orders if total_orders > 0 else 0
+    
 
     context = {
-        'orders': orders,
+        'orders': orders,  # All orders, including canceled ones
         'total_sales': total_sales,
         'total_orders': total_orders,
         'total_discount': total_discount,
-        'average_order_value': average_order_value,
+        'average_order_value': round(average_order_value, 2),
         'date_filter': date_filter,
+       
     }
 
     return render(request, 'sales_report.html', context)

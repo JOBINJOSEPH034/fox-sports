@@ -120,83 +120,80 @@
           </ul>
       </div>
       <div class="sidebar" id="sidebar">
-          <div class="sidebar-inner slimscroll">
-              <div id="sidebar-menu" class="sidebar-menu">
-                  <ul>
-                      <li class="menu-title">
-                          <span>Main Menu</span>
-                      </li>
-                      <li class="submenu active">
-                          <a href="#"><i class="fas fa-tachometer-alt"></i> <span> Dashboard</span> <span class="menu-arrow"></span></a>
-                          <ul>
-                              <li><a href="{% url 'admin_home' %}" class="active">Admin Dashboard</a></li>
-                          </ul>
-                      </li>
-                      <li class="submenu">
-                          <a href="#"><i class="fas fa-boxes"></i> <span> Products</span> <span class="menu-arrow"></span></a>
-                          <ul>
-                              <li><a href="{% url 'product' %}">Products List</a></li>
-                              <li><a href="{% url 'add_product' %}">Product Add</a></li>
-                          </ul>
-                      </li>
-                      <li class="submenu">
-                          <a href="#"><i class="fas fa-users"></i> <span> Customers</span> <span class="menu-arrow"></span></a>
-                          <ul>
-                              <li><a href="{% url 'customer' %}">Customers List</a></li>
-                              <li><a href="{% url 'edit_customer' %}">Customer Edit</a></li>
-                          </ul>
-                      </li>
-                      <li class="submenu">
-                          <a href="#"><i class="fas fa-th"></i> <span> Category</span> <span class="menu-arrow"></span></a>
-                          <ul>
-                              <li><a href="{% url 'category' %}">Category List</a></li>
-                              <li><a href="{% url 'add_category' %}">Category Add</a></li>
-                          </ul>
-                      </li>
-                      <li class="submenu">
-                          <a href="#"><i class="fas fa-tags"></i> <span> Brand</span> <span class="menu-arrow"></span></a>
-                          <ul>
-                          
-                              <li><a href="{% url 'brand_management' %}">Brand Management</a></li>
-                          </ul>
-                      </li>
-
-                      <li class="submenu">
-                        <a href="#"><i class="fas fa-warehouse"></i> <span> Coupon</span> <span class="menu-arrow"></span></a>
+        <div class="sidebar-inner slimscroll">
+            <div id="sidebar-menu" class="sidebar-menu">
+                <ul>
+                    <li class="menu-title">
+                        <span>Main Menu</span>
+                    </li>
+                    <li class="submenu active">
+                        <a href="#"><i class="fas fa-tachometer-alt"></i> <span> Dashboard</span> <span class="menu-arrow"></span></a>
+                        <ul>
+                            <li><a href="{% url 'admin_home' %}" class="active">Admin Dashboard</a></li>
+                        </ul>
+                    </li>
+                    <li class="submenu">
+                        <a href="#"><i class="fas fa-cogs"></i> <span> Products</span> <span class="menu-arrow"></span></a>
+                        <ul>
+                            <li><a href="{% url 'product' %}">Products List</a></li>
+                            <li><a href="{% url 'add_product' %}">Product Add</a></li>
+                        </ul>
+                    </li>
+                    <li class="submenu">
+                        <a href="#"><i class="fas fa-users"></i> <span> Customers</span> <span class="menu-arrow"></span></a>
+                        <ul>
+                            <li><a href="{% url 'customer' %}">Customers List</a></li>
+                            <li><a href="{% url 'edit_customer' %}">Customer Edit</a></li>
+                        </ul>
+                    </li>
+                    <li class="submenu">
+                        <a href="#"><i class="fas fa-th-large"></i> <span> Category</span> <span class="menu-arrow"></span></a>
+                        <ul>
+                            <li><a href="{% url 'category' %}">Category List</a></li>
+                            <li><a href="{% url 'add_category' %}">Category Add</a></li>
+                        </ul>
+                    </li>
+                    <li class="submenu">
+                        <a href="#"><i class="fas fa-copyright"></i> <span> Brand</span> <span class="menu-arrow"></span></a>
+                        <ul>
+                            <li><a href="{% url 'brand_management' %}">Brand Management</a></li>
+                        </ul>
+                    </li>
+                    <li class="submenu">
+                        <a href="#"><i class="fas fa-gift"></i> <span> Coupon</span> <span class="menu-arrow"></span></a>
                         <ul>
                             <li><a href="{% url 'coupon_list' %}">Coupon Management</a></li>
                         </ul>
                     </li>
-                      <li class="submenu">
-                          <a href="#"><i class="fas fa-shopping-cart"></i> <span> Orders</span> <span class="menu-arrow"></span></a>
-                          <ul>
-                              <li><a href="{% url 'admin_order_management' %}">Order Management</a></li>
-                          </ul>
-                      </li>
-                      <li class="submenu">
-                        <a href="#"><i class="fas fa-warehouse"></i> <span> Offers</span> <span class="menu-arrow"></span></a>
+                    <li class="submenu">
+                        <a href="#"><i class="fas fa-shopping-cart"></i> <span> Orders</span> <span class="menu-arrow"></span></a>
+                        <ul>
+                            <li><a href="{% url 'admin_order_management' %}">Order Management</a></li>
+                        </ul>
+                    </li>
+                    <li class="submenu">
+                        <a href="#"><i class="fas fa-percent"></i> <span> Offers</span> <span class="menu-arrow"></span></a>
                         <ul>
                             <li><a href="{% url 'manage_offers' %}">Offers Management</a></li>
                         </ul>
                     </li>
-                      <li class="submenu">
-                          <a href="#"><i class="fas fa-warehouse"></i> <span> Inventory</span> <span class="menu-arrow"></span></a>
-                          <ul>
-                              <li><a href="{% url 'inventory_management' %}">Inventory Management</a></li>
-                          </ul>
-                            </li>
-
-                      <li class="submenu">
-                        <a href="#"><i class="fas fa-warehouse"></i> <span> Sales Report</span> <span class="menu-arrow"></span></a>
+                    <li class="submenu">
+                        <a href="#"><i class="fas fa-warehouse"></i> <span> Inventory</span> <span class="menu-arrow"></span></a>
+                        <ul>
+                            <li><a href="{% url 'inventory_management' %}">Inventory Management</a></li>
+                        </ul>
+                    </li>
+                    <li class="submenu">
+                        <a href="#"><i class="fas fa-chart-line"></i> <span> Sales Report</span> <span class="menu-arrow"></span></a>
                         <ul>
                             <li><a href="{% url 'sales_report' %}">Sales Report</a></li>
                         </ul>
                     </li>
-                  </ul>
-              </div>
-          </div>
-      </div>
-  
+                </ul>
+            </div>
+        </div>
+    </div>
+    
       {% block body %}
       {% endblock %}
   </div>

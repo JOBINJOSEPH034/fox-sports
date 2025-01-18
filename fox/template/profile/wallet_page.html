@@ -27,7 +27,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for transaction in transactions %}
+                        {% for transaction in page_obj %}
                         <tr>
                             <td>{{ transaction.transaction_id }}</td>
                             <td>{{ transaction.created_at|date:"Y-m-d H:i:s" }}</td>
@@ -43,6 +43,33 @@
                         {% endfor %}
                     </tbody>
                 </table>
+
+                  <!-- Pagination -->
+    <div class="col-12">
+        <nav>
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_categories %}&category={{ selected_categories|join:',' }}{% endif %}{% if selected_brands %}&brand={{ selected_brands|join:',' }}{% endif %}{% if sort_option %}&sort={{ sort_option }}{% endif %}" tabindex="-1">Previous</a>
+                    </li>
+                {% endif %}
+                {% for page_num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == page_num %}
+                        <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
+                    {% else %}
+                        <li class="page-item"><a class="page-link" href="?page={{ page_num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_categories %}&category={{ selected_categories|join:',' }}{% endif %}{% if selected_brands %}&brand={{ selected_brands|join:',' }}{% endif %}{% if sort_option %}&sort={{ sort_option }}{% endif %}">{{ page_num }}</a></li>
+                    {% endif %}
+                {% endfor %}
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_categories %}&category={{ selected_categories|join:',' }}{% endif %}{% if selected_brands %}&brand={{ selected_brands|join:',' }}{% endif %}{% if sort_option %}&sort={{ sort_option }}{% endif %}">Next</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+</div>
+
             </div>
         </div>
     </div>

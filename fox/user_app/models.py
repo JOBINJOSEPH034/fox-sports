@@ -8,6 +8,7 @@ from django.utils.timezone import now
 import random
 from decimal import Decimal
 import string
+from django.utils import timezone
 
 #for user cart 
 class Cart(models.Model):
@@ -91,6 +92,9 @@ class Order(models.Model):
     return_requested_at = models.DateTimeField(null=True, blank=True)
     offer_discount = models.FloatField(default=0)  # Add this field
     coupon_discount = models.FloatField(default=0)  # Add this field
+    subtotal = models.FloatField(default=0) 
+    discount_percentage = models.FloatField(default=0)
+
 
     def __str__(self):
         return f"Order {self.id} - {self.user.username}"
@@ -131,7 +135,25 @@ class Order(models.Model):
     def discounted_price(self):
         return self.total_price - self.offer_discount
     
-    
+    @property
+    def offer_or_coupon(self):
+        """
+        Determines whether an offer or coupon is applied to the order.
+        """
+        if self.coupon_discount > 0:
+            return f"Coupon"
+        elif self.offer_discount > 0:
+            return f"Offer"
+        return "None"
+
+    @property
+    def final_amount(self):
+        """
+        Calculates the final amount after applying discounts.
+        """
+        discount_amount = (self.total_price * self.offer_discount / 100) + (self.total_price * self.coupon_discount / 100)
+        return self.total_price - discount_amount
+
 
 class OrderReturn(models.Model):
     order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='return_request')
@@ -186,6 +208,8 @@ class Wishlist(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     added_on = models.DateField(default=now)
+    created_at = models.DateTimeField( auto_now_add=True)
+    
 
     class Meta:
         constraints = [
