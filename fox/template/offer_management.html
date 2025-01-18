@@ -18,7 +18,7 @@
                 <th>Start Date</th>
                 <th>End Date</th>
                 <th>Offer Type</th>
-                <th>Products</th>
+                <th>Offer Applied</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -62,6 +62,7 @@
         <div class="modal-dialog">
             <form method="POST">
                 {% csrf_token %}
+                <input type="hidden" name="offer_id" value="{{ offer.id }}" id="offer-id-field">
                 <div class="modal-content">
                     <div class="modal-header">
                         <h5 class="modal-title" id="addOfferModalLabel">Add / Edit Offer</h5>
@@ -139,26 +140,27 @@
 
 <!-- JavaScript to Prefill Edit Offer Modal -->
 <script>
-  document.getElementById('offer_type').addEventListener('change', function () {
-      const selectedType = this.value;
-      const productField = document.getElementById('products');
-      const categoryField = document.getElementById('categories');
-      const referralField = document.getElementById('referral_code');
+ document.getElementById('offer_type').addEventListener('change', function () {
+    const selectedType = this.value;
+    const productField = document.getElementById('products');
+    const categoryField = document.getElementById('categories');
+    const referralField = document.getElementById('referral_code');
 
-      if (selectedType === 'product') {
-          productField.disabled = false;
-          categoryField.disabled = true;
-          referralField.disabled = true;
-      } else if (selectedType === 'category') {
-          productField.disabled = true;
-          categoryField.disabled = false;
-          referralField.disabled = true;
-      } else if (selectedType === 'referral') {
-          productField.disabled = true;
-          categoryField.disabled = true;
-          referralField.disabled = false;
-      }
-  });
+    if (selectedType === 'product') {
+        productField.disabled = false;
+        categoryField.disabled = true;
+        referralField.disabled = true;
+    } else if (selectedType === 'category') {
+        productField.disabled = true;
+        categoryField.disabled = false;
+        referralField.disabled = true;
+    } else if (selectedType === 'referral') {
+        productField.disabled = true;
+        categoryField.disabled = true;
+        referralField.disabled = false;
+    }
+});
+
 </script>
 
 

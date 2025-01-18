@@ -71,7 +71,8 @@ class ProductVariant(models.Model):
     stock = models.PositiveIntegerField()  # Stock specific to this variant
 
     def __str__(self):
-        return f"{self.product.name} - {self.size or ''} {self.color or ''}".strip()
+        product_name = getattr(self.product, 'name', 'Unnamed Product')
+        return f"{product_name} - {self.size or ''} {self.color or ''}".strip()
 
     def reduce_stock(self, quantity):
         if self.stock >= quantity:
@@ -118,3 +119,17 @@ class Offer(models.Model):
 
     def __str__(self):
         return self.name
+
+
+
+
+class SalesReport(models.Model):
+    start_date = models.DateField()
+    end_date = models.DateField()
+    total_orders = models.PositiveIntegerField()
+    total_sales = models.DecimalField(max_digits=10, decimal_places=2)
+    total_refunds = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Sales Report: {self.start_date} to {self.end_date}"

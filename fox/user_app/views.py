@@ -1,3 +1,7 @@
+
+
+import razorpay 
+
 import json
 from django.shortcuts import render ,redirect,get_object_or_404
 from admin_app.models import Category ,Product,ProductVariant,Brand,Coupon
@@ -8,14 +12,14 @@ from django.db.models import Sum
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
-from django.views.decorators.csrf import csrf_exempt
-from .forms import ReturnRequestForm
-from datetime import timedelta
 from django.utils.timezone import now
 from django.db.models import Q
 from django.http import Http404
-from django.http import JsonResponse
 
+
+from django.conf import settings
+
+razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
 
 from decimal import Decimal
 import random
@@ -505,6 +509,7 @@ def delete_address(request, address_id):
     address = get_object_or_404(Address, id=address_id, user=request.user)
     address.delete()
     return redirect('manage_addresses')
+
 @login_required
 def checkout(request):
     cart, created = Cart.objects.get_or_create(user=request.user)
@@ -512,63 +517,133 @@ def checkout(request):
     cart_total = sum(item.total_price for item in cart_items)
     addresses = Address.objects.filter(user=request.user)
 
-    # Ensure the cart has an applied_coupon field
+    # Coupon-related calculations
     coupon_code = cart.applied_coupon.code if cart.applied_coupon else None
     discount_amount = 0
-
     if cart.applied_coupon:
         discount_amount = (cart_total * cart.applied_coupon.discount_percentage) / 100
 
     final_total = cart_total - discount_amount
 
-    if not cart_items.exists():
-        messages.error(request, "Your cart is empty. Please add items to your cart before checking out.")
-        return redirect('shop')
+    # Razorpay Client Initialization
+    razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+    razorpay_order = razorpay_client.order.create({
+        'amount': int(final_total * 100),  # Amount in paise
+        'currency': 'INR',
+        'payment_capture': '1'
+    })
 
     if request.method == 'POST':
-        address_id = request.POST.get('selected_address')
         payment_method = request.POST.get('payment_method')
-        
+        address_id = request.POST.get('selected_address')
+
         if not address_id:
             messages.error(request, "Please select an address.")
             return redirect('checkout')
 
         selected_address = get_object_or_404(Address, id=address_id, user=request.user)
 
-        order = Order.objects.create(
-            user=request.user,
-            address=selected_address,
-            total_price=final_total,  # Use the final total
-            payment_method=payment_method
-        )
+        if payment_method == 'razorpay':
+            return JsonResponse({'order_id': razorpay_order['id'], 'final_total': final_total})
 
-        for item in cart_items:
-            try:
-                order_item = OrderItem.objects.create(
+        elif payment_method == 'cod':
+            # Handle COD payment
+            order = Order.objects.create(
+                user=request.user,
+                address=selected_address,
+                total_price=final_total,
+                payment_method='cod'
+            )
+            for item in cart_items:
+                OrderItem.objects.create(
                     order=order,
                     product=item.product,
                     variant=item.variant,
                     quantity=item.quantity,
                     total_price=item.total_price
                 )
-                order_item.reduce_stock()
-            except ValueError as e:
-                messages.error(request, f"Stock error for {item.product.name}: {str(e)}")
-                order.delete()  
+            cart_items.delete()
+            messages.success(request, "Order placed successfully!")
+            return redirect('order_success', order_id=order.id)
+
+        elif payment_method == 'wallet':
+            wallet = Wallet.objects.get(user=request.user)
+            if wallet.balance < Decimal(final_total):
+                messages.error(request, "Insufficient wallet balance.")
                 return redirect('checkout')
-        
-        cart_items.delete()
-        
-        return redirect('order_success', order_id=order.id)
+
+            wallet.balance -= Decimal(final_total)
+            wallet.save()
+
+            order = Order.objects.create(
+                user=request.user,
+                address=selected_address,
+                total_price=final_total,
+                payment_method='wallet'
+            )
+            for item in cart_items:
+                OrderItem.objects.create(
+                    order=order,
+                    product=item.product,
+                    variant=item.variant,
+                    quantity=item.quantity,
+                    total_price=item.total_price
+                )
+            cart_items.delete()
+            messages.success(request, "Order placed successfully using wallet!")
+            return redirect('order_success', order_id=order.id)
 
     return render(request, 'checkout.html', {
         'cart_items': cart_items,
-        'cart_total': cart_total,  # For reference, not displayed as final
-        'final_total': final_total,  # Updated value with discount
-        'discount_amount': discount_amount,  # Discount applied
-        'coupon_code': coupon_code,  # Display applied coupon code
+        'cart_total': cart_total,
+        'final_total': final_total,
+        'discount_amount': discount_amount,
+        'coupon_code': coupon_code,
         'addresses': addresses,
+        'razorpay_order_id': razorpay_order['id'],
+        'razorpay_key_id': settings.RAZORPAY_KEY_ID,
+         'final_total_in_paise': final_total * 100,
     })
+
+
+from django.views.decorators.csrf import csrf_exempt
+
+
+@csrf_exempt
+def verify_payment(request):
+    data = json.loads(request.body)
+    razorpay_payment_id = data['razorpay_payment_id']
+    razorpay_order_id = data['razorpay_order_id']
+    razorpay_signature = data['razorpay_signature']
+    address_id = data['address_id']
+
+    try:
+        razorpay_client.utility.verify_payment_signature({
+            'razorpay_order_id': razorpay_order_id,
+            'razorpay_payment_id': razorpay_payment_id,
+            'razorpay_signature': razorpay_signature
+        })
+        selected_address = Address.objects.get(id=address_id)
+
+        order = Order.objects.create(
+            user=request.user,
+            address=selected_address,
+            total_price=data['final_total'],
+            payment_method='razorpay',
+            payment_id=razorpay_payment_id
+        )
+        return JsonResponse({'success': True, 'order_id': order.id})
+    except razorpay.errors.SignatureVerificationError:
+        return JsonResponse({'success': False})
+
+
+
+
+
+
+
+
+
 
 
 #display order sucess messg 
@@ -788,3 +863,5 @@ def wallet_page(request):
         'wallet': wallet,
         'transactions': transactions,
     })
+
+

@@ -1,100 +1,69 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block body %}
-   
-{% if messages %}
-<div class="messages">
-    {% for message in messages %}
-        <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
-            {{ message }}
-        </div>
-    {% endfor %}
-</div>
-{% endif %}
-
-
-         <div class="page-wrapper">
-            <div class="content container-fluid">
-               <div class="page-header">
-                  <div class="row">
-                     <div class="col-sm-12">
-                        <h3 class="page-title">Welcome Admin!</h3>
-                        <ul class="breadcrumb">
-                           <li class="breadcrumb-item active">Dashboard</li>
-                        </ul>
-                     </div>
-                  </div>
-               </div>
-               <div class="row">
-                  <div class="col-xl-3 col-sm-6 col-12 d-flex">
-                     <div class="card bg-one w-100">
-                        <div class="card-body">
-                           <div class="db-widgets d-flex justify-content-between align-items-center">
-                              
-                              <div class="db-info">
-                                 <h3>Total Products</h3>
-                                 <p>{{ total_products }}</p>
-                                 <p>Active Products: {{ active_products }}</p>
-                                 <p>Deactivated Products: {{ deactivated_products }}</p>
-                              </div>
-                           </div>
-                        </div>
-                     </div>
-                  </div>
-                  <div class="col-xl-3 col-sm-6 col-12 d-flex">
-                     <div class="card bg-two w-100">
-                        <div class="card-body">
-                           <div class="db-widgets d-flex justify-content-between align-items-center">
-                              
-                              <div class="db-info">
-                                 <h3>Total Categories</h3>
-                                  <p>{{ total_categories }}</p>
-                                  <p>Active Categories: {{ active_categories }}</p>
-                                  <p>Deactivated Categories: {{ deactivated_categories }}</p>
-                              </div>
-                           </div>
-                        </div>
-                     </div>
-                  </div>
-                  <div class="col-xl-3 col-sm-6 col-12 d-flex">
-                     <div class="card bg-three w-100">
-                        <div class="card-body">
-                           <div class="db-widgets d-flex justify-content-between align-items-center">
-                              
-                              <div class="db-info">
-                                 <h3>Total Users</h3>
-                                 <p>{{ total_users }}</p>
-                                 <p>Active Users: {{ active_users }}</p>
-                                 <p>Deactivated Users: {{ deactivated_users }}</p>
-                              </div>
-                           </div>
-                        </div>
-                     </div>
-                  </div>
-                 
-               </div>
-               <div class="db-info">
-                  
-               </div>
-             
-               
-               </div>
-             
+<div class="page-wrapper">
+    <div class="content container-fluid">
+        <div class="page-header">
+            <div class="row">
+                <div class="col-sm-12">
+                    <h3 class="page-title">Welcome Admin!</h3>
+                    <ul class="breadcrumb">
+                        <li class="breadcrumb-item active">Dashboard</li>
+                    </ul>
+                </div>
             </div>
-            <footer>
-            
-            </footer>
-         </div>
-      </div>
-      <script src="{%static 'assets/js/jquery-3.6.0.min.js' %}"></script>
-      <script src="{%static 'assets/js/popper.min.js' %}"></script>
-      <script src="{%static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
-      <script src="{%static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
-      <script src="{%static 'assets/plugins/apexchart/apexcharts.min.js' %}"></script>
-      <script src="{%static 'assets/plugins/apexchart/chart-data.js' %}"></script>
-      <script src="{%static 'assets/js/script.js' %}"></script>
-   </body>
-   
-</html>
+        </div>
+        
+        
+            <div class="col-xl-6 col-sm-12 col-12 d-flex">
+                <div class="card w-100">
+                    <div class="card-body">
+                        <h4 class="card-title">Sales Trends</h4>
+                        <div id="sales-chart"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+</div>
+
+<script src="{% static 'assets/js/jquery-3.6.0.min.js' %}"></script>
+<script src="{% static 'assets/js/popper.min.js' %}"></script>
+<script src="{% static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
+<script src="{% static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
+<script src="{% static 'assets/plugins/apexchart/apexcharts.min.js' %}"></script>
+<script>
+    // ApexCharts Configuration for Sales Trends
+    var options = {
+        chart: {
+            type: 'line',
+            height: 350
+        },
+        series: [{
+            name: 'Sales',
+            data: [500, 400, 450, 600, 700, 800, 750]  // Example sales data, replace it with actual aggregated sales data from your model
+        }],
+        xaxis: {
+            categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul']  // Example months, replace with your actual time range
+        },
+        title: {
+            text: 'Sales Trends Over Time'
+        }
+    };
+    var chart = new ApexCharts(document.querySelector("#sales-chart"), options);
+    chart.render();
+</script>
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" />
+
+<script src="{% static 'assets/js/jquery-3.6.0.min.js' %}"></script>
+<script src="{% static 'assets/js/popper.min.js' %}"></script>
+<script src="{% static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
+<script src="{% static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
+<script src="{% static 'assets/js/script.js' %}"></script>
+
 
 {% endblock %}

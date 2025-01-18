@@ -61,6 +61,10 @@ urlpatterns = [
 
     path('manage-offers/', views.manage_offers, name='manage_offers'),
     path('delete-offer/<int:offer_id>/', views.delete_offer, name='delete_offer'),
+
+  path('sales-report/', views.sales_report, name='sales_report'),
+    path('export-to-excel/', views.export_to_excel, name='export_to_excel'),
+    path('export-to-pdf/', views.export_to_pdf, name='export_to_pdf'),
 ]
 
 urlpatterns += static(settings.MEDIA_URL,document_root=settings.MEDIA_ROOT)

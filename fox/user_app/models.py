@@ -76,6 +76,7 @@ class Order(models.Model):
     PAYMENT_CHOICES = [
         ('cod', 'Cash on Delivery'),
         ('online', 'Online Payment'),
+        ('wallet', 'Wallet'),
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -88,6 +89,8 @@ class Order(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
     created_at = models.DateTimeField(auto_now_add=True)
     return_requested_at = models.DateTimeField(null=True, blank=True)
+    offer_discount = models.FloatField(default=0)  # Add this field
+    coupon_discount = models.FloatField(default=0)  # Add this field
 
     def __str__(self):
         return f"Order {self.id} - {self.user.username}"
@@ -104,6 +107,14 @@ class Order(models.Model):
             return now() <= self.created_at + timedelta(days=14)
         return False
      
+ 
+    def refund_wallet(self):
+        if self.payment_method == 'wallet' and self.status == 'Return Accepted':
+            wallet = self.user.wallet
+            if wallet:
+                wallet.balance += Decimal(self.total_price)
+                wallet.save()
+
             
     def restore_inventory(self):  
        
@@ -116,12 +127,19 @@ class Order(models.Model):
                 item.product.save()        
 
 
+    @property
+    def discounted_price(self):
+        return self.total_price - self.offer_discount
+    
+    
 
 class OrderReturn(models.Model):
     order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='return_request')
     reason = models.TextField()
     additional_comments = models.TextField(blank=True, null=True)
     requested_at = models.DateTimeField(auto_now_add=True)
+
+
 
     def __str__(self):
         return f"Return Request for Order {self.order.id}"
