@@ -201,23 +201,37 @@
             <!-- Subtotal -->
             <div class="d-flex justify-content-between mb-3">
                 <h6>Subtotal</h6>
-                <h6>₹{{ cart_total }}</h6>
+                <h6>₹{{ cart_total|floatformat:2 }}</h6>
             </div>
-
+        
             <!-- Applied Coupon -->
             {% if coupon_code %}
             <div class="d-flex justify-content-between mb-3">
                 <h6>Coupon Applied (<strong>{{ coupon_code }}</strong>)</h6>
-                <h6>- ₹{{ discount_amount }}</h6>
+                <h6>- ₹{{ discount_amount|floatformat:2 }}</h6>
             </div>
             {% endif %}
 
+            <!-- Platform Fee -->
+            <div class="d-flex justify-content-between mb-3">
+                <h6>Platform Fee</h6>
+                <h6>₹ 0</h6>
+            </div>
+
+            <!-- Delivery Charge -->
+            <div class="d-flex justify-content-between mb-3">
+                <h6>Delivery Charge</h6>
+                <h6>₹ Free</h6>
+
+            </div>
+        
             <!-- Final Total -->
             <div class="d-flex justify-content-between mb-3">
                 <h5>Total</h5>
-                <h5>₹{{ final_total }}</h5>
+                <h5>₹{{ final_total|floatformat:2 }}</h5>
             </div>
         </div>
+        
         
         <div class="pt-2">
             <h5 class="section-title position-relative text-uppercase mb-3">

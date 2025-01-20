@@ -222,8 +222,13 @@
                             <td class="align-middle">
                                 <strong>{{ item.variant.size }}</strong> <!-- Display the size -->
                             </td>
-                            <td class="align-middle">₹{{ item.product.price }}</td>
-                            <td class="align-middle">
+                            <td>
+                                {% if item.get_discounted_price < item.product.price %}
+                                    <del>{{ item.product.price }}</del> {{ item.get_discounted_price|floatformat:2 }}
+                                {% else %}
+                                    {{ item.get_discounted_price|floatformat:2 }}
+                                {% endif %}
+                            </td>                            <td class="align-middle">
                                 <form method="POST" action="{% url 'update_cart_item' item.id %}" id="update-cart-form-{{ item.id }}">
                                     {% csrf_token %}
                                     <div class="input-group" style="max-width: 180px; display: flex; justify-content: center; align-items: center;">
@@ -312,17 +317,7 @@
             </div>
             {% endif %}
 
-            <!-- Platform Fee -->
-            <div class="d-flex justify-content-between mb-3">
-                <h6>Platform Fee</h6>
-                <h6>₹ 0</h6>
-            </div>
-
-            <!-- Delivery Charge -->
-            <div class="d-flex justify-content-between mb-3">
-                <h6>Delivery Charge</h6>
-                <h6>₹ 0</h6>
-            </div>
+            
         </div>
 
         <!-- Coupon Apply Section -->

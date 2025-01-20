@@ -6,11 +6,9 @@
     <div class="container mt-4">
         <h2 class="text-center">Sales Report</h2>
         <br>
-
-        <!-- Date and Price Filter Section -->
         <div class="row mb-3">
             <!-- Date Filter -->
-            <div class="col-md-3">
+            <div class="col-md-9">
                 <form method="GET">
                     <div class="input-group">
                         <select name="date_filter" class="form-control custom-select" onchange="this.form.submit()">
@@ -20,7 +18,7 @@
                             <option value="custom" {% if date_filter == 'custom' %} selected {% endif %}>Custom Date Range</option>
                         </select>
                     </div>
-
+        
                     <!-- Custom Date Range Inputs -->
                     {% if date_filter == 'custom' %}
                     <div class="mt-3">
@@ -34,7 +32,7 @@
                     {% endif %}
                 </form>
             </div>
-
+        
             <!-- Clear Filters Button -->
             <div class="col-md-3 text-end">
                 <form method="GET">
@@ -42,8 +40,24 @@
                 </form>
             </div>
         </div>
-        <br>
-
+        
+        <!-- Export Buttons (Aligned to the right with proper spacing) -->
+        <div class="row mb-3">
+            <div class="col-md-12 text-end">
+                <div class="d-flex justify-content-end gap-2">
+                    <!-- Export to Excel Button -->
+                    <form method="GET" action="{% url 'export_to_excel' %}">
+                        <button type="submit" class="btn btn-primary">Export to Excel</button>
+                    </form>
+        
+                    <!-- Export to PDF Button -->
+                    <form method="GET" action="{% url 'export_to_pdf' %}">
+                        <button type="submit" class="btn btn-danger">Export to PDF</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
         <!-- Summary Section -->
         <div class="row mb-4">
             <div class="col-md-3">
@@ -118,54 +132,24 @@
                 {% endfor %}
             </tbody>
         </table>
-        
-        <!-- Pagination -->
-        <div class="col-12">
-            <nav>
-                <ul class="pagination justify-content-center">
-                    <!-- Previous Page Link -->
-                    {% if page_obj.has_previous %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page=1{% if date_filter %}&date_filter={{ date_filter }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}">First</a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if date_filter %}&date_filter={{ date_filter }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}">Previous</a>
-                        </li>
-                    {% endif %}
+       <!-- Pagination Controls -->
+<div class="d-flex justify-content-between">
+    <div>
+        {% if orders.has_previous %}
+            <a href="?page=1&date_filter={{ date_filter }}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% if min_price %}&min_price={{ min_price }}{% endif %}{% if max_price %}&max_price={{ max_price }}{% endif %}" class="btn btn-secondary btn-sm">First</a>
+            <a href="?page={{ orders.previous_page_number }}&date_filter={{ date_filter }}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% if min_price %}&min_price={{ min_price }}{% endif %}{% if max_price %}&max_price={{ max_price }}{% endif %}" class="btn btn-secondary btn-sm">Previous</a>
+        {% endif %}
+    </div>
+    <div>
+        {% if orders.has_next %}
+            <a href="?page={{ orders.next_page_number }}&date_filter={{ date_filter }}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% if min_price %}&min_price={{ min_price }}{% endif %}{% if max_price %}&max_price={{ max_price }}{% endif %}" class="btn btn-secondary btn-sm">Next</a>
+            <a href="?page={{ orders.paginator.num_pages }}&date_filter={{ date_filter }}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}{% if min_price %}&min_price={{ min_price }}{% endif %}{% if max_price %}&max_price={{ max_price }}{% endif %}" class="btn btn-secondary btn-sm">Last</a>
+        {% endif %}
+    </div>
+</div>
+       
 
-                    <!-- Page Numbers -->
-                    {% for page_num in page_obj.paginator.page_range %}
-                        {% if page_obj.number == page_num %}
-                            <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
-                        {% else %}
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ page_num }}{% if date_filter %}&date_filter={{ date_filter }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}">{{ page_num }}</a>
-                            </li>
-                        {% endif %}
-                    {% endfor %}
 
-                    <!-- Next Page Link -->
-                    {% if page_obj.has_next %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if date_filter %}&date_filter={{ date_filter }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}">Next</a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if date_filter %}&date_filter={{ date_filter }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}">Last</a>
-                        </li>
-                    {% endif %}
-                </ul>
-            </nav>
-        </div>
-
-        <!-- Export Buttons -->
-        <div class="d-flex justify-content-between">
-            <form method="GET" action="{% url 'export_to_excel' %}">
-                <button type="submit" class="btn btn-primary">Export to Excel</button>
-            </form>
-            <form method="GET" action="{% url 'export_to_pdf' %}">
-                <button type="submit" class="btn btn-danger">Export to PDF</button>
-            </form>
-        </div>
     </div>
 </div>
 

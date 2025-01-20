@@ -1,132 +1,91 @@
-{% extends 'base.html' %}
-{% load static %}
-{% block body %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const variantRadios = document.querySelectorAll('.variant-radio');
+        const priceDisplay = document.getElementById('price-display');
+        const offerText = document.getElementById('offer-text');
+        const stockInfo = document.getElementById('stock-info');
+        const quantityInput = document.getElementById('quantity-input');
+        const addToCartBtn = document.getElementById('add-to-cart-btn');
+    
+        const bestOfferName = "{{ best_offer.name|default:'' }}";
+        const discountPercentage = {{ best_offer.discount_percentage|default:0 }};
+    
+        variantRadios.forEach(radio => {
+            radio.addEventListener('change', function () {
+                const variantElement = this.closest('.variant-option');
+                const variantPrice = parseFloat(variantElement.dataset.price);
+                const variantStock = parseInt(variantElement.dataset.stock);
+                
+                // Calculate discounted price
+                let discountedPrice = variantPrice;
+                if (discountPercentage > 0) {
+                    const discountAmount = (variantPrice * discountPercentage) / 100;
+                    discountedPrice = Math.max(0, (variantPrice - discountAmount).toFixed(2));
+                }
+    
+                // Update UI for price
+                if (discountPercentage > 0) {
+                    offerText.innerHTML = `Offer: ${bestOfferName} - ${discountPercentage}% off`;
+                    priceDisplay.innerHTML = ` 
+                        <del style="color: grey;">₹${variantPrice}</del> 
+                        ₹${discountedPrice}
+                    `;
+                } else {
+                    offerText.innerHTML = "No current offers";
+                    priceDisplay.innerHTML = `₹${variantPrice}`;
+                }
+    
+                // Update stock info dynamically
+                if (variantStock > 0) {
+                    stockInfo.innerText = `Stock Available: ${variantStock}`;
+                    stockInfo.style.color = "green"; // Stock available color
+                    addToCartBtn.disabled = false; // Enable the Add to Cart button
+                    quantityInput.max = variantStock; // Limit quantity to available stock
+                } else {
+                    stockInfo.innerText = "Out of Stock";
+                    stockInfo.style.color = "red"; // Out of stock color
+                    addToCartBtn.disabled = true; // Disable the Add to Cart button
+                }
+    
+                // Limit quantity input to available stock
+                quantityInput.addEventListener('input', function() {
+                    if (parseInt(quantityInput.value) > variantStock) {
+                        quantityInput.value = variantStock;
+                        alert(`Only ${variantStock} items available in stock.`);
+                    }
+                });
+            });
+        });
+    
+        // Trigger change for the default selected variant
+        const defaultVariant = document.querySelector('.variant-radio:checked');
+        if (defaultVariant) {
+            defaultVariant.dispatchEvent(new Event('change'));
+        }
+    });
+    </script>
 
 
-<div class="page-wrapper">
-   <div class="content container-fluid">
-      <h3 class="page-title">Add Product</h3>
 
-      <form method="POST" enctype="multipart/form-data">
-         {% csrf_token %}
-         {{ product_form.as_p }}
+<!-- Add to Cart Button -->
+<button type="submit" class="btn btn-primary px-3" id="add-to-cart-btn">
+    <i class="fa fa-shopping-cart mr-1"></i> Add to Cart
+</button>
 
-         <!-- Product Variant Fields -->
-         <h5 class="form-title"><span>Product Variants</span></h5>
 
-         <div class="form-group">
-            <label for="size">Size</label>
-            <input type="text" class="form-control" name="size" placeholder="E.g., S, M, L, XL" required>
-         </div>
-         <div class="col-md-4">
-            <label for="stock">Stock</label>
-            <input type="number" class="form-control" name="variants[{{ variantCount }}][stock]" placeholder="Enter stock quantity" required>
-         </div>
-         
 
-         <div class="form-group">
-            <label for="color">Color</label>
-            <input type="text" class="form-control" name="color" placeholder="E.g., Red, Blue, Green" required>
-         </div>
-
-         <div class="form-group">
-            <label for="additional_price">Additional Price</label>
-            <input type="number" class="form-control" name="additional_price" placeholder="Enter additional price" required>
-         </div>
-
-         <button type="submit" class="btn btn-primary">Submit</button>
-      </form>
-   </div>
+<div class="form-group mb-4">
+    <label for="quantity">Quantity</label>
+    <div class="input-group" style="max-width: 180px;">
+        <button class="btn btn-primary px-3" type="button" id="decrement-btn" 
+                style="font-size: 20px; width: 40px; height: 40px; display: flex; justify-content: center; align-items: center;">-</button>
+        <input type="number" name="quantity" class="form-control" value="1" min="1" id="quantity-input" 
+               style="width: 60px; text-align: center;">
+        <button class="btn btn-primary px-3" type="button" id="increment-btn" 
+                style="font-size: 20px; width: 40px; height: 40px; display: flex; justify-content: center; align-items: center;">+</button>
+    </div>
 </div>
 
 
-<script src="{% static 'assets/js/jquery-3.6.0.min.js' %}"></script>
-<script src="{% static 'assets/js/popper.min.js' %}"></script>
-<script src="{% static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
-<script src="{% static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
-<script src="{% static 'assets/js/script.js' %}"></script>
-
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" />
-
-<!-- Cropper.js JS -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
-
-{% endblock %}
-{% block extra_css %}
-<style>
-   .preview-container {
-      max-width: 100%;
-      max-height: 400px; /* Control max height */
-      margin-top: 10px;
-   }
-
-   .preview-container img {
-      width: 100%; /* Make image fit the container */
-      height: auto;
-   }
-</style>
-{% endblock %}
-
-
-{% block extra_js %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
-
-<script>
-   document.addEventListener('DOMContentLoaded', function() {
-      let cropper1, cropper2;
-
-      // Function to initialize cropper for each image
-      function initCropper(imageId, canvasId) {
-         const imageInput = document.getElementById(imageId);
-         const canvas = document.getElementById(canvasId);
-         const previewContainer = document.createElement('div');
-         previewContainer.classList.add('preview-container');
-
-         imageInput.addEventListener('change', function(event) {
-            const file = event.target.files[0];
-            if (file) {
-               const reader = new FileReader();
-               reader.onload = function(e) {
-                  const img = new Image();
-                  img.src = e.target.result;
-
-                  // Create a preview and insert it into the canvas
-                  img.onload = function() {
-                     // Clear previous canvas
-                     canvas.innerHTML = '';
-                     canvas.appendChild(img);  // Add the image to the canvas
-                     img.classList.add('img-fluid'); // Make the image responsive
-
-                     // Initialize the cropper for the image
-                     if (imageId === 'image1') {
-                        if (cropper1) cropper1.destroy(); // Destroy previous cropper if any
-                        cropper1 = new Cropper(img, {
-                           aspectRatio: 1,  // Set desired aspect ratio (e.g., 1:1 for square crop)
-                           viewMode: 1,
-                           ready: function() {
-                              console.log('Cropper is ready for image 1');
-                           }
-                        });
-                     } else if (imageId === 'image2') {
-                        if (cropper2) cropper2.destroy(); // Destroy previous cropper if any
-                        cropper2 = new Cropper(img, {
-                           aspectRatio: 1,  // Set desired aspect ratio
-                           viewMode: 1,
-                           ready: function() {
-                              console.log('Cropper is ready for image 2');
-                           }
-                        });
-                     }
-                  };
-               };
-               reader.readAsDataURL(file);
-            }
-         });
-      }
-
-      // Initialize the cropper for both images
-      initCropper('image1', 'image1-canvas');
-      initCropper('image2', 'image2-canvas');
-   });
-</script>
-{% endblock %}
+<p id="stock-info" class="mb-2" style="font-weight: bold;">Stock Available: {{ product.variants.first.stock }}</p>

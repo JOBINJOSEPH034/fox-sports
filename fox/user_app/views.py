@@ -4,7 +4,7 @@ import razorpay
 
 import json
 from django.shortcuts import render ,redirect,get_object_or_404
-from admin_app.models import Category ,Product,ProductVariant,Brand,Coupon
+from admin_app.models import Category ,Product,ProductVariant,Brand,Coupon,Offer
 from .models import Cart, CartItem,Address, Order,OrderItem,Wishlist,OrderReturn,Wallet,Transaction
 from django.http import JsonResponse
 from django.core.paginator import Paginator
@@ -239,74 +239,105 @@ def shop_women(request):
         'selected_brands': selected_brands,          
         'sort_option': sort_option,
     })
-
-
-
 @login_required
 @never_cache
 def product_details(request, product_id):
     product = get_object_or_404(Product, id=product_id)
     is_out_of_stock = product.stock == 0
-    variants = product.variants.all()  # Add your variants logic here
+    variants = product.variants.all()
 
-    # Check if the product is in the user's wishlist
     is_in_wishlist = Wishlist.objects.filter(user=request.user, product=product).exists()
+
+    today = now().date()
+
+    product_offers = Offer.objects.filter(
+        offer_type=Offer.PRODUCT,
+        products=product,
+        start_date__lte=today,
+        end_date__gte=today
+    )
+
+    category_offers = Offer.objects.filter(
+        offer_type=Offer.CATEGORY,
+        categories=product.category,
+        start_date__lte=today,
+        end_date__gte=today
+    )
+
+    best_offer = None
+    if product_offers.exists():
+        best_offer = product_offers.order_by('-discount_percentage').first()
+    elif category_offers.exists():
+        best_offer = category_offers.order_by('-discount_percentage').first()
+
+    discounted_price = None
+    if best_offer:
+        discount = (product.price * best_offer.discount_percentage) / 100
+        discounted_price = round(product.price - discount, 2)
+
+    variant_offers = {}
+    for variant in variants:
+        variant_price = variant.total_price
+        variant_discounted_price = variant_price
+        if best_offer:
+            variant_discount = (variant_price * best_offer.discount_percentage) / 100
+            variant_discounted_price = max(0, round(variant_price - variant_discount, 2))  # No negative prices
+
+        variant_offers[variant.id] = {
+            'variant_price': variant_price,
+            'variant_discounted_price': variant_discounted_price,
+            'offer_name': best_offer.name if best_offer else None,
+        }
 
     return render(request, 'detail.html', {
         'product': product,
         'is_out_of_stock': is_out_of_stock,
         'variants': variants,
-        'is_in_wishlist': is_in_wishlist  # Pass this variable to the template
+        'is_in_wishlist': is_in_wishlist,
+        'best_offer': best_offer,
+        'discounted_price': discounted_price,
+        'variant_offers': variant_offers,  # Pass the dictionary
     })
-
-
-
 @login_required
 def cart_page(request):
-    # Get the user's cart
     cart, created = Cart.objects.get_or_create(user=request.user)
     cart_items = CartItem.objects.filter(cart=cart)
 
-    # Calculate the cart total
+    # Recalculate cart total and apply discounts
     cart_total = sum(item.total_price for item in cart_items)
     total_items = cart_items.aggregate(total_items=Sum('quantity'))['total_items'] or 0
 
-    # Initialize discount and final total
     discount_amount = 0
     final_total = cart_total
     coupon_code = None
 
-    # Check if a coupon is applied and handle coupon removal
+    # Apply coupon if available
     if cart.applied_coupon:
         coupon = cart.applied_coupon
         discount_amount = (cart_total * coupon.discount_percentage) / 100
         final_total = cart_total - discount_amount
         coupon_code = coupon.code
 
-    # Handle coupon application
     if request.method == 'POST':
+        # Apply or remove coupon
         if 'coupon_code' in request.POST:
             coupon_code = request.POST.get('coupon_code')
             try:
                 coupon = Coupon.objects.get(code=coupon_code, is_active=True)
-                cart.applied_coupon = coupon  # Apply the coupon to the cart
+                cart.applied_coupon = coupon
                 cart.save()
                 discount_amount = (cart_total * coupon.discount_percentage) / 100
                 final_total = cart_total - discount_amount
-                messages.success(request, f'Coupon applied! You get {coupon.discount_percentage}% off.')
+                messages.success(request, f"Coupon applied! You get {coupon.discount_percentage}% off.")
             except Coupon.DoesNotExist:
-                messages.error(request, 'Invalid or expired coupon code.')
-        
-        # Handle coupon removal
-        if 'remove_coupon' in request.POST:
-            cart.applied_coupon = None  # Remove the coupon from the cart
+                messages.error(request, "Invalid or expired coupon code.")
+        elif 'remove_coupon' in request.POST:
+            cart.applied_coupon = None
             cart.save()
             discount_amount = 0
             final_total = cart_total
-            coupon_code = None
-            messages.success(request, 'Coupon removed successfully.')
-
-        return redirect('cart_page')  # Redirect to the same cart page to update the coupon details
+            messages.success(request, "Coupon removed successfully.")
+        return redirect('cart_page')
 
     return render(request, 'cart.html', {
         'cart_items': cart_items,
@@ -314,9 +345,8 @@ def cart_page(request):
         'total_items': total_items,
         'discount_amount': discount_amount,
         'final_total': final_total,
-        'coupon_code': coupon_code,  # Pass the coupon code to the template
+        'coupon_code': coupon_code,
     })
-
 
 
 @login_required
@@ -559,7 +589,12 @@ def checkout(request):
                 coupon_discount=discount_amount,
                 payment_method='cod'
             )
+
+            # Reduce stock for each product variant in the order
             for item in cart_items:
+                item.variant.reduce_stock(item.quantity)  # Reduce stock based on the cart item quantity
+
+                # Create order items
                 OrderItem.objects.create(
                     order=order,
                     product=item.product,
@@ -567,6 +602,7 @@ def checkout(request):
                     quantity=item.quantity,
                     total_price=item.total_price
                 )
+
             cart_items.delete()
             messages.success(request, "Order placed successfully!")
             return redirect('order_success', order_id=order.id)
@@ -589,7 +625,12 @@ def checkout(request):
                 coupon_discount=discount_amount,
                 payment_method='wallet'
             )
+
+            # Reduce stock for each product variant in the order
             for item in cart_items:
+                item.variant.reduce_stock(item.quantity)  # Reduce stock based on the cart item quantity
+
+                # Create order items
                 OrderItem.objects.create(
                     order=order,
                     product=item.product,
@@ -597,6 +638,7 @@ def checkout(request):
                     quantity=item.quantity,
                     total_price=item.total_price
                 )
+
             cart_items.delete()
             messages.success(request, "Order placed successfully using wallet!")
             return redirect('order_success', order_id=order.id)
@@ -612,6 +654,8 @@ def checkout(request):
         'razorpay_key_id': settings.RAZORPAY_KEY_ID,
         'final_total_in_paise': final_total * 100,
     })
+
+
 
 from django.views.decorators.csrf import csrf_exempt
 

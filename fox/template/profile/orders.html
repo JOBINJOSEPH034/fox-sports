@@ -5,15 +5,16 @@
 {% block content %}
 <div class="bg-light p-4">
     <h3 class="mb-4">Order Management</h3>
-
     <table class="table table-hover">
         <thead class="thead-dark">
             <tr>
                 <th>Order ID</th>
                 <th>Date</th>
-                <th style="width: 300px;">Address</th>  <!-- Increased width for Address column -->
+                <th >Address</th>  <!-- Increased width for Address column -->
                 <th>Products</th>
                 <th>Status</th>
+
+                <th>Payment Method</th>  <!-- New Payment Method Column -->
                 <th>Total</th>
                 <th>Actions</th>
             </tr>
@@ -23,7 +24,7 @@
             <tr>
                 <td>{{ order.id }}</td>
                 <td>{{ order.created_at|date:"d M Y, H:i" }}</td>
-                <td style="max-width: 300px; word-wrap: break-word;">  <!-- Increased width and word-wrap for Address -->
+                <td >  <!-- Increased width and word-wrap for Address -->
                     {{ order.address.name }}<br>
                     {{ order.address.address_line }}<br>
                     {{ order.address.city }}, {{ order.address.state }}<br>
@@ -37,7 +38,20 @@
                 <td class="{% if order.status == 'Delivered' %}text-success{% elif order.status == 'Cancelled' %}text-danger{% elif order.status == 'Return Pending' %}text-warning{% else %}text-dark{% endif %}">
                     {{ order.status }}
                 </td>
+                <td>
+                    <!-- Display Payment Method -->
+                    {% if order.payment_method == 'cod' %}
+                        Cash on Delivery
+                    {% elif order.payment_method == 'wallet' %}
+                        Wallet Payment
+                    {% elif order.payment_method == 'razorpay' %}
+                        Razorpay
+                    {% else %}
+                        Not Available
+                    {% endif %}
+                </td>
                 <td>₹{{ order.total_price|floatformat:2 }}</td>
+
                 <td>
                     {% if order.status in "Pending,Shipped,Processing,Out for Delivery" %}
                     <form action="{% url 'cancel_order' order.id %}" method="POST" style="display:inline;">
@@ -45,31 +59,31 @@
                         <button type="submit" class="btn btn-sm btn-outline-danger">Cancel</button>
                     </form>
                     {% endif %}
-
+    
                     <!-- Return Button shows only if status is 'Delivered' -->
                     {% if order.status == 'Delivered' %}
                     <button class="btn btn-warning btn-sm mt-2" onclick="openReturnModal({{ order.id }})">Return</button>
                     {% endif %}
-
+    
                     <!-- For Return Pending Status, Show Information About Return -->
                     {% if order.status == 'Return Pending' %}
                     <span class="text-warning">Return request is pending. Please wait for confirmation.</span>
                     {% endif %}
-
+    
                     <!-- For Cancelled Status, Show Information About Cancellation -->
                     {% if order.status == 'Cancelled' %}
                     <span class="text-danger">This order has been cancelled.</span>
                     {% endif %}
-
-                    
+                </td>
             </tr>
             {% empty %}
             <tr>
-                <td colspan="7" class="text-center">No orders found</td>
+                <td colspan="8" class="text-center">No orders found</td>  <!-- Adjust colspan to 8 -->
             </tr>
             {% endfor %}
         </tbody>
     </table>
+    
 
     <!-- Pagination -->
     <div class="col-12">

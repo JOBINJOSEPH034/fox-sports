@@ -1,11 +1,11 @@
 
 from django.db import models
-from admin_app.models import Product, ProductVariant,Coupon
+from admin_app.models import Product, ProductVariant,Coupon,Offer
 from django.contrib.auth.models import User
 from datetime import timedelta,datetime
 from django.utils.timezone import now, make_aware
 from django.utils.timezone import now
-import random
+from django.db.models import Q
 from decimal import Decimal
 import string
 from django.utils import timezone
@@ -13,15 +13,25 @@ from django.utils import timezone
 #for user cart 
 class Cart(models.Model):
     user = models.ForeignKey('auth.User', on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, null=True, blank=True)
+    variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, null=True, blank=True)  
     applied_coupon = models.ForeignKey(Coupon, null=True, blank=True, on_delete=models.SET_NULL)
     created_at = models.DateTimeField(auto_now_add=True)
     total_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00) 
 
      
     def update_total_price(self):
-        """Method to recalculate the total price based on cart items"""
-        total = sum(item.total_price for item in self.cartitem_set.all())
-        self.total_price = total
+        """
+        Recalculate the total price of the cart, applying discounts and coupon if any.
+        """
+        cart_total = sum(item.total_price for item in self.cartitem_set.all())
+
+        # Apply coupon discount
+        if self.applied_coupon:
+            discount = (cart_total * self.applied_coupon.discount_percentage) / 100
+            cart_total -= discount
+
+        self.total_price = cart_total
         self.save()
 
 
@@ -34,11 +44,33 @@ class CartItem(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     variant = models.ForeignKey(ProductVariant, null=True, blank=True, on_delete=models.SET_NULL)
     quantity = models.PositiveIntegerField(default=1)
-
+ 
+ 
     @property
     def total_price(self):
-        price = self.product.price + (self.variant.additional_price if self.variant else 0)
-        return price * self.quantity
+        """
+        Calculate total price considering product/variant price and quantity.
+        """
+        base_price = self.product.price + (self.variant.additional_price if self.variant else 0)
+        discounted_price = self.get_discounted_price()
+        return discounted_price * self.quantity
+    
+    def get_discounted_price(self):
+        """
+        Return the discounted price if an offer exists.
+        """
+        base_price = self.product.price + (self.variant.additional_price if self.variant else 0)
+        applicable_offer = Offer.objects.filter(
+            (Q(products=self.product) | Q(categories=self.product.category)),
+            start_date__lte=timezone.now(),
+            end_date__gte=timezone.now()
+        ).first()
+
+        if applicable_offer:
+            discount = (base_price * applicable_offer.discount_percentage) / 100
+            return base_price - discount
+        return base_price
+
 
     def __str__(self):
         return f"{self.product.name} ({self.quantity})"

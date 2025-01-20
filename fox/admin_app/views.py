@@ -705,15 +705,15 @@ import io
 from django.db.models import F, Sum
 from datetime import datetime, timedelta
 from django.utils import timezone
+
+from django.core.paginator import Paginator
+
 @login_required
 def sales_report(request):
-
-   
     # Default filters
     date_filter = request.GET.get('date_filter', 'today')  # Default to today
     
-    
-    # Date range filters
+    # Date range filters (same as before)
     if date_filter == 'today':
         start_date = timezone.make_aware(datetime.combine(datetime.today(), datetime.min.time()))
         end_date = timezone.make_aware(datetime.combine(datetime.today(), datetime.max.time()))
@@ -739,10 +739,15 @@ def sales_report(request):
     if start_date and end_date:
         orders = orders.filter(created_at__range=[start_date, end_date])
 
+    # Pagination: Show 10 orders per page
+    paginator = Paginator(orders, 10)  # Show 10 orders per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
     # Filter out canceled orders from the summary calculations
     non_canceled_orders = orders.exclude(status='canceled')
 
-    # Price range filters
+    # Price range filters (same as before)
     min_price = request.GET.get('min_price')
     max_price = request.GET.get('max_price')
     if min_price:
@@ -761,18 +766,17 @@ def sales_report(request):
 
     average_order_value = total_sales / total_orders if total_orders > 0 else 0
     
-
     context = {
-        'orders': orders,  # All orders, including canceled ones
+        'orders': page_obj,  # Paginated orders
         'total_sales': total_sales,
         'total_orders': total_orders,
         'total_discount': total_discount,
         'average_order_value': round(average_order_value, 2),
         'date_filter': date_filter,
-       
     }
 
     return render(request, 'sales_report.html', context)
+
 
 def export_to_excel(request):
     # Fetch orders from the database

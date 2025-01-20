@@ -182,13 +182,13 @@
                 </div>
             </div>
     
-            <!-- Product Details Section -->
-            <div class="col-lg-7 h-auto mb-30">
-                <div class="h-100 bg-light p-30">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h3>{{ product.name }}</h3>
-                        <!-- Wishlist Heart Icon -->
-                        <button id="wishlist-button" 
+  <!-- Product Details Section -->
+<div class="col-lg-7 h-auto mb-30">
+    <div class="h-100 bg-light p-30">
+        <!-- Product Name and Wishlist -->
+        <div class="d-flex justify-content-between align-items-center">
+            <h3>{{ product.name }}</h3>
+            <button id="wishlist-button" 
                                 class="btn btn-link position-absolute" 
                                 style="top: 15px; right: 15px; font-size: 24px; 
                                        color: {% if is_in_wishlist %} red {% else %} grey {% endif %}; 
@@ -196,128 +196,122 @@
                                 onclick="toggleWishlist({{ product.id }})">
                             <i class="fa fa-heart"></i>
                         </button>
-                    </div>
+        </div>
 
-                    <div class="d-flex mb-3">
-                        <div class="text-primary mr-2">
-                            <small class="fas fa-star"></small>
-                            <small class="fas fa-star"></small>
-                            <small class="fas fa-star"></small>
-                            <small class="fas fa-star-half-alt"></small>
-                            <small class="far fa-star"></small>
-                        </div>
-                        <small class="pt-1">(99 Reviews)</small>
-                    </div>
-                    <h3 class="font-weight-semi-bold mb-4">₹<span id="total-price">{{ product.price }}</span></h3>
-                    <p class="mb-4">{{ product.description }}</p>
-                    <p class="mb-2"><strong>Category:</strong> {{ product.category.name }}</p>
-                    <p class="mb-4"><strong>Brand:</strong> {{ product.brand }}</p>
-    
-                    <!-- Product Variant Options -->
-                    <form method="POST" action="{% url 'add_to_cart' product.id %}">
-                        {% csrf_token %}
-                        {% if product.variants.exists %}
-                        <h4 class="mb-3">Available Sizes:</h4>
-                        <div class="d-flex flex-wrap mb-3">
-                            {% for variant in product.variants.all %}
-                            <div class="variant-option rounded p-2 mr-2 mb-2"
-                                 data-id="{{ variant.id }}" 
-                                 data-price="{{ variant.additional_price }}" 
-                                 data-stock="{{ variant.stock }}">
-                                <input type="radio" name="variant" value="{{ variant.id }}" id="variant-{{ variant.id }}" class="variant-radio" />
-                                <label for="variant-{{ variant.id }}" class="mb-0">{{ variant.size }}</label>
-                            </div>
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-    
-                        <!-- Dynamic Stock Display -->
-                        <p id="stock-info" class="mb-4" style="font-weight: bold;">Stock Available:</p>
-    
-                        <!-- Quantity Input -->
-                        <div class="form-group mb-4">
-                            <label for="quantity">Quantity</label>
-                            <div class="input-group" style="max-width: 180px;">
-                                <button class="btn btn-primary px-3" type="button" id="decrement-btn" style="font-size: 20px; width: 40px; height: 40px; display: flex; justify-content: center; align-items: center;">-</button>
-                                <input type="number" name="quantity" class="form-control" value="1" min="1" id="quantity-input" style="width: 60px; text-align: center;">
-                                <button class="btn btn-primary px-3" type="button" id="increment-btn" style="font-size: 20px; width: 40px; height: 40px; display: flex; justify-content: center; align-items: center;">+</button>
-                            </div>
-                        </div>
-    
-                        <!-- Add to Cart Button -->
-                        <button type="submit" class="btn btn-primary px-3">
-                            <i class="fa fa-shopping-cart mr-1"></i> Add to Cart
-                        </button>
-                    </form>
-    
-                    <!-- Share Links -->
-                    <div class="d-flex pt-2">
-                        <strong class="text-dark mr-2">Share on:</strong>
-                        <div class="d-inline-flex">
-                            <a class="text-dark px-2" href="">
-                                <i class="fab fa-facebook-f"></i>
-                            </a>
-                            <a class="text-dark px-2" href="">
-                                <i class="fab fa-twitter"></i>
-                            </a>
-                            <a class="text-dark px-2" href="">
-                                <i class="fab fa-linkedin-in"></i>
-                            </a>
-                            <a class="text-dark px-2" href="">
-                                <i class="fab fa-pinterest"></i>
-                            </a>
-                        </div>
-                    </div>
-    
-                </div>
+        <!-- Ratings and Reviews -->
+        <div class="d-flex mb-3">
+            <div class="text-primary mr-2">
+                <small class="fas fa-star"></small>
+                <small class="fas fa-star"></small>
+                <small class="fas fa-star"></small>
+                <small class="fas fa-star-half-alt"></small>
+                <small class="far fa-star"></small>
             </div>
+            <small class="pt-1">(99 Reviews)</small>
+        </div>
+
+   
+
+ <!-- Price Section with Offer -->
+<div id="price-section" class="mb-3">
+    <h4 id="offer-text" class="text-success">
+        {% if best_offer %}
+            Offer: {{ best_offer.name }} - {{ best_offer.discount_percentage }}% off
+        {% else %}
+            No current offers
+        {% endif %}
+    </h4>
+    <h3 id="price-display" class="font-weight-semi-bold">
+        {% if best_offer %}
+            <del style="color: grey;">₹{{ product.price }}</del>
+            ₹{{ discounted_price }}
+        {% else %}
+            ₹{{ product.price }}
+        {% endif %}
+    </h3>
+</div>
+
+        <!-- Product Description -->
+        <p class="mb-4">{{ product.description }}</p>
+
+        <!-- Additional Details -->
+        <p class="mb-2"><strong>Category:</strong> {{ product.category.name }}</p>
+        <p class="mb-4"><strong>Brand:</strong> {{ product.brand }}</p>
+        <form method="POST" action="{% url 'add_to_cart' product.id %}">
+            {% csrf_token %}
+        <!-- Variant Selection -->
+       
+    <!-- Variant Selection -->
+    <h4 class="mb-3">Available Sizes:</h4>
+    <div class="d-flex flex-wrap mb-3">
+        {% for variant in product.variants.all %}
+        <div class="variant-option rounded p-2 mr-2 mb-2"
+             data-id="{{ variant.id }}" 
+             data-price="{{ variant.total_price }}" 
+             data-discounted-price="{{ variant.discounted_price }}" 
+             data-stock="{{ variant.stock }}">
+            <input type="radio" name="variant" value="{{ variant.id }}" 
+                   id="variant-{{ variant.id }}" class="variant-radio" 
+                   {% if forloop.first %} checked {% endif %} />
+            <label for="variant-{{ variant.id }}" class="mb-0">
+                {{ variant.size }} 
+            </label>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Dynamic Stock and Price Display -->
+    <p id="stock-info" class="mb-2" style="font-weight: bold;">Stock Available: {{ product.variants.first.stock }}</p>
+
+
+        <!-- Quantity Input -->
+       
+<div class="form-group mb-4">
+    <label for="quantity">Quantity</label>
+    <div class="input-group" style="max-width: 180px;">
+        <button class="btn btn-primary px-3" type="button" id="decrement-btn" 
+                style="font-size: 20px; width: 40px; height: 40px; display: flex; justify-content: center; align-items: center;">-</button>
+        <input type="number" name="quantity" class="form-control" value="1" min="1" id="quantity-input" 
+               style="width: 60px; text-align: center;">
+        <button class="btn btn-primary px-3" type="button" id="increment-btn" 
+                style="font-size: 20px; width: 40px; height: 40px; display: flex; justify-content: center; align-items: center;">+</button>
+    </div>
+</div>
+
+        <!-- Add to Cart Button -->
+        <button type="submit" class="btn btn-primary px-3" id="add-to-cart-btn">
+            <i class="fa fa-shopping-cart mr-1"></i> Add to Cart
+        </button>
+        
+    </form>
+    <!-- Share Links -->
+    <div class="d-flex pt-2">
+        <strong class="text-dark mr-2">Share on:</strong>
+        <div class="d-inline-flex">
+            <a class="text-dark px-2" href="">
+                <i class="fab fa-facebook-f"></i>
+            </a>
+            <a class="text-dark px-2" href="">
+                <i class="fab fa-twitter"></i>
+            </a>
+            <a class="text-dark px-2" href="">
+                <i class="fab fa-linkedin-in"></i>
+            </a>
+            <a class="text-dark px-2" href="">
+                <i class="fab fa-pinterest"></i>
+            </a>
         </div>
     </div>
     
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const variantRadios = document.querySelectorAll('.variant-radio');
-            const totalPriceElement = document.getElementById('total-price');
-            const stockElement = document.getElementById('stock-info');
-            const basePrice = parseFloat({{ product.price|default:0 }});
+</div>
+</div>
+</div>
+</div>
 
-    
-            // Helper to update price and stock
-            function updateDetails() {
-                const selectedVariant = document.querySelector('.variant-radio:checked');
-                if (selectedVariant) {
-                    const variantPrice = parseFloat(selectedVariant.closest('.variant-option').getAttribute('data-price'));
-                    const stock = selectedVariant.closest('.variant-option').getAttribute('data-stock');
-                    const totalPrice = basePrice + variantPrice;
-    
-                    // Update price
-                    totalPriceElement.textContent = totalPrice.toFixed(2);
-    
-                    // Update stock
-                    if (stock > 0) {
-                        stockElement.textContent = `Stock Available: ${stock}`;
-                        stockElement.style.color = 'green';
-                    } else {
-                        stockElement.textContent = 'Out of Stock';
-                        stockElement.style.color = 'red';
-                    }
-                }
-            }
-    
-            // Default selection (first variant)
-            if (variantRadios.length > 0) {
-                variantRadios[0].checked = true;
-                updateDetails();
-            }
-    
-            // Update details when the variant is changed
-            variantRadios.forEach(radio => {
-                radio.addEventListener('change', updateDetails);
-            });
-        });
-    </script>
-    
-<!-- Additional Information and Reviews Section -->
+
+
+    <!-- Additional Information and Reviews Section -->
+
 <div class="row px-xl-5">
     <div class="col">
         <div class="bg-light p-30">
@@ -511,6 +505,74 @@
             });
         });
     </script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const variantRadios = document.querySelectorAll('.variant-radio');
+        const priceDisplay = document.getElementById('price-display');
+        const offerText = document.getElementById('offer-text');
+        const stockInfo = document.getElementById('stock-info');
+        const quantityInput = document.getElementById('quantity-input');
+        const addToCartBtn = document.getElementById('add-to-cart-btn');
+    
+        const bestOfferName = "{{ best_offer.name|default:'' }}";
+        const discountPercentage = {{ best_offer.discount_percentage|default:0 }};
+    
+        variantRadios.forEach(radio => {
+            radio.addEventListener('change', function () {
+                const variantElement = this.closest('.variant-option');
+                const variantPrice = parseFloat(variantElement.dataset.price);
+                const variantStock = parseInt(variantElement.dataset.stock);
+                
+                // Calculate discounted price
+                let discountedPrice = variantPrice;
+                if (discountPercentage > 0) {
+                    const discountAmount = (variantPrice * discountPercentage) / 100;
+                    discountedPrice = Math.max(0, (variantPrice - discountAmount).toFixed(2));
+                }
+    
+                // Update UI for price
+                if (discountPercentage > 0) {
+                    offerText.innerHTML = `Offer: ${bestOfferName} - ${discountPercentage}% off`;
+                    priceDisplay.innerHTML = ` 
+                        <del style="color: grey;">₹${variantPrice}</del> 
+                        ₹${discountedPrice}
+                    `;
+                } else {
+                    offerText.innerHTML = "No current offers";
+                    priceDisplay.innerHTML = `₹${variantPrice}`;
+                }
+    
+                // Update stock info dynamically
+                if (variantStock > 0) {
+                    stockInfo.innerText = `Stock Available: ${variantStock}`;
+                    stockInfo.style.color = "green"; // Stock available color
+                    addToCartBtn.disabled = false; // Enable the Add to Cart button
+                    quantityInput.max = variantStock; // Limit quantity to available stock
+                } else {
+                    stockInfo.innerText = "Out of Stock";
+                    stockInfo.style.color = "red"; // Out of stock color
+                    addToCartBtn.disabled = true; // Disable the Add to Cart button
+                }
+    
+                // Limit quantity input to available stock
+                quantityInput.addEventListener('input', function() {
+                    if (parseInt(quantityInput.value) > variantStock) {
+                        quantityInput.value = variantStock;
+                        alert(`Only ${variantStock} items available in stock.`);
+                    }
+                });
+            });
+        });
+    
+        // Trigger change for the default selected variant
+        const defaultVariant = document.querySelector('.variant-radio:checked');
+        if (defaultVariant) {
+            defaultVariant.dispatchEvent(new Event('change'));
+        }
+    });
+    </script>
+
 
     
     <!-- Footer End -->
