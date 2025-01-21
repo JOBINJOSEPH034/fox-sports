@@ -28,18 +28,11 @@
     <!-- Customized Bootstrap Stylesheet -->
     <link href="{% static 'css/style.css' %}" rel="stylesheet">
     <link href="{% static 'css/new.css' %}" rel="stylesheet">
+    <link href="{% static 'css/msg.css' %}" rel="stylesheet">
     
 
 </head>
-{% if messages %}
-<div class="messages">
-    {% for message in messages %}
-        <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
-            {{ message }}
-        </div>
-    {% endfor %}
-</div>
-{% endif %}
+
 
 <body>
     <!-- Topbar Start -->
@@ -389,6 +382,35 @@
 
     <!-- Template Javascript -->
     <script src="{% static 'js/main.js' %}"></script>
+
+    
+<!-- base.html or your main template file -->
+{% if messages %}
+<div class="container mt-3">
+    <div class="message-container">
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show message-bar" role="alert">
+                <strong>{{ message.level_tag|title }}!</strong> {{ message }}
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+
+<script>
+    // Auto-dismiss messages after 5 seconds
+    $(document).ready(function() {
+        setTimeout(function () {
+            $('.message-bar').fadeOut('slow');
+        }, 5000);  // 5000 milliseconds = 5 seconds
+    });
+</script>
+
 </body>
+
 
 </html>

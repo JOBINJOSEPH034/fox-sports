@@ -2,12 +2,10 @@
 from django.db import models
 from admin_app.models import Product, ProductVariant,Coupon,Offer
 from django.contrib.auth.models import User
-from datetime import timedelta,datetime
-from django.utils.timezone import now, make_aware
+from datetime import timedelta
 from django.utils.timezone import now
 from django.db.models import Q
 from decimal import Decimal
-import string
 from django.utils import timezone
 
 #for user cart 
@@ -21,9 +19,7 @@ class Cart(models.Model):
 
      
     def update_total_price(self):
-        """
-        Recalculate the total price of the cart, applying discounts and coupon if any.
-        """
+       
         cart_total = sum(item.total_price for item in self.cartitem_set.all())
 
         # Apply coupon discount
@@ -38,6 +34,7 @@ class Cart(models.Model):
     def __str__(self):
         return f"Cart of {self.user.username}"
 
+#for user cartitems 
 class CartItem(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     cart = models.ForeignKey(Cart, related_name='items', on_delete=models.CASCADE)
@@ -47,18 +44,15 @@ class CartItem(models.Model):
  
  
     @property
-    def total_price(self):
-        """
-        Calculate total price considering product/variant price and quantity.
-        """
+    def total_price(self):            #Calculate total price considering product/variant price and quantity.
+
+       
         base_price = self.product.price + (self.variant.additional_price if self.variant else 0)
         discounted_price = self.get_discounted_price()
         return discounted_price * self.quantity
     
-    def get_discounted_price(self):
-        """
-        Return the discounted price if an offer exists.
-        """
+    def get_discounted_price(self):    # Return the discounted price if an offer exists.
+       
         base_price = self.product.price + (self.variant.additional_price if self.variant else 0)
         applicable_offer = Offer.objects.filter(
             (Q(products=self.product) | Q(categories=self.product.category)),
@@ -122,8 +116,8 @@ class Order(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
     created_at = models.DateTimeField(auto_now_add=True)
     return_requested_at = models.DateTimeField(null=True, blank=True)
-    offer_discount = models.FloatField(default=0)  # Add this field
-    coupon_discount = models.FloatField(default=0)  # Add this field
+    offer_discount = models.FloatField(default=0)  
+    coupon_discount = models.FloatField(default=0)  
     subtotal = models.FloatField(default=0) 
     discount_percentage = models.FloatField(default=0)
 
@@ -139,7 +133,6 @@ class Order(models.Model):
     @property
     def return_allowed(self):
         if self.status == 'Delivered':
-            # Directly compare with timezone-aware datetime
             return now() <= self.created_at + timedelta(days=14)
         return False
      
@@ -168,10 +161,7 @@ class Order(models.Model):
         return self.total_price - self.offer_discount
     
     @property
-    def offer_or_coupon(self):
-        """
-        Determines whether an offer or coupon is applied to the order.
-        """
+    def offer_or_coupon(self):      #Determines whether an offer or coupon is applied to the order.
         if self.coupon_discount > 0:
             return f"Coupon"
         elif self.offer_discount > 0:
@@ -179,26 +169,19 @@ class Order(models.Model):
         return "None"
 
     @property
-    def final_amount(self):
-        """
-        Calculates the final amount after applying discounts.
-        """
+    def final_amount(self):      # Calculates the final amount after applying discounts.
         discount_amount = (self.total_price * self.offer_discount / 100) + (self.total_price * self.coupon_discount / 100)
         return self.total_price - discount_amount
 
-
+#for use orderreturn
 class OrderReturn(models.Model):
     order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='return_request')
     reason = models.TextField()
     additional_comments = models.TextField(blank=True, null=True)
     requested_at = models.DateTimeField(auto_now_add=True)
 
-
-
     def __str__(self):
         return f"Return Request for Order {self.order.id}"
-
-
 
 
 
@@ -230,12 +213,13 @@ class UserProfile(models.Model):
     bio = models.TextField(blank=True, null=True)
     date_of_birth = models.DateField(null=True, blank=True)
     address = models.TextField(null=True, blank=True)  
+    offer = models.ForeignKey(Offer, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):
         return self.user.username
 
 
-
+#user wishlist
 class Wishlist(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
@@ -251,10 +235,14 @@ class Wishlist(models.Model):
     def __str__(self):
         return f"{self.user.username}'s Wishlist - {self.product.name}"
 
+
+#user wallet
 class Wallet(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='wallet')
     balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
+
+#user transaction(store data for add and withdrow amount to wallet , not store product purchace using wallet)
 class Transaction(models.Model):
     TRANSACTION_TYPES = [
         ('deposit', 'Deposit'),

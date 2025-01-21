@@ -14,13 +14,49 @@
                        <form method="POST" enctype="multipart/form-data">
                            {% csrf_token %}
                            
-                           <!-- Product Information -->
+                           <!-- Product Information (once, outside the loop) -->
                            <h4>Product Details</h4>
                            <div class="form-group">
-                               {{ product_form.as_p }}
+                               {{ product_form.name }}
+                           </div>
+                           <div class="form-group">
+                               {{ product_form.description }}
+                           </div>
+                           <div class="form-group">
+                               {{ product_form.category }}
+                           </div>
+                           <div class="form-group">
+                               {{ product_form.brand }}
+                           </div>
+                           <div class="form-group">
+                               {{ product_form.stock }}
+                           </div>
+                           <div class="form-group">
+                               {{ product_form.price }}
                            </div>
 
-                           <!-- Product Variant Section -->
+                           <!-- Product Image Preview (only once) -->
+                           <div class="form-group">
+                               <label for="id_image1">Image 1</label>
+                               {% if product.image1 %}
+                                   <div class="image-preview mb-2">
+                                       <img src="{{ product.image1.url }}" alt="Current Image 1" style="width: 100px; height: auto;">
+                                   </div>
+                               {% endif %}
+                               {{ product_form.image1 }}
+                           </div>
+
+                           <div class="form-group">
+                               <label for="id_image2">Image 2</label>
+                               {% if product.image2 %}
+                                   <div class="image-preview mb-2">
+                                       <img src="{{ product.image2.url }}" alt="Current Image 2" style="width: 100px; height: auto;">
+                                   </div>
+                               {% endif %}
+                               {{ product_form.image2 }}
+                           </div>
+
+                           <!-- Product Variant Section (repeated for each variant) -->
                            <h4>Product Variants</h4>
                            <div id="variant-container">
                                {{ variant_formset.management_form }}

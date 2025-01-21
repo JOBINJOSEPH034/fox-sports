@@ -21,6 +21,58 @@
             height: 100vh; /* Full height of the viewport */
         }
     </style>
+    <style>
+        .custom-form {
+            max-width: 500px; /* Adjust the width of the form */
+            margin: 0 auto; /* Center the form horizontally */
+            padding: 20px; /* Add padding inside the form */
+            border: 1px solid #ccc; /* Optional: Add a border around the form */
+            border-radius: 8px; /* Optional: Round the corners */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Optional: Add a subtle shadow */
+            background-color: #f9f9f9; /* Optional: Add a background color */
+        }
+    
+        .custom-form .form-group {
+            margin-bottom: 15px; /* Add space between form fields */
+        }
+    
+        .custom-form input {
+            width: 100%; /* Make input fields responsive */
+            padding: 10px; /* Add padding inside input fields */
+            font-size: 14px; /* Adjust the font size */
+            border: 1px solid #ddd; /* Add a border to input fields */
+            border-radius: 4px; /* Round the edges of input fields */
+        }
+    
+        .custom-form button {
+            width: 100%; /* Make the button span the form's width */
+            padding: 10px; /* Add padding inside the button */
+            font-size: 16px; /* Adjust button font size */
+            background-color: #343a40; /* Button background color */
+            color: #fff; /* Button text color */
+            border: none; /* Remove button border */
+            border-radius: 4px; /* Round the button edges */
+            cursor: pointer; /* Show pointer on hover */
+        }
+    
+        .custom-form button:hover {
+            background-color: #495057; /* Darken the button color on hover */
+        }
+    
+        @media (max-width: 576px) {
+            .custom-form {
+                padding: 15px; /* Reduce padding on smaller screens */
+                font-size: 12px; /* Adjust font size for mobile */
+            }
+    
+            .custom-form input,
+            .custom-form button {
+                font-size: 14px; /* Adjust input and button font size */
+            }
+        }
+    </style>
+     <link href="{% static 'css/msg.css' %}" rel="stylesheet">
+    
 </head>
 {% if messages %}
 <div class="messages">
@@ -42,7 +94,7 @@
                             <!-- Logo -->
                            
                             <!-- Sign Up Form -->
-                            <form method="post" action="{% url 'signup' %}">
+                            <form method="post" action="{% url 'signup' %}" class="custom-form">
                                 {% csrf_token %}
 
                                 <div class="form-group">
@@ -67,6 +119,12 @@
                                     <label for="email">Email address</label>
                                     <input type="email" class="form-control form-control-lg" id="email" name="email" value="{{email}}" required>
                                 </div>
+
+                                <div class="form-group">
+                                    <label for="referral_code">Referral Code (Optional)</label>
+                                    <input type="text" class="form-control form-control-lg" id="referral_code" name="referral_code" placeholder="Enter referral code (if any)">
+                                </div>
+                                
 
                 
                                 <div class="form-group">

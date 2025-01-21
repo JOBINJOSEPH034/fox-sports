@@ -190,7 +190,7 @@
             <h3>{{ product.name }}</h3>
             <button id="wishlist-button" 
                                 class="btn btn-link position-absolute" 
-                                style="top: 15px; right: 15px; font-size: 24px; 
+                                style="top: 60px; right: auto; left: 60%;  font-size: 24px; 
                                        color: {% if is_in_wishlist %} red {% else %} grey {% endif %}; 
                                        border: none;"
                                 onclick="toggleWishlist({{ product.id }})">
@@ -230,6 +230,7 @@
         {% endif %}
     </h3>
 </div>
+
 
         <!-- Product Description -->
         <p class="mb-4">{{ product.description }}</p>

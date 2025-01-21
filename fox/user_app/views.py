@@ -1,13 +1,12 @@
 
-
 import razorpay 
-
 import json
 from django.shortcuts import render ,redirect,get_object_or_404
 from admin_app.models import Category ,Product,ProductVariant,Brand,Coupon,Offer
 from .models import Cart, CartItem,Address, Order,OrderItem,Wishlist,OrderReturn,Wallet,Transaction
 from django.http import JsonResponse
 from django.core.paginator import Paginator
+from django.views.decorators.csrf import csrf_exempt
 from django.db.models import Sum
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -15,14 +14,8 @@ from django.views.decorators.cache import never_cache
 from django.utils.timezone import now
 from django.db.models import Q
 from django.http import Http404
-
-
 from django.conf import settings
-
-razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
-
 from decimal import Decimal
-import random
 import uuid
 
 
@@ -369,6 +362,8 @@ def add_to_cart(request, product_id):
     messages.success(request, f"{product.name} added to cart!")
     return redirect('cart_page')
 
+
+#coupon in cart page
 @login_required
 def apply_coupon(request):
     if request.method == "POST":
@@ -381,7 +376,6 @@ def apply_coupon(request):
             cart.applied_coupon = coupon
             cart.save()
 
-            # Calculate discount
             discount_amount = cart.total_price * coupon.discount_percentage / 100
             final_total = cart.total_price - discount_amount
 
@@ -396,28 +390,22 @@ def remove_coupon(request):
         cart = Cart.objects.get(user=request.user)
         cart.applied_coupon = None
         cart.save()
-
-        # Recalculate total without discount
-        final_total = cart.total_price  # Adjust if any other logic for final total is needed
+        final_total = cart.total_price     
 
         return JsonResponse({'success': True, 'final_total': final_total})
 
     return JsonResponse({'success': False, 'message': 'Invalid request method.'})
 
 
-@login_required
 
+@login_required
 def update_cart_item(request, item_id):
     cart_item = CartItem.objects.get(id=item_id)
-    
-    # Get the updated quantity from the form
     new_quantity = int(request.POST.get('quantity'))
 
-    # Prevent quantity from going below 1
     if new_quantity < 1:
         new_quantity = 1
     
-    # Update the cart item with the new quantity
     cart_item.quantity = new_quantity
     cart_item.save()
 
@@ -540,6 +528,8 @@ def delete_address(request, address_id):
     address.delete()
     return redirect('manage_addresses')
 
+
+#user checkout
 @login_required
 def checkout(request):
     cart, created = Cart.objects.get_or_create(user=request.user)
@@ -574,12 +564,10 @@ def checkout(request):
 
         selected_address = get_object_or_404(Address, id=address_id, user=request.user)
 
-        # Create Order for the selected payment method
         if payment_method == 'razorpay':
             return JsonResponse({'order_id': razorpay_order['id'], 'final_total': final_total})
 
         elif payment_method == 'cod':
-            # Handle COD payment
             order = Order.objects.create(
                 user=request.user,
                 address=selected_address,
@@ -590,11 +578,9 @@ def checkout(request):
                 payment_method='cod'
             )
 
-            # Reduce stock for each product variant in the order
             for item in cart_items:
                 item.variant.reduce_stock(item.quantity)  # Reduce stock based on the cart item quantity
 
-                # Create order items
                 OrderItem.objects.create(
                     order=order,
                     product=item.product,
@@ -620,17 +606,16 @@ def checkout(request):
                 user=request.user,
                 address=selected_address,
                 total_price=final_total,
-                subtotal=cart_total,  # Store cart total before discounts
+                subtotal=cart_total,  
                 discount_percentage=cart.applied_coupon.discount_percentage if cart.applied_coupon else 0,
                 coupon_discount=discount_amount,
                 payment_method='wallet'
             )
 
-            # Reduce stock for each product variant in the order
+    
             for item in cart_items:
                 item.variant.reduce_stock(item.quantity)  # Reduce stock based on the cart item quantity
 
-                # Create order items
                 OrderItem.objects.create(
                     order=order,
                     product=item.product,
@@ -656,8 +641,6 @@ def checkout(request):
     })
 
 
-
-from django.views.decorators.csrf import csrf_exempt
 
 
 @csrf_exempt
@@ -686,12 +669,8 @@ def verify_payment(request):
         return JsonResponse({'success': True, 'order_id': order.id})
     except razorpay.errors.SignatureVerificationError:
         return JsonResponse({'success': False})
-
-
-
-
-
-
+    
+razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
 
 
 
@@ -703,14 +682,12 @@ def order_success(request, order_id):
     order = get_object_or_404(Order, id=order_id)
     return render(request, 'order_success.html', {'order': order})
 
-
+#user order 
 def order_management(request):
-    # Get all orders
     orders = Order.objects.all().order_by('-created_at')
     
-    # Set up pagination
-    paginator = Paginator(orders, 10)  # Show 10 orders per page
-    page_number = request.GET.get('page')  # Get the page number from the request
+    paginator = Paginator(orders, 10) 
+    page_number = request.GET.get('page')  
     page_obj = paginator.get_page(page_number)
     
     return render(request, 'profile/orders.html', {'page_obj': page_obj})
@@ -738,7 +715,6 @@ def request_return(request):
         try:
             order = Order.objects.get(id=order_id, user=request.user)
             if order.status == 'Delivered':
-                # Create a return request
                 OrderReturn.objects.create(order=order, reason=reason, additional_comments=additional_comments)
                 order.status = 'Return Pending'
                 order.return_requested_at = now()
@@ -785,65 +761,56 @@ def profile(request):
 
 @login_required
 def wishlist_view(request):
-    # Fetch the wishlist items for the logged-in user
     wishlist = Wishlist.objects.filter(user=request.user).order_by('-created_at')
+    
+    paginator = Paginator(wishlist, 5)  
+    page_number = request.GET.get('page')  
+    page_obj = paginator.get_page(page_number) 
 
-    # Pass the wishlist to the template
-    return render(request, 'profile/wishlist.html', {'wishlist': wishlist})
+    return render(request, 'profile/wishlist.html', {'page_obj': page_obj})
 
-
+#from cart
 @login_required
 def add_to_cart_from_wishlist(request, wishlist_item_id):
-    # Get the wishlist item by ID
+  
     wishlist_item = Wishlist.objects.get(id=wishlist_item_id)
-
-    # Get the associated product from the wishlist item
     product = wishlist_item.product
-
-    # Check if the user already has a cart, or create a new one
     cart, created = Cart.objects.get_or_create(user=request.user)
 
-    # Check if the product already exists in the cart
     cart_item, created = CartItem.objects.get_or_create(
         cart=cart,
         product=product
     )
 
-    # If the product is already in the cart, update the quantity
     if not created:
         cart_item.quantity += 1
         cart_item.save()
 
-    # Redirect to the cart page or wherever you want
     return redirect('cart:cart_detail')
 
 def remove_from_wishlist(request, product_id):
     try:
         product = get_object_or_404(Product, id=product_id)
         Wishlist.objects.filter(user=request.user, product=product).delete()
-        return redirect('wishlist_view')  # Replace with the name of your wishlist view
+        return redirect('wishlist_view')  
     except Http404:
-        # If the product doesn't exist, optionally display a message or handle it
-        return redirect('wishlist_view')  # Or show an error page
-
+      
+        return redirect('wishlist_view')  #
 
 
 @login_required
 def toggle_wishlist(request, product_id):
     product = Product.objects.get(id=product_id)
     user = request.user
-
-    # Check if the product is already in the user's wishlist
     wishlist_item, created = Wishlist.objects.get_or_create(user=user, product=product)
 
     if not created:
-        # If the item already exists, remove it from the wishlist
+       
         wishlist_item.delete()
         added = False
     else:
         added = True
 
-    # Return JSON response indicating the action
     return JsonResponse({'added': added})
 
 def add_to_wishlist(request, product_id):
@@ -852,7 +819,6 @@ def add_to_wishlist(request, product_id):
         user = request.user
         wishlist, created = Wishlist.objects.get_or_create(user=user)
         
-        # Add product to wishlist if it's not already there
         if product not in wishlist.products.all():
             wishlist.products.add(product)
             return JsonResponse({'success': True})
@@ -861,19 +827,18 @@ def add_to_wishlist(request, product_id):
     return JsonResponse({'success': False, 'message': 'Invalid request'})
 
 @login_required
-def remove_from_wishlist(request, id):  # Matches <int:id> in URL pattern
+def remove_from_wishlist(request, id): 
     wishlist_item = Wishlist.objects.get(id=id, user=request.user)
     wishlist_item.delete()
     return redirect('wishlist')
 
-
+#user transaction 
 @login_required
 def wallet_page(request):
     wallet, created = Wallet.objects.get_or_create(user=request.user)
     transactions = wallet.transactions.all().order_by('-created_at')
 
-      # Pagination
-    paginator = Paginator(transactions, 8)  # Show 10 transactions per page
+    paginator = Paginator(transactions, 8)  
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -883,7 +848,6 @@ def wallet_page(request):
         amount = request.POST.get('amount')
 
         try:
-            # Ensure amount is properly converted to a Decimal to match Wallet's balance
             amount = Decimal(amount)
             if amount <= 0:
                 raise ValueError("Amount must be greater than zero.")
@@ -903,10 +867,9 @@ def wallet_page(request):
 
             wallet.save()
 
-            # Creating a transaction with a properly generated transaction ID
             Transaction.objects.create(
                 wallet=wallet,
-                transaction_id=str(uuid.uuid4()),  # Generate a unique transaction ID
+                transaction_id=str(uuid.uuid4()),  
                 type=transaction_type,
                 amount=amount,
             )

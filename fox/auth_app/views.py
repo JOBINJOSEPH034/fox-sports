@@ -1,6 +1,8 @@
 
 from django.shortcuts import render,redirect
 from . models import *
+from admin_app.models import Offer
+from user_app.models import UserProfile
 from django.contrib.auth import authenticate,login,logout
 from django.contrib.auth import login as auth_login
 from django.contrib.auth.models import User
@@ -113,32 +115,30 @@ def verify_otp_login(request):
 
     return render(request, 'accounts/verify_otp_login.html', {'email': user.email})
 
-
 @never_cache
-#signup view
 def signup(request):
-    if request.method=='POST':
-        first_name=request.POST.get('first_name')
-        last_name=request.POST.get('last_name')
-        user_name=request.POST.get('username')
-        email=request.POST.get('email')
-        password=request.POST.get('password')
-        confirm_password=request.POST.get('confirm_password')
+    if request.method == 'POST':
+        first_name = request.POST.get('first_name')
+        last_name = request.POST.get('last_name')
+        user_name = request.POST.get('username')
+        email = request.POST.get('email')
+        password = request.POST.get('password')
+        confirm_password = request.POST.get('confirm_password')
+        referral_code = request.POST.get('referral_code')  # Get referral code from form
 
-
+        # Validation checks
         if not first_name or not last_name or not user_name or not email or not password or not confirm_password:
             messages.error(request, 'All fields are required!')
             return redirect('signup')
 
-       
         if password != confirm_password:
             messages.error(request, 'Passwords do not match!')
             return redirect('signup')
-        
+
         if len(password) < 8:
             messages.error(request, 'Password must be at least 8 characters long!')
             return redirect('signup')
-        
+
         if not re.search(r'[A-Z]', password):
             messages.error(request, 'Password must contain at least one uppercase letter!')
             return redirect('signup')
@@ -163,18 +163,40 @@ def signup(request):
             messages.error(request, 'Email is already registered!')
             return redirect('signup')
 
+        # Check if referral code exists and is valid
+        offer = None
+        if referral_code:
+            print(f"Referral Code Submitted: {referral_code}")  # Debugging
+            offer = Offer.objects.filter(referral_code__iexact=referral_code).first()
+            if not offer:
+                print("Referral code does not match any offer.")  # Debugging
+                messages.error(request, 'Invalid referral code!')
+                return redirect('signup')
+
         try:
-            user=User.objects.create_user(first_name=first_name,last_name=last_name, username=user_name,email=email,password=password)
+            user = User.objects.create_user(
+                first_name=first_name,
+                last_name=last_name,
+                username=user_name,
+                email=email,
+                password=password
+            )
             user.save()
+
+            # If valid referral code, link offer to user profile (if applicable)
+            if offer:
+                user_profile = UserProfile.objects.create(user=user, referral_offer=offer)
+                user_profile.save()
+
             messages.success(request, 'Account created successfully! Please log in.')
             return redirect('login')
-        except:
-            messages.error(request,'An error occurred. Try again ')
-            
-            return redirect ("signup")
-        
-    return render(request,'accounts/signup.html')
-        
+
+        except Exception as e:
+            messages.error(request, f'An error occurred: {str(e)}')
+            return redirect('signup')
+
+    return render(request, 'accounts/signup.html')
+
 
  # Forgot Password View           
 @never_cache   

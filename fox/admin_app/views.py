@@ -1,17 +1,26 @@
 from time import timezone
-from django.shortcuts import render
 from django.shortcuts import render, redirect, get_object_or_404
+from django.http import HttpResponse
 from django.contrib import messages
 from . models import Category,Product,Brand,ProductVariant,Coupon,Offer
-from user_app.models import Order,OrderItem
+from user_app.models import Order
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
-from .forms import ProductForm, ProductVariantForm, CouponForm 
+from .forms import ProductForm, ProductVariantForm
 from django.forms import modelformset_factory
 from django.http import JsonResponse
 from django.core.paginator import Paginator
-from datetime import datetime
+from datetime import datetime,timedelta
+from django.db.models import Sum, F
+from django.utils import timezone
+from django.template.loader import render_to_string
+from weasyprint import HTML
+import openpyxl
+
+
+
+
 
 # Create your views here.
 
@@ -53,7 +62,7 @@ def admin_home(request):
 def product_list(request):
     products = Product.objects.all().order_by('-created_at')
 
-    paginator = Paginator(products, 8)  # Show 10 products per page
+    paginator = Paginator(products, 8)  
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -176,12 +185,12 @@ def product_variant_list(request, product_id):
 
 #ADMIN CUSTOMER
 def customer_list(request):
-    users = User.objects.filter(is_superuser=False)  # Non-admin users
+    users = User.objects.filter(is_superuser=False)  
     
-    # Paginate the users
-    paginator = Paginator(users, 10)  # Show 10 users per page
-    page_number = request.GET.get('page')  # Get the page number from the request
-    page_obj = paginator.get_page(page_number)  # Get the page object
+    
+    paginator = Paginator(users, 10)  
+    page_number = request.GET.get('page')  
+    page_obj = paginator.get_page(page_number)  
 
     return render(request, 'customer.html', {'page_obj': page_obj})
 
@@ -212,12 +221,12 @@ def edit_customer(request):
 @login_required
 @never_cache
 def category_list(request):
-    categories = Category.objects.all()  # Fetch all categories
+    categories = Category.objects.all()  
     
     # Paginate the categories
-    paginator = Paginator(categories, 10)  # Show 10 categories per page
-    page_number = request.GET.get('page')  # Get the page number from the request
-    page_obj = paginator.get_page(page_number)  # Get the page object
+    paginator = Paginator(categories, 10)  
+    page_number = request.GET.get('page')  
+    page_obj = paginator.get_page(page_number)  
     
     return render(request, 'category.html', {'page_obj': page_obj})
 
@@ -252,8 +261,7 @@ def toggle_category_status(request, category_id):
     return redirect('category')
 
 
-from django.core.paginator import Paginator
-
+#admin order management
 @login_required
 @never_cache
 def admin_order_management(request):
@@ -261,7 +269,7 @@ def admin_order_management(request):
         .prefetch_related('items__product', 'items__variant') \
         .order_by('-created_at')
 
-    paginator = Paginator(orders, 10)  # Show 10 orders per page
+    paginator = Paginator(orders, 10)  
     page_number = request.GET.get('page')
     orders_page = paginator.get_page(page_number)
 
@@ -303,34 +311,30 @@ def admin_cancel_order(request, order_id):
 
 
 
-# For admin inventory management with pagination
+# For admin inventory management 
 @login_required
 @never_cache
 def inventory_management(request):
-    # Retrieve all products and prefetch their variants to avoid extra queries
     products = Product.objects.all().prefetch_related('variants')
-
-    # Pagination logic: Display 10 products per page
     paginator = Paginator(products, 8)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
     return render(request, 'inventory_management.html', {
-        'page_obj': page_obj,  # Paginated products
+        'page_obj': page_obj,
     })
 
-# Update stock for all variants of a product
+
 @login_required
 def update_stock_for_product(request, product_id):
     product = get_object_or_404(Product, id=product_id)
     
     if request.method == 'POST':
-        new_stock = int(request.POST.get('stock', product.stock))  # Get new stock value for the product
-        if new_stock != product.stock:  # Only update if the stock value has changed
+        new_stock = int(request.POST.get('stock', product.stock))   # Get new stock value for the product
+        if new_stock != product.stock:                              # Only update if the stock value has changed
             product.stock = new_stock
             product.save()
 
-            # Update the stock of all variants for this product
             for variant in product.variants.all():
                 variant.stock = new_stock
                 variant.save()
@@ -340,19 +344,18 @@ def update_stock_for_product(request, product_id):
 
     return redirect('inventory_management')
 
-# AJAX-based stock update for all variants of a product
+
 @login_required
 def update_variant_stock(request, variant_id):
     variant = get_object_or_404(ProductVariant, id=variant_id)
     product = variant.product
 
     if request.method == 'POST':
-        new_stock = int(request.POST.get('stock', variant.stock))  # Get new stock value for the variant
-        if new_stock != variant.stock:  # Only update if the stock value has changed
+        new_stock = int(request.POST.get('stock', variant.stock))  
+        if new_stock != variant.stock:  
             variant.stock = new_stock
             variant.save()
 
-            # Update the product stock as the sum of all variants' stock
             total_variant_stock = sum(v.stock for v in product.variants.all())
             product.stock = total_variant_stock
             product.save()
@@ -432,6 +435,7 @@ def create_order_with_variant(request, variant_id):
     return redirect('product_detail', variant.product.id)
 
 
+#Brand management
 def brand_management(request):
     if request.method == "POST":
         name = request.POST.get("name")
@@ -443,9 +447,9 @@ def brand_management(request):
         else:
             messages.error(request, "Brand name is required.")
 
-    # Pagination logic
+    
     brands = Brand.objects.all()
-    paginator = Paginator(brands, 10)  # Show 10 brands per page
+    paginator = Paginator(brands, 10)  
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -461,7 +465,7 @@ def brand_management(request):
 
     context = {
         "brand_data": brand_data,
-        "page_obj": page_obj,  # Pass the page object to the template
+        "page_obj": page_obj,  
     }
 
     return render(request, "brand_management.html", context)
@@ -497,7 +501,7 @@ def toggle_brand_status(request, brand_id):
 
 
 
-# Display all coupons
+# admin coupon management
 def coupon_list(request):
     coupons = Coupon.objects.all()
     if request.method == 'POST':
@@ -506,7 +510,6 @@ def coupon_list(request):
         description = request.POST.get('description')
         is_active = request.POST.get('is_active') == 'on'
 
-        # Add coupon to the database
         Coupon.objects.create(code=code, discount_percentage=discount_percentage, description=description, is_active=is_active)
         messages.success(request, 'Coupon created successfully!')
 
@@ -520,19 +523,17 @@ def delete_coupon(request, coupon_id):
     return redirect('coupon_list')
 
 def manage_offers(request):
-    offers = Offer.objects.all()  # Fetch all offers
-    products = Product.objects.all()  # Fetch all products
-    categories = Category.objects.all()  # Fetch all categories
+    products = Product.objects.all()
+    categories = Category.objects.all()
 
     
-    # Pagination
-    paginator = Paginator(offers, 10)  # Show 10 transactions per page
+    offers = Offer.objects.all()  
+    paginator = Paginator(offers, 10)  
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Add the related products, categories, or referral codes for each offer
     offers_with_details = []
-    for offer in offers:
+    for offer in page_obj:
         applied_items = []
         if offer.offer_type == 'product':
             applied_items = [product.name for product in offer.products.all()]
@@ -540,14 +541,15 @@ def manage_offers(request):
             applied_items = [category.name for category in offer.categories.all()]
         elif offer.offer_type == 'referral':
             applied_items = [f"Referral Code: {offer.referral_code}"]
-        
+
         offers_with_details.append({
             'offer': offer,
             'applied_items': applied_items
         })
 
+
     if request.method == 'POST':
-        offer_id = request.POST.get('offer_id', None)  # Use `None` if not editing an offer
+        offer_id = request.POST.get('offer_id', None)
         name = request.POST.get('name')
         discount_percentage = request.POST.get('discount_percentage')
         start_date = request.POST.get('start_date')
@@ -557,13 +559,13 @@ def manage_offers(request):
         categories_selected = request.POST.getlist('categories')
         referral_code = request.POST.get('referral_code', '')
 
-        # Ensure all required fields are provided
+        
         if not name or not discount_percentage or not start_date or not end_date or not offer_type:
             messages.error(request, "All fields are required.")
             return redirect('manage_offers')
 
-        if offer_id:  # Edit existing offer
-            try:
+        try:
+            if offer_id:  
                 offer = Offer.objects.get(id=offer_id)
                 offer.name = name
                 offer.discount_percentage = discount_percentage
@@ -571,7 +573,6 @@ def manage_offers(request):
                 offer.end_date = end_date
                 offer.offer_type = offer_type
 
-                # Update related fields based on offer type
                 if offer_type == 'product':
                     offer.products.set(Product.objects.filter(id__in=products_selected))
                     offer.categories.clear()
@@ -587,24 +588,25 @@ def manage_offers(request):
 
                 offer.save()
                 messages.success(request, "Offer updated successfully!")
-            except Offer.DoesNotExist:
-                messages.error(request, "Offer not found.")
-        else:  # Create new offer
-            offer = Offer.objects.create(
-                name=name,
-                discount_percentage=discount_percentage,
-                start_date=start_date,
-                end_date=end_date,
-                offer_type=offer_type
-            )
-            if offer_type == 'product':
-                offer.products.set(Product.objects.filter(id__in=products_selected))
-            elif offer_type == 'category':
-                offer.categories.set(Category.objects.filter(id__in=categories_selected))
-            elif offer_type == 'referral':
-                offer.referral_code = referral_code
-            offer.save()
-            messages.success(request, "Offer created successfully!")
+            else:  
+                offer = Offer.objects.create(
+                    name=name,
+                    discount_percentage=discount_percentage,
+                    start_date=start_date,
+                    end_date=end_date,
+                    offer_type=offer_type
+                )
+                
+                if offer_type == 'product':
+                    offer.products.set(Product.objects.filter(id__in=products_selected))
+                elif offer_type == 'category':
+                    offer.categories.set(Category.objects.filter(id__in=categories_selected))
+                elif offer_type == 'referral':
+                    offer.referral_code = referral_code
+                offer.save()
+                messages.success(request, "Offer created successfully!")
+        except Exception as e:
+            messages.error(request, f"An error occurred: {str(e)}")
 
         return redirect('manage_offers')
 
@@ -612,9 +614,8 @@ def manage_offers(request):
         'offers_with_products': offers_with_details,
         'products': products,
         'categories': categories,
-         'page_obj': page_obj,
+        'page_obj': page_obj,
     })
-
 
 def delete_offer(request, offer_id):
     offer = get_object_or_404(Offer, id=offer_id)
@@ -625,42 +626,32 @@ def delete_offer(request, offer_id):
 
 
 
-from django.shortcuts import render
-from django.db.models import Sum, F, Count
-
+#admin dashboard  ( not finished )
 def dashboard_view(request):
-    # Aggregating total sales
     total_sales = Order.objects.filter(status='Delivered').aggregate(total_sales=Sum('total_price'))['total_sales'] or 0
     
-    # Aggregating total orders
     total_orders = Order.objects.count()
     
-    # Aggregating number of delivered orders
     delivered_orders = Order.objects.filter(status='Delivered').count()
     
-    # Aggregating number of cancelled orders
     cancelled_orders = Order.objects.filter(status='Cancelled').count()
     
-    # Aggregating total discount applied through offers or coupons
     total_discount = 0
-    offers = Offer.objects.filter(end_date__gte=timezone.now())  # Offers still valid
-    coupons = Coupon.objects.filter(is_active=True)  # Active coupons
+    offers = Offer.objects.filter(end_date__gte=timezone.now())  
+    coupons = Coupon.objects.filter(is_active=True)  
     for offer in offers:
         total_discount += offer.discount_percentage
     for coupon in coupons:
         total_discount += coupon.discount_percentage
     
-    # Product statistics (Active/Deactivated products)
     total_products = Product.objects.count()
     active_products = Product.objects.filter(is_active=True).count()
     deactivated_products = Product.objects.filter(is_active=False).count()
 
-    # Category statistics (Active/Deactivated categories)
     total_categories = Category.objects.count()
     active_categories = Category.objects.filter(is_active=True).count()
     deactivated_categories = Category.objects.filter(is_active=False).count()
 
-    # User statistics (Active/Deactivated users)
     total_users = User.objects.count()
     active_users = User.objects.filter(is_active=True).count()
     deactivated_users = User.objects.filter(is_active=False).count()
@@ -685,35 +676,11 @@ def dashboard_view(request):
     return render(request, 'index.html', context)
 
 
-
-
-
-
-# admin_app/views.py
-
-from django.shortcuts import render
-from django.db.models import Sum
-from django.utils import timezone
-from datetime import datetime, timedelta
-from django.http import HttpResponse
-from django.template.loader import render_to_string
-from weasyprint import HTML
-import openpyxl
-from user_app.models import Order, OrderItem  # Import Order and OrderItem from user_app
-import io
-
-from django.db.models import F, Sum
-from datetime import datetime, timedelta
-from django.utils import timezone
-
-from django.core.paginator import Paginator
-
+#admin sales report
 @login_required
 def sales_report(request):
-    # Default filters
     date_filter = request.GET.get('date_filter', 'today')  # Default to today
     
-    # Date range filters (same as before)
     if date_filter == 'today':
         start_date = timezone.make_aware(datetime.combine(datetime.today(), datetime.min.time()))
         end_date = timezone.make_aware(datetime.combine(datetime.today(), datetime.max.time()))
@@ -725,7 +692,7 @@ def sales_report(request):
         today = datetime.today()
         start_date = timezone.make_aware(datetime.combine(today.replace(day=1), datetime.min.time()))
         end_date = timezone.make_aware(datetime.combine(today.replace(day=1) + timedelta(days=32), datetime.min.time()) - timedelta(seconds=1))
-    else:  # custom date range
+    else:                                                                           
         start_date_str = request.GET.get('start_date', '')
         end_date_str = request.GET.get('end_date', '')
         if start_date_str and end_date_str:
@@ -734,20 +701,16 @@ def sales_report(request):
         else:
             start_date = end_date = None
 
-    # Filter Orders based on the selected date range
     orders = Order.objects.all().order_by('-created_at')
     if start_date and end_date:
         orders = orders.filter(created_at__range=[start_date, end_date])
 
-    # Pagination: Show 10 orders per page
-    paginator = Paginator(orders, 10)  # Show 10 orders per page
+    paginator = Paginator(orders, 6)  
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    # Filter out canceled orders from the summary calculations
     non_canceled_orders = orders.exclude(status='canceled')
 
-    # Price range filters (same as before)
     min_price = request.GET.get('min_price')
     max_price = request.GET.get('max_price')
     if min_price:
@@ -755,11 +718,9 @@ def sales_report(request):
     if max_price:
         non_canceled_orders = non_canceled_orders.filter(total_price__lte=float(max_price))
 
-    # Aggregation for summary statistics (excluding canceled orders)
     total_sales = non_canceled_orders.aggregate(total_sales=Sum('total_price'))['total_sales'] or 0
     total_orders = non_canceled_orders.count()
     
-    # Calculate total discounts (excluding canceled orders)
     total_discount = non_canceled_orders.aggregate(
         total_discount=Sum(F('offer_discount') + F('coupon_discount'))
     )['total_discount'] or 0
@@ -767,7 +728,7 @@ def sales_report(request):
     average_order_value = total_sales / total_orders if total_orders > 0 else 0
     
     context = {
-        'orders': page_obj,  # Paginated orders
+        'orders': page_obj,  
         'total_sales': total_sales,
         'total_orders': total_orders,
         'total_discount': total_discount,
@@ -777,25 +738,19 @@ def sales_report(request):
 
     return render(request, 'sales_report.html', context)
 
-
+#to excel
 def export_to_excel(request):
-    # Fetch orders from the database
     orders = Order.objects.all()
     
-    # Create Excel Workbook
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = 'Sales Report'
     
-    # Add header row
     ws.append(['Order ID', 'Date', 'Customer', 'Items', 'Subtotal', 'Offer Discount', 'Final Amount', 'Status'])
     
-    # Add order data
     for order in orders:
-        # Join product names or IDs into a single string
-        items = ', '.join([str(item.product_id) for item in order.items.all()])  # Convert to string
+        items = ', '.join([str(item.product_id) for item in order.items.all()]) 
         
-        # Write the order data into the Excel sheet
         ws.append([
             order.id, 
             order.created_at.strftime('%Y-%m-%d'),
@@ -807,14 +762,13 @@ def export_to_excel(request):
             order.status
         ])
     
-    # Save the Excel file
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename=sales_report.xlsx'
     wb.save(response)
     
     return response
 
-
+#to pdf
 def export_to_pdf(request):
     orders = Order.objects.all()
     html_content = render_to_string('sales_report.html', {'orders': orders, 'is_pdf': True})

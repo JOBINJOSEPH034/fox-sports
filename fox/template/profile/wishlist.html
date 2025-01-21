@@ -6,7 +6,7 @@
 <div class="bg-light p-4">
     <h3 class="mb-4">Wishlist</h3>
 
-    {% if wishlist %}
+    {% if page_obj %}
         <table class="table table-hover">
             <thead class="thead-dark">
                 <tr>
@@ -18,7 +18,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for item in wishlist %}
+                {% for item in page_obj %}
                     <tr onclick="window.location.href='{% url 'product_details' product_id=item.product.id %}';" style="cursor: pointer;">
                         <td><img src="{{ item.product.image1.url }}" alt="{{ item.product.name }}" width="150"></td>
                         <td>{{ item.product.name }}</td>
@@ -52,8 +52,35 @@
                 {% endfor %}
             </tbody>
         </table>
+
+         <!-- Pagination -->
+    <div class="col-12">
+        <nav>
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_categories %}&category={{ selected_categories|join:',' }}{% endif %}{% if selected_brands %}&brand={{ selected_brands|join:',' }}{% endif %}{% if sort_option %}&sort={{ sort_option }}{% endif %}" tabindex="-1">Previous</a>
+                    </li>
+                {% endif %}
+                {% for page_num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == page_num %}
+                        <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
+                    {% else %}
+                        <li class="page-item"><a class="page-link" href="?page={{ page_num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_categories %}&category={{ selected_categories|join:',' }}{% endif %}{% if selected_brands %}&brand={{ selected_brands|join:',' }}{% endif %}{% if sort_option %}&sort={{ sort_option }}{% endif %}">{{ page_num }}</a></li>
+                    {% endif %}
+                {% endfor %}
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_categories %}&category={{ selected_categories|join:',' }}{% endif %}{% if selected_brands %}&brand={{ selected_brands|join:',' }}{% endif %}{% if sort_option %}&sort={{ sort_option }}{% endif %}">Next</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+        
     {% else %}
         <p>Your wishlist is empty.</p>
     {% endif %}
 </div>
+
 {% endblock %}

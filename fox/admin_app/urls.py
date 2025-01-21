@@ -36,19 +36,13 @@ urlpatterns = [
     path('order/<int:order_id>/status/<str:status>/', views.admin_update_order_status, name='admin_update_order_status'),
     path('order/<int:order_id>/cancel/', views.admin_cancel_order, name='admin_cancel_order'),
 
-    path('admin_return_approve/<int:order_id>/', views.admin_return_approve, name='admin_return_approve'),
-    path('admin_return_reject/<int:order_id>/', views.admin_return_reject, name='admin_return_reject'),
 
     #url for admin inventry management
     path('inventory/', views.inventory_management, name='inventory_management'),
     path('create_order/<int:product_id>/', views.create_order, name='create_order'),
     path('create_order/<int:product_id>/<int:variant_id>/', views.create_order, name='create_order_variant'),  
     path('update_variant_stock/<int:variant_id>/', views.update_variant_stock, name='update_variant_stock'),
-
-
- path('inventory/', views.inventory_management, name='inventory_management'),
     path('update_stock/<int:product_id>/', views.update_stock_for_product, name='update_stock_for_product'),
-    path('update_variant_stock/<int:product_id>/', views.update_variant_stock, name='update_variant_stock'),
 
     #url for brand management
     path('brand-management/', views.brand_management, name='brand_management'),
@@ -57,15 +51,16 @@ urlpatterns = [
     path('brand-management/toggle-status/<int:brand_id>/', views.toggle_brand_status, name='toggle_brand_status'),
 
 
-
+    #url for admin coupon
     path('coupons/', views.coupon_list, name='coupon_list'),
     path('coupons/delete/<int:coupon_id>/', views.delete_coupon, name='delete_coupon'),
 
-
+   #url for admin offer
     path('manage-offers/', views.manage_offers, name='manage_offers'),
     path('delete-offer/<int:offer_id>/', views.delete_offer, name='delete_offer'),
-
-  path('sales-report/', views.sales_report, name='sales_report'),
+    
+    #url for admin sales report
+    path('sales-report/', views.sales_report, name='sales_report'),
     path('export-to-excel/', views.export_to_excel, name='export_to_excel'),
     path('export-to-pdf/', views.export_to_pdf, name='export_to_pdf'),
 ]

@@ -258,6 +258,8 @@
 
             
         </form>
+
+        
     </div>
 </div>
 
@@ -575,6 +577,26 @@ document.getElementById('editAddressForm').addEventListener('submit', function (
         };
         const rzp = new Razorpay(options);
         rzp.open();
+    });
+</script>
+
+<script>
+    document.getElementById('razorpay').addEventListener('change', function() {
+        if (this.checked) {
+            var options = {
+                "key": "{{ razorpay_key_id }}",
+                "amount": "{{ final_total_in_paise }}",
+                "currency": "INR",
+                "name": "Your Shop Name",
+                "description": "Order Payment",
+                "order_id": "{{ razorpay_order_id }}",
+                "handler": function(response) {
+                    window.location.href = "/order/success/" + response.razorpay_order_id;
+                }
+            };
+            var rzp1 = new Razorpay(options);
+            rzp1.open();
+        }
     });
 </script>
 

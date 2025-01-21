@@ -12,8 +12,73 @@
                 <div class="card-body">
                     <h4 class="font-weight-bold">Product Details</h4>
                     <div class="form-group">
-                        {{ product_form.as_p }}
+                        <!-- Manually render product details fields except images -->
+                        <div class="form-group">
+                            <label for="{{ product_form.name.id_for_label }}">Product Name</label>
+                            {{ product_form.name }}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ product_form.description.id_for_label }}">Description</label>
+                            {{ product_form.description }}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ product_form.category.id_for_label }}">Category</label>
+                            {{ product_form.category }}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ product_form.brand.id_for_label }}">Brand</label>
+                            {{ product_form.brand }}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ product_form.stock.id_for_label }}">Stock</label>
+                            {{ product_form.stock }}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ product_form.price.id_for_label }}">Price</label>
+                            {{ product_form.price }}
+                        </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Product Images (Only Image Preview and Cropper) -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h4 class="font-weight-bold">Product Images</h4>
+
+                    <!-- Image 1 Preview -->
+                    <div class="form-group">
+                        <label for="id_image1">Image 1</label>
+                        {% if product.image1 %}
+                            <div class="image-preview mb-3">
+                                <img src="{{ product.image1.url }}" alt="Image 1" id="image1-preview" style="width: 150px; height: auto;">
+                            </div>
+                        {% endif %}
+                        <input type="file" id="id_image1" name="image1" class="form-control" accept="image/*">
+                    </div>
+
+                    <!-- Image 2 Preview -->
+                    <div class="form-group">
+                        <label for="id_image2">Image 2</label>
+                        {% if product.image2 %}
+                            <div class="image-preview mb-3">
+                                <img src="{{ product.image2.url }}" alt="Image 2" id="image2-preview" style="width: 150px; height: auto;">
+                            </div>
+                        {% endif %}
+                        <input type="file" id="id_image2" name="image2" class="form-control" accept="image/*">
+                    </div>
+
+                    <!-- Cropper UI for Image Cropping -->
+                    <div id="image-cropper" style="display:none;">
+                        <h5>Crop Image</h5>
+                        <div class="form-group">
+                            <div id="cropper-container">
+                                <!-- Placeholder for cropping tool -->
+                            </div>
+                        </div>
+                        <button type="button" id="crop-image-btn" class="btn btn-info">Crop Image</button>
+                    </div>
+
                 </div>
             </div>
 
@@ -61,85 +126,71 @@
     .card {
         border-radius: 12px;
     }
-
     .card-body {
         padding: 25px;
     }
-
-    .table th, .table td {
-        vertical-align: middle;
-        font-size: 14px;
-    }
-
-    .table th {
-        color: #6c757d;
-    }
-
-    .table td {
-        color: #495057;
-    }
-
-    .form-group input, .form-group select {
-        border-radius: 6px;
-        padding: 12px;
-        font-size: 14px;
+    .image-preview img {
         border: 1px solid #ccc;
+        padding: 5px;
     }
-
-    .btn {
-        font-size: 16px;
-        padding: 12px 20px;
-        border-radius: 6px;
-    }
-
-    .container {
-        max-width: 1200px;
-    }
-
-    h4 {
-        font-size: 1.4rem;
-        font-weight: 600;
-        color: #333;
-    }
-
-    .table-striped tbody tr:nth-child(odd) {
-        background-color: #f9f9f9;
-    }
-
-    .table th, .table td {
-        font-size: 14px;
-    }
-
-    .table thead {
-        background-color: #f8f9fa;
-    }
-
-    .table th {
-        font-weight: 600;
-    }
-
-    .table td {
-        color: #666;
-    }
-
-    .btn-secondary {
-        font-weight: 600;
-    }
-
-    .card-body h4 {
-        margin-bottom: 20px;
-    }
-
-    .table th,
-    .table td {
-        padding: 15px;
+    #cropper-container {
+        width: 100%;
+        height: 400px;
     }
 </style>
 
+<!-- Include Cropper.js and your JS -->
 <script src="{% static 'assets/js/jquery-3.6.0.min.js' %}"></script>
 <script src="{% static 'assets/js/popper.min.js' %}"></script>
 <script src="{% static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
-<script src="{% static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
+<script src="{% static 'assets/plugins/cropper/cropper.min.js' %}"></script>
 <script src="{% static 'assets/js/script.js' %}"></script>
+
+<script>
+    // Handle image preview and cropping
+    let cropper;
+
+    // Initialize cropper only if the image is being updated
+    $(document).ready(function() {
+        // Initialize image cropper for new image selection
+        $('input[type="file"]').on('change', function (e) {
+            const imageId = $(this).attr('id');
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const imgElement = $('<img>', {
+                    src: event.target.result,
+                    id: imageId + '-crop',
+                    style: 'max-width: 100%; height: auto;',
+                });
+
+                $('#cropper-container').empty().append(imgElement);
+
+                // Initialize Cropper.js
+                if (cropper) {
+                    cropper.destroy();  // Destroy previous instance if exists
+                }
+                cropper = new Cropper(imgElement[0], {
+                    aspectRatio: 1,
+                    viewMode: 1,
+                    autoCropArea: 0.8,
+                });
+
+                // Show cropper UI
+                $('#image-cropper').show();
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Crop the image when user clicks 'Crop Image'
+        $('#crop-image-btn').click(function() {
+            const canvas = cropper.getCroppedCanvas();
+            const croppedImage = canvas.toDataURL('image/png');
+            $('#image1-preview').attr('src', croppedImage);
+            cropper.destroy();
+            $('#image-cropper').hide();
+        });
+    });
+</script>
 
 {% endblock %}
