@@ -29,6 +29,7 @@
                 <div class="card card-table">
                     <div class="card-body">
                         <div class="table-responsive">
+                            
                             <table class="table table-hover table-center table-striped">
                                 <thead>
                                     <tr class="text-center">
@@ -73,26 +74,30 @@
                                         <td>₹{{ order.total_price }}</td>
                                         <td>{{ order.created_at|date:"d M Y, H:i" }}</td>
                                         <td>
-                                            {% if order.status not in "Cancelled,Delivered" %}
+                                            {% if order.status not in "Cancelled,Delivered,Return Accepted" %}
                                                 <!-- Dropdown Button -->
-                                                <div class="dropdown">
-                                                    <button class="btn btn-sm btn-primary dropdown-toggle" type="button" id="orderActions{{ order.id }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                                        Change Status
-                                                    </button>
-                                                    <div class="dropdown-menu" aria-labelledby="orderActions{{ order.id }}">
-                                                        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'pending' %}">Pending</a>
-                                                        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Processing' %}">Processing</a>
-                                                        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'shipped' %}">Shipped</a>
-                                                        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Out for Delivery' %}">Out for Delivery</a>
-                                                        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Delivered' %}">Delivered</a>
-                                                        <div class="dropdown-divider"></div>
-                                                        <a class="dropdown-item" href="{% url 'admin_cancel_order' order.id %}">Cancel</a>
-                                                    </div>
-                                                </div>
+                                               <!-- Dropdown Button -->
+<div class="dropdown">
+    <button class="btn btn-sm btn-primary dropdown-toggle" type="button" id="orderActions{{ order.id }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+        Change Status
+    </button>
+    <div class="dropdown-menu" aria-labelledby="orderActions{{ order.id }}" style="max-height: 200px; overflow-y: auto;">
+        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Pending' %}">Pending</a>
+        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Processing' %}">Processing</a>
+        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Shipped' %}">Shipped</a>
+        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Out for Delivery' %}">Out for Delivery</a>
+        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Delivered' %}">Delivered</a>
+        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Cancelled' %}">Cancel</a>
+        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Return Pending' %}">Return Pending</a>
+        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Return Accepted' %}">Return Accepted</a>
+    </div>
+</div>
+
                                             {% else %}
                                                 <span class="badge badge-light">Completed</span>
                                             {% endif %}
                                         </td>
+                                        
                                     </tr>
                                     {% empty %}
                                     <tr>

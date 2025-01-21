@@ -51,7 +51,6 @@
                     {% endif %}
                 </td>
                 <td>₹{{ order.total_price|floatformat:2 }}</td>
-
                 <td>
                     {% if order.status in "Pending,Shipped,Processing,Out for Delivery" %}
                     <form action="{% url 'cancel_order' order.id %}" method="POST" style="display:inline;">
@@ -59,22 +58,34 @@
                         <button type="submit" class="btn btn-sm btn-outline-danger">Cancel</button>
                     </form>
                     {% endif %}
-    
+                
                     <!-- Return Button shows only if status is 'Delivered' -->
                     {% if order.status == 'Delivered' %}
                     <button class="btn btn-warning btn-sm mt-2" onclick="openReturnModal({{ order.id }})">Return</button>
                     {% endif %}
-    
+                
+                    <!-- Display Credit Information when the Return is Accepted -->
+                    {% if order.status == 'Return Accepted' %}
+                        {% if order.payment_method == 'wallet' %}
+                            <span class="text-success">Amount credited to your wallet.</span>
+                        {% elif order.payment_method == 'cod' or order.payment_method == 'razorpay' %}
+                            <span class="text-success">Amount will be credited to your bank account within 1-2 days.</span>
+                        {% else %}
+                            <span class="text-danger">Payment method unavailable for this return.</span>
+                        {% endif %}
+                    {% endif %}
+                
                     <!-- For Return Pending Status, Show Information About Return -->
                     {% if order.status == 'Return Pending' %}
                     <span class="text-warning">Return request is pending. Please wait for confirmation.</span>
                     {% endif %}
-    
+                
                     <!-- For Cancelled Status, Show Information About Cancellation -->
                     {% if order.status == 'Cancelled' %}
                     <span class="text-danger">This order has been cancelled.</span>
                     {% endif %}
                 </td>
+                
             </tr>
             {% empty %}
             <tr>

@@ -20,14 +20,14 @@
                 <div class="card card-table">
                     <div class="card-body">
                         <div class="table-responsive">
-                            <table class="table table-hover table-center">
-                                <thead>
+                            <table class="table table-bordered table-hover table-striped">
+                                <thead class="thead-light">
                                     <tr>
-                                        <th style="width: 10%;">Product ID</th>
-                                        <th style="width: 20%;">Product Name</th>
-                                        <th style="width: 15%;">Brand</th>
-                                        <th style="width: 30%;">Variants</th>
-                                        
+                                        <th>Product ID</th>
+                                        <th>Product Name</th>
+                                        <th>Brand</th>
+                                        <th>Variants</th>
+                                        <th>Stock</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -40,29 +40,37 @@
                                             {% if product.variants.exists %}
                                             <ul class="list-unstyled">
                                                 {% for variant in product.variants.all %}
-                                                <li>
-                                                    <div class="d-flex justify-content-between">
-                                                        <span>{{ variant.size }} - {{ variant.color }}</span>
-                                                        <button type="button" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#editStockModal{{ variant.id }}">
-                                                            Edit Stock
-                                                        </button>
+                                                <li class="d-flex justify-content-between align-items-center py-2">
+                                                    <div>
+                                                        <span><strong>Size:</strong> {{ variant.size }} | <strong>Color:</strong> {{ variant.color }}</span>
                                                     </div>
-                                                    <div class="mt-2">
-                                                        <span class="badge badge-secondary">Stock: {{ variant.stock }}</span>
-                                                    </div>
+                                                    <button type="button" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#editStockModal{{ variant.id }}">
+                                                        Edit Stock
+                                                    </button>
                                                 </li>
                                                 {% endfor %}
                                             </ul>
                                             {% else %}
-                                            No Variants
+                                            <span class="text-muted">No Variants</span>
                                             {% endif %}
                                         </td>
-                                       
-                                      
+                                        <td>
+                                            {% if product.variants.exists %}
+                                            <ul class="list-unstyled">
+                                                {% for variant in product.variants.all %}
+                                                <li class="d-flex justify-content-between align-items-center py-2">
+                                                    <span class="badge badge-secondary">Stock: {{ variant.stock }}</span>
+                                                </li>
+                                                {% endfor %}
+                                            </ul>
+                                            {% else %}
+                                            <span class="text-muted">No Stock Information</span>
+                                            {% endif %}
+                                        </td>
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="6" class="text-center">No products found</td>
+                                        <td colspan="5" class="text-center">No products found</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>

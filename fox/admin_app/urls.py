@@ -36,6 +36,9 @@ urlpatterns = [
     path('order/<int:order_id>/status/<str:status>/', views.admin_update_order_status, name='admin_update_order_status'),
     path('order/<int:order_id>/cancel/', views.admin_cancel_order, name='admin_cancel_order'),
 
+    path('admin_return_approve/<int:order_id>/', views.admin_return_approve, name='admin_return_approve'),
+    path('admin_return_reject/<int:order_id>/', views.admin_return_reject, name='admin_return_reject'),
+
     #url for admin inventry management
     path('inventory/', views.inventory_management, name='inventory_management'),
     path('create_order/<int:product_id>/', views.create_order, name='create_order'),

@@ -1,91 +1,75 @@
-
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const variantRadios = document.querySelectorAll('.variant-radio');
-        const priceDisplay = document.getElementById('price-display');
-        const offerText = document.getElementById('offer-text');
-        const stockInfo = document.getElementById('stock-info');
-        const quantityInput = document.getElementById('quantity-input');
-        const addToCartBtn = document.getElementById('add-to-cart-btn');
-    
-        const bestOfferName = "{{ best_offer.name|default:'' }}";
-        const discountPercentage = {{ best_offer.discount_percentage|default:0 }};
-    
-        variantRadios.forEach(radio => {
-            radio.addEventListener('change', function () {
-                const variantElement = this.closest('.variant-option');
-                const variantPrice = parseFloat(variantElement.dataset.price);
-                const variantStock = parseInt(variantElement.dataset.stock);
-                
-                // Calculate discounted price
-                let discountedPrice = variantPrice;
-                if (discountPercentage > 0) {
-                    const discountAmount = (variantPrice * discountPercentage) / 100;
-                    discountedPrice = Math.max(0, (variantPrice - discountAmount).toFixed(2));
-                }
-    
-                // Update UI for price
-                if (discountPercentage > 0) {
-                    offerText.innerHTML = `Offer: ${bestOfferName} - ${discountPercentage}% off`;
-                    priceDisplay.innerHTML = ` 
-                        <del style="color: grey;">₹${variantPrice}</del> 
-                        ₹${discountedPrice}
-                    `;
-                } else {
-                    offerText.innerHTML = "No current offers";
-                    priceDisplay.innerHTML = `₹${variantPrice}`;
-                }
-    
-                // Update stock info dynamically
-                if (variantStock > 0) {
-                    stockInfo.innerText = `Stock Available: ${variantStock}`;
-                    stockInfo.style.color = "green"; // Stock available color
-                    addToCartBtn.disabled = false; // Enable the Add to Cart button
-                    quantityInput.max = variantStock; // Limit quantity to available stock
-                } else {
-                    stockInfo.innerText = "Out of Stock";
-                    stockInfo.style.color = "red"; // Out of stock color
-                    addToCartBtn.disabled = true; // Disable the Add to Cart button
-                }
-    
-                // Limit quantity input to available stock
-                quantityInput.addEventListener('input', function() {
-                    if (parseInt(quantityInput.value) > variantStock) {
-                        quantityInput.value = variantStock;
-                        alert(`Only ${variantStock} items available in stock.`);
-                    }
-                });
-            });
-        });
-    
-        // Trigger change for the default selected variant
-        const defaultVariant = document.querySelector('.variant-radio:checked');
-        if (defaultVariant) {
-            defaultVariant.dispatchEvent(new Event('change'));
-        }
-    });
-    </script>
-
-
-
-<!-- Add to Cart Button -->
-<button type="submit" class="btn btn-primary px-3" id="add-to-cart-btn">
-    <i class="fa fa-shopping-cart mr-1"></i> Add to Cart
-</button>
-
-
-
-<div class="form-group mb-4">
-    <label for="quantity">Quantity</label>
-    <div class="input-group" style="max-width: 180px;">
-        <button class="btn btn-primary px-3" type="button" id="decrement-btn" 
-                style="font-size: 20px; width: 40px; height: 40px; display: flex; justify-content: center; align-items: center;">-</button>
-        <input type="number" name="quantity" class="form-control" value="1" min="1" id="quantity-input" 
-               style="width: 60px; text-align: center;">
-        <button class="btn btn-primary px-3" type="button" id="increment-btn" 
-                style="font-size: 20px; width: 40px; height: 40px; display: flex; justify-content: center; align-items: center;">+</button>
-    </div>
-</div>
-
-
-<p id="stock-info" class="mb-2" style="font-weight: bold;">Stock Available: {{ product.variants.first.stock }}</p>
+<table class="table table-hover table-center table-striped">
+    <thead>
+        <tr class="text-center">
+            <th>Order ID</th>
+            <th>User ID</th>
+            <th>User</th>
+            <th>Product Item Name</th>
+            <th>Status</th>
+            <th>Total Price</th>
+            <th>Created At</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for order in orders %}
+        <tr class="text-center">
+            <td>{{ order.id }}</td>
+            <td>{{ order.user.id }}</td>
+            <td>{{ order.user.username }}</td>
+            <td>
+                {% for item in order.items.all %}
+                {{ item.product.name }} (x{{ item.quantity }})<br>
+                {% endfor %}
+            </td>
+            <td>
+                <span class="badge 
+                    {% if order.status == 'Cancelled' %}badge-danger
+                    {% elif order.status == 'Delivered' %}badge-success
+                    {% elif order.status == 'Shipped' %}badge-primary
+                    {% elif order.status == 'Out for Delivery' %}badge-info
+                    {% elif order.status == 'Processing' %}badge-secondary
+                    {% elif order.status == 'Pending' %}badge-warning
+                    {% elif order.status == 'Return Pending' %}badge-warning
+                    {% elif order.status == 'Return Accepted' %}badge-success
+                    {% else %}badge-light
+                    {% endif %}
+                ">{{ order.get_status_display }}</span>
+            </td>
+            <td>₹{{ order.total_price }}</td>
+            <td>{{ order.created_at|date:"d M Y, H:i" }}</td>
+            <td>
+                {% if order.status in "Delivered,Return Accepted" %}
+                    <span class="badge badge-light">Action Completed</span>
+                {% else %}
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-primary dropdown-toggle" type="button" id="orderActions{{ order.id }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        Change Status
+                    </button>
+                    <div class="dropdown-menu" aria-labelledby="orderActions{{ order.id }}" style="max-height: 200px; overflow-y: auto;">
+                        <!-- General Status Options -->
+                        {% if order.status not in "Cancelled,Delivered,Return Pending,Return Accepted" %}
+                            <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Pending' %}">Pending</a>
+                            <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Processing' %}">Processing</a>
+                            <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Shipped' %}">Shipped</a>
+                            <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Out for Delivery' %}">Out for Delivery</a>
+                            <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Delivered' %}">Delivered</a>
+                            <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Cancelled' %}">Cancel</a>
+                        {% endif %}
+                        <!-- Return Request Actions -->
+                        {% if order.status == "Return Pending" %}
+                            <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Return Accepted' %}">Accept Return</a>
+                            <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Delivered' %}">Reject Return</a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="8" class="text-center">No orders found</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
