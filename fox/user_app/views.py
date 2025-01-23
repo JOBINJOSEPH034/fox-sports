@@ -232,6 +232,7 @@ def shop_women(request):
         'selected_brands': selected_brands,          
         'sort_option': sort_option,
     })
+
 @login_required
 @never_cache
 def product_details(request, product_id):
@@ -291,6 +292,8 @@ def product_details(request, product_id):
         'discounted_price': discounted_price,
         'variant_offers': variant_offers,  # Pass the dictionary
     })
+
+
 @login_required
 def cart_page(request):
     cart, created = Cart.objects.get_or_create(user=request.user)
@@ -303,6 +306,12 @@ def cart_page(request):
     discount_amount = 0
     final_total = cart_total
     coupon_code = None
+
+    # Fetch all available coupons
+    available_coupons = Coupon.objects.filter(is_active=True)
+
+    # Check if the user has used any coupon
+    used_coupons = Coupon.objects.filter(used_orders__user=request.user)
 
     # Apply coupon if available
     if cart.applied_coupon:
@@ -317,11 +326,15 @@ def cart_page(request):
             coupon_code = request.POST.get('coupon_code')
             try:
                 coupon = Coupon.objects.get(code=coupon_code, is_active=True)
-                cart.applied_coupon = coupon
-                cart.save()
-                discount_amount = (cart_total * coupon.discount_percentage) / 100
-                final_total = cart_total - discount_amount
-                messages.success(request, f"Coupon applied! You get {coupon.discount_percentage}% off.")
+                # Check if this coupon has already been used by the user
+                if coupon in used_coupons:
+                    messages.error(request, f"You've already used the {coupon.code} coupon.")
+                else:
+                    cart.applied_coupon = coupon
+                    cart.save()
+                    discount_amount = (cart_total * coupon.discount_percentage) / 100
+                    final_total = cart_total - discount_amount
+                    messages.success(request, f"Coupon applied! You get {coupon.discount_percentage}% off.")
             except Coupon.DoesNotExist:
                 messages.error(request, "Invalid or expired coupon code.")
         elif 'remove_coupon' in request.POST:
@@ -339,6 +352,8 @@ def cart_page(request):
         'discount_amount': discount_amount,
         'final_total': final_total,
         'coupon_code': coupon_code,
+        'available_coupons': available_coupons,  # Pass available coupons
+        'used_coupons': used_coupons,  # Pass the list of used coupons
     })
 
 
@@ -730,6 +745,7 @@ def request_return(request):
 
 
 # User Profile View (Displays user details)
+# views.py
 @login_required
 def profile(request):
     user = request.user
@@ -743,13 +759,17 @@ def profile(request):
             if hasattr(user, 'profile'):
                 user.profile.phone = request.POST.get('phone')
                 user.profile.bio = request.POST.get('bio', '')
+                user.profile.date_of_birth = request.POST.get('date_of_birth')
+                
+                if 'profile_picture' in request.FILES:
+                    user.profile.profile_picture = request.FILES['profile_picture']
 
             user.save()
             if hasattr(user, 'profile'):
                 user.profile.save()
 
             messages.success(request, "Your profile has been updated successfully.")
-            return redirect('profile') 
+            return redirect('profile')
         except Exception as e:
             messages.error(request, f"Error occurred: {e}")
             return redirect('profile')
@@ -882,7 +902,7 @@ def wallet_page(request):
     return render(request, 'profile/wallet_page.html', {
         'wallet': wallet,
         'transactions': transactions,
-         'page_obj': page_obj, 
+        'page_obj': page_obj, 
     })
 
 

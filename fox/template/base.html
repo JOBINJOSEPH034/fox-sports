@@ -53,12 +53,20 @@
           <a href="javascript:void(0);" id="toggle_btn">
               <i class="fas fa-align-left"></i>
           </a>
-          <div class="top-nav-search">
-              <form>
-                  <input type="text" class="form-control" placeholder="Search here">
-                  <button class="btn" type="submit"><i class="fas fa-search"></i></button>
-              </form>
-          </div>
+
+    <!-- Search Form with your button and input style -->
+    <div class="top-nav-search">
+        <form id="search-form">
+            <input type="text" id="search-input" class="form-control" placeholder="Search here" />
+            <button class="btn" type="submit"><i class="fas fa-search"></i></button>
+        </form>
+    </div>
+
+    <!-- Section to display search results -->
+    <div id="search-results"></div>
+
+
+
           <a class="mobile_btn" id="mobile_btn">
               <i class="fas fa-bars"></i>
           </a>
@@ -295,6 +303,96 @@ $(document).ready(function() {
     }, 5000);  // 5000 milliseconds = 5 seconds
 });
 </script>
+
+    <script>
+        // Get the search input and button elements
+        const searchInput = document.getElementById('search-input');
+        const searchBtn = document.getElementById('search-btn');
+        const resultsContainer = document.getElementById('search-results');
+
+        // Event listener for the search button click
+        searchBtn.addEventListener('click', function() {
+            const query = searchInput.value.trim(); // Get the query text
+
+            if (!query) {
+                resultsContainer.innerHTML = "<p>Please enter a search query.</p>";
+                return;
+            }
+
+            // Fetch search results from the server
+            fetch(`/search/?q=${query}`)
+                .then(response => response.json())
+                .then(data => {
+                    let resultsHTML = '<h3>Search Results</h3>';
+
+                    // Display results for products
+                    if (data.products.length) {
+                        resultsHTML += '<h4>Products</h4><ul>';
+                        data.products.forEach(product => {
+                            resultsHTML += `<li>${product.name} - ${product.description}</li>`;
+                        });
+                        resultsHTML += '</ul>';
+                    }
+
+                    // Display results for categories
+                    if (data.categories.length) {
+                        resultsHTML += '<h4>Categories</h4><ul>';
+                        data.categories.forEach(category => {
+                            resultsHTML += `<li>${category.name}</li>`;
+                        });
+                        resultsHTML += '</ul>';
+                    }
+
+                    // Display results for offers
+                    if (data.offers.length) {
+                        resultsHTML += '<h4>Offers</h4><ul>';
+                        data.offers.forEach(offer => {
+                            resultsHTML += `<li>${offer.name} - ${offer.discount_percentage}% off</li>`;
+                        });
+                        resultsHTML += '</ul>';
+                    }
+
+                    // Display results for coupons
+                    if (data.coupons.length) {
+                        resultsHTML += '<h4>Coupons</h4><ul>';
+                        data.coupons.forEach(coupon => {
+                            resultsHTML += `<li>${coupon.code} - ${coupon.discount_percentage}% off</li>`;
+                        });
+                        resultsHTML += '</ul>';
+                    }
+
+                    // Display results for brands
+                    if (data.brands.length) {
+                        resultsHTML += '<h4>Brands</h4><ul>';
+                        data.brands.forEach(brand => {
+                            resultsHTML += `<li>${brand.name}</li>`;
+                        });
+                        resultsHTML += '</ul>';
+                    }
+
+                    // Display results for orders
+                    if (data.orders.length) {
+                        resultsHTML += '<h4>Orders</h4><ul>';
+                        data.orders.forEach(order => {
+                            resultsHTML += `<li>Order ID: ${order.id} - Customer: ${order.user__username}</li>`;
+                        });
+                        resultsHTML += '</ul>';
+                    }
+
+                    // If no results found for any category
+                    if (!data.products.length && !data.categories.length && !data.offers.length && !data.coupons.length && !data.brands.length && !data.orders.length) {
+                        resultsHTML = '<h3>No results found</h3>';
+                    }
+
+                    // Insert the results into the search-results div
+                    resultsContainer.innerHTML = resultsHTML;
+                })
+                .catch(error => {
+                    console.error('Error fetching search results:', error);
+                    resultsContainer.innerHTML = "<p>An error occurred while fetching the search results.</p>";
+                });
+        });
+    </script>
 
   </body>
   </html>

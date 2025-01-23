@@ -131,6 +131,18 @@ footer .footer-links a:hover {
     padding: 5px 0; /* Reduce overall navbar padding */
 }
 .form-control {
-    padding: 10px 15px; /* Increased padding for a larger input field */
+    padding: 6px 14px; /* Increased padding for a larger input field */
     font-size: 16px; /* Slightly larger font size */
 }
+
+
+        .table td {
+            padding: 25px 15px;  /* Add padding to each table cell */
+        }
+    
+        /* Ensure long text in the Actions column wraps */
+        .table td p {
+            word-wrap: break-word;
+            white-space: normal;
+        }
+    

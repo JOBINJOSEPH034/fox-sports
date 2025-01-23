@@ -106,7 +106,7 @@ class Order(models.Model):
         ('wallet', 'Wallet'),
     ]
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders') 
     address = models.ForeignKey(Address, on_delete=models.SET_NULL, null=True, blank=True,related_name='address') 
     variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, null=True, blank=True)  
     product_name = models.CharField(max_length=100,null=True, blank=True)
@@ -117,7 +117,8 @@ class Order(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     return_requested_at = models.DateTimeField(null=True, blank=True)
     offer_discount = models.FloatField(default=0)  
-    coupon_discount = models.FloatField(default=0)  
+    coupon_discount = models.FloatField(default=0)
+    coupons = models.ManyToManyField(Coupon, related_name="used_orders", blank=True) 
     subtotal = models.FloatField(default=0) 
     discount_percentage = models.FloatField(default=0)
 
@@ -213,6 +214,7 @@ class UserProfile(models.Model):
     bio = models.TextField(blank=True, null=True)
     date_of_birth = models.DateField(null=True, blank=True)
     address = models.TextField(null=True, blank=True)  
+    profile_picture = models.ImageField(upload_to='profile_pics/', null=True, blank=True)
     offer = models.ForeignKey(Offer, on_delete=models.SET_NULL, null=True, blank=True)
 
     def __str__(self):

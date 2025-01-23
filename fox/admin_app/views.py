@@ -522,6 +522,8 @@ def delete_coupon(request, coupon_id):
     messages.success(request, 'Coupon deleted successfully!')
     return redirect('coupon_list')
 
+
+#user offer 
 def manage_offers(request):
     products = Product.objects.all()
     categories = Category.objects.all()
@@ -777,3 +779,36 @@ def export_to_pdf(request):
     response = HttpResponse(pdf_file, content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename=sales_report.pdf'
     return response
+
+
+
+def search_view(request):
+    query = request.GET.get('q', '')
+    
+    if query:
+        products = Product.objects.filter(name__icontains=query)
+        categories = Category.objects.filter(name__icontains=query)
+        offers = Offer.objects.filter(name__icontains=query)
+        coupons = Coupon.objects.filter(code__icontains=query)
+        brands = Brand.objects.filter(name__icontains=query)
+        orders = Order.objects.filter(id__icontains=query)
+        
+        results = {
+            'products': list(products.values('id', 'name', 'description')),
+            'categories': list(categories.values('id', 'name')),
+            'offers': list(offers.values('id', 'name', 'discount_percentage')),
+            'coupons': list(coupons.values('id', 'code', 'discount_percentage')),
+            'brands': list(brands.values('id', 'name')),
+            'orders': list(orders.values('id', 'user__username')),
+        }
+        
+        return JsonResponse(results)
+    
+    return JsonResponse({
+        'products': [],
+        'categories': [],
+        'offers': [],
+        'coupons': [],
+        'brands': [],
+        'orders': [],
+    })

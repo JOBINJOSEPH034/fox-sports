@@ -29,6 +29,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+
 
 
 
@@ -75,6 +77,69 @@
 
 
 </style>
+
+<!-- Add this to your CSS for modern design updates -->
+<style>
+   /* Style for Available Coupons Section */
+#viewCouponsBtn {
+    background-color: transparent;
+    border: none;
+    color: #007bff;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+#viewCouponsBtn:hover {
+    color: #0056b3;
+}
+
+/* Popup Styling */
+.coupon-popup {
+    display: none;
+    position: absolute;
+    top: 50px;
+    left: 0;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    padding: 20px;
+    width: 100%;
+    max-width: 500px;
+    z-index: 1000;
+}
+
+.coupon-popup .popup-content {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.coupon-popup ul.list-unstyled {
+    margin-bottom: 15px;
+}
+
+.coupon-popup li {
+    border-bottom: 1px solid #ddd;
+    padding: 10px 0;
+}
+
+.coupon-popup li:hover {
+    background-color: #f7f7f7;
+    cursor: pointer;
+}
+
+.coupon-popup .btn {
+    font-size: 0.875rem;
+}
+
+/* Close Button */
+#closePopupBtn {
+    margin-top: 15px;
+    width: 100%;
+}
+
+</style>
+
 
 </head>
 
@@ -216,7 +281,7 @@
                         {% for item in cart_items %}
                         <tr>
                             <td class="align-middle">
-                                <img src="{{ item.product.image1.url }}" alt="" style="width: 50px;">
+                                <img src="{{ item.product.image1.url }}" alt="" style="width: 80px;">
                                 {{ item.product.name }}
                             </td>
                             <td class="align-middle">
@@ -224,11 +289,13 @@
                             </td>
                             <td>
                                 {% if item.get_discounted_price < item.product.price %}
-                                    <del>{{ item.product.price }}</del> {{ item.get_discounted_price|floatformat:2 }}
+                                    <del style="color: red;">{{ item.product.price }}</del> 
+                                    <span style="color: green;">{{ item.get_discounted_price|floatformat:2 }}</span>
                                 {% else %}
-                                    {{ item.get_discounted_price|floatformat:2 }}
+                                    {{ item.get_discounted_price|floatformat:2 }}</span>
                                 {% endif %}
-                            </td>                            <td class="align-middle">
+                            </td>
+                                                       <td class="align-middle">
                                 <form method="POST" action="{% url 'update_cart_item' item.id %}" id="update-cart-form-{{ item.id }}">
                                     {% csrf_token %}
                                     <div class="input-group" style="max-width: 180px; display: flex; justify-content: center; align-items: center;">
@@ -286,6 +353,7 @@
                 });
             {% endfor %}
         </script>
+
         
 <div class="col-lg-4">
     {% if cart_items %}
@@ -299,7 +367,15 @@
                 <h6>Items</h6>
                 <h6>
                     {% for item in cart_items %}
-                        <div>{{ item.quantity }} x {{ item.product.name }}</div>
+                    <div>{{ item.quantity }} x
+                        <td>
+                            {% if item.get_discounted_price < item.product.price %}
+                            <span>{{ item.get_discounted_price|floatformat:2 }}</span>
+                            {% else %}
+                            {{ item.get_discounted_price|floatformat:2 }}
+                            {% endif %}
+                        </td>
+                    </div>
                     {% endfor %}
                 </h6>
             </div>
@@ -313,12 +389,12 @@
             <!-- Discount (if any) -->
             {% if discount_amount %}
             <div class="d-flex justify-content-between mb-3">
-                <h6>Discount ({{ coupon_code }})</h6>
-                <h6>₹-{{ discount_amount|floatformat:2 }}</h6>
+                <h6>Discount Amount</h6>
+                <span style="color: green;">
+                    ₹-{{ discount_amount|floatformat:2 }}
+                </span>
             </div>
             {% endif %}
-
-            
         </div>
 
         <!-- Coupon Apply Section -->
@@ -333,7 +409,6 @@
             </form>
         </div>
         {% else %}
-        <!-- Coupon Applied - Show Remove Button -->
         <div class="mb-3">
             <form method="POST" action="{% url 'cart_page' %}">
                 {% csrf_token %}
@@ -344,6 +419,68 @@
             </form>
         </div>
         {% endif %}
+
+<!-- Available Coupons Section -->
+{% if available_coupons %}
+    <div class="mb-3">
+        <h6 class="text-success d-flex align-items-center">
+            <i class="fa fa-gift mr-2"></i> Available Coupons
+            <button id="viewCouponsBtn" class="btn btn-sm btn-link ml-auto text-decoration-none">View Coupons</button>
+        </h6>
+        
+        <!-- Popup (Hidden by Default) -->
+        <div id="couponPopup" class="coupon-popup">
+            <div class="popup-content">
+                <h6 class="text-center mb-3">Select a Coupon</h6>
+                <ul class="list-unstyled">
+                    {% for coupon in available_coupons %}
+                        <li class="d-flex justify-content-between align-items-center mb-3">
+                            <span>{{ coupon.code }} - {{ coupon.discount_percentage }}% off</span>
+                            <form method="POST" action="{% url 'cart_page' %}" style="display:inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="coupon_code" value="{{ coupon.code }}">
+                                {% if coupon.code == coupon_code %}
+                                    <button type="submit" name="remove_coupon" class="btn btn-sm btn-danger" disabled>Applied</button>
+                                {% else %}
+                                    <button type="submit" class="btn btn-sm btn-primary">Apply</button>
+                                {% endif %}
+                            </form>
+                        </li>
+                    {% endfor %}
+                </ul>
+                <button id="closePopupBtn" class="btn btn-sm btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Get the button and popup elements
+    const viewCouponsBtn = document.getElementById("viewCouponsBtn");
+    const couponPopup = document.getElementById("couponPopup");
+    const closePopupBtn = document.getElementById("closePopupBtn");
+
+    // Show the popup when the "View Coupons" button is clicked
+    viewCouponsBtn.addEventListener("click", function() {
+        couponPopup.style.display = "block";
+    });
+
+    // Hide the popup when the "Close" button is clicked
+    closePopupBtn.addEventListener("click", function() {
+        couponPopup.style.display = "none";
+    });
+
+    // Close the popup if clicked outside of it (optional)
+    window.addEventListener("click", function(event) {
+        if (event.target === couponPopup) {
+            couponPopup.style.display = "none";
+        }
+    });
+});
+
+</script>
 
         <!-- Total Amount -->
         <div class="border-top pt-3">
@@ -366,6 +503,25 @@
     {% endif %}
 </div>
 
+
+<!-- Add JavaScript for toggle effect -->
+<script>
+    document.getElementById('couponToggle').addEventListener('click', function() {
+        var couponList = document.getElementById('couponList');
+        var toggleIcon = document.getElementById('toggleIcon');
+
+        // Toggle the visibility of coupon list
+        if (couponList.style.display === 'none' || couponList.style.display === '') {
+            couponList.style.display = 'block';
+            toggleIcon.classList.add('rotate');
+        } else {
+            couponList.style.display = 'none';
+            toggleIcon.classList.remove('rotate');
+        }
+    });
+</script>
+
+    
 
     </div>
 </div>

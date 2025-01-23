@@ -5,9 +5,8 @@
 {% block content %}
 <div class="container my-4">
     <div class="card shadow-sm rounded">
-        <div class="card-header bg-primary text-white py-3">
+        <div class="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center">
             <h3 class="mb-0">User Profile</h3>
-            
         </div>
         <div class="card-body">
             <div class="form-row mb-3">
@@ -21,6 +20,16 @@
             <div class="form-row mb-3">
                 <div class="col-md-4 font-weight-bold">Last Name:</div>
                 <div class="col-md-8">{{ user.last_name }}</div>
+            </div>
+            <div class="form-row mb-3">
+                <div class="col-md-4 font-weight-bold">Date of Birth:</div>
+                <div class="col-md-8">
+                    {% if user.profile.date_of_birth %}
+                        {{ user.profile.date_of_birth|date:"F d, Y" }}
+                    {% else %}
+                        <span class="text-muted">No date of birth available</span>
+                    {% endif %}
+                </div>
             </div>
             <div class="form-row mb-3">
                 <div class="col-md-4 font-weight-bold">Email:</div>
@@ -46,6 +55,7 @@
                     {% endif %}
                 </div>
             </div>
+        
             <div class="form-row mb-3">
                 <div class="col-md-4 font-weight-bold">Date Joined:</div>
                 <div class="col-md-8">{{ user.date_joined }}</div>
@@ -59,7 +69,6 @@
     </div>
 </div>
 
-
 <!-- Modal for Editing Profile -->
 <div class="modal fade" id="editProfileModal" tabindex="-1" role="dialog" aria-labelledby="editProfileModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
@@ -70,7 +79,7 @@
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <form method="POST" id="editProfileForm">
+            <form method="POST" id="editProfileForm" enctype="multipart/form-data">
                 {% csrf_token %}
                 <div class="modal-body">
                     <div class="form-group">
@@ -93,6 +102,11 @@
                         <label for="bio">Bio</label>
                         <textarea id="bio" name="bio" class="form-control" placeholder="Write something about yourself">{{ user.profile.bio }}</textarea>
                     </div>
+                    <div class="form-group">
+                        <label for="date_of_birth">Date of Birth</label>
+                        <input type="date" id="date_of_birth" name="date_of_birth" value="{{ user.profile.date_of_birth }}" class="form-control">
+                    </div>
+                    
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>

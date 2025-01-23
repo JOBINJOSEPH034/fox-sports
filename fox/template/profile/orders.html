@@ -10,10 +10,8 @@
             <tr>
                 <th>Order ID</th>
                 <th>Date</th>
-                <th >Address</th>  <!-- Increased width for Address column -->
                 <th>Products</th>
                 <th>Status</th>
-
                 <th>Payment Method</th>  <!-- New Payment Method Column -->
                 <th>Total</th>
                 <th>Actions</th>
@@ -22,24 +20,17 @@
         <tbody>
             {% for order in page_obj.object_list %}
             <tr>
-                <td>{{ order.id }}</td>
-                <td>{{ order.created_at|date:"d M Y, H:i" }}</td>
-                <td >  <!-- Increased width and word-wrap for Address -->
-                    {{ order.address.name }}<br>
-                    {{ order.address.address_line }}<br>
-                    {{ order.address.city }}, {{ order.address.state }}<br>
-                    {{ order.address.postal_code }}
-                </td>
-                <td>
+                <td class="p-3">{{ order.id }}</td>
+                <td class="p-3">{{ order.created_at|date:"d M Y, H:i" }}</td>
+                <td class="p-3">
                     {% for item in order.items.all %}
                         {{ item.product.name }} (x{{ item.quantity }})<br>
                     {% endfor %}
                 </td>
-                <td class="{% if order.status == 'Delivered' %}text-success{% elif order.status == 'Cancelled' %}text-danger{% elif order.status == 'Return Pending' %}text-warning{% else %}text-dark{% endif %}">
+                <td class="p-3 {% if order.status == 'Delivered' %}text-success{% elif order.status == 'Cancelled' %}text-danger{% elif order.status == 'Return Pending' %}text-warning{% else %}text-dark{% endif %}">
                     {{ order.status }}
                 </td>
-                <td>
-                    <!-- Display Payment Method -->
+                <td class="p-3">
                     {% if order.payment_method == 'cod' %}
                         Cash on Delivery
                     {% elif order.payment_method == 'wallet' %}
@@ -50,8 +41,8 @@
                         Not Available
                     {% endif %}
                 </td>
-                <td>₹{{ order.total_price|floatformat:2 }}</td>
-                <td>
+                <td class="p-3">₹{{ order.total_price|floatformat:2 }}</td>
+                <td class="p-3">
                     {% if order.status in "Pending,Shipped,Processing,Out for Delivery" %}
                     <form action="{% url 'cancel_order' order.id %}" method="POST" style="display:inline;">
                         {% csrf_token %}
@@ -85,7 +76,6 @@
                     <span class="text-danger">This order has been cancelled.</span>
                     {% endif %}
                 </td>
-                
             </tr>
             {% empty %}
             <tr>
@@ -94,6 +84,8 @@
             {% endfor %}
         </tbody>
     </table>
+    
+    
     
 
     <!-- Pagination -->

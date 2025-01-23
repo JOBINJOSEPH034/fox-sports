@@ -160,17 +160,17 @@
     <div class="row px-xl-5">
         <!-- Sidebar Start (Filter and Sort Options) -->
         <div class="col-lg-3 col-md-4 mb-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5>Filter & Sort</h5>
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Filter & Sort</h5>
                 </div>
                 <div class="card-body">
                     <form method="get" action="" id="filter-form">
                         <!-- Filter by Category -->
-                        <h6 class="mb-3">Filter by Category</h6>
+                        <h6 class="mb-3 text-dark">Filter by Category</h6>
                         <div id="categories">
                             {% for category in categories %}
-                                <div class="form-check">
+                                <div class="form-check mb-2">
                                     <input type="checkbox" name="category" class="form-check-input" 
                                            id="category-{{ category.id }}" value="{{ category.id }}"
                                            {% if category.id|stringformat:"s" in selected_categories %}checked{% endif %}>
@@ -182,10 +182,10 @@
                         <hr>
         
                         <!-- Filter by Brand -->
-                        <h6 class="mb-3">Filter by Brand</h6>
+                        <h6 class="mb-3 text-dark">Filter by Brand</h6>
                         <div id="brands">
                             {% for brand in brands %}
-                                <div class="form-check">
+                                <div class="form-check mb-2">
                                     <input type="checkbox" name="brand" class="form-check-input" 
                                            id="brand-{{ brand.id }}" value="{{ brand.id }}"
                                            {% if brand.id|stringformat:"s" in selected_brands %}checked{% endif %}>
@@ -197,8 +197,8 @@
                         <hr>
         
                         <!-- Sort Options -->
-                        <h6 class="mb-3">Sort by</h6>
-                        <select name="sort" class="form-control mb-3">
+                        <h6 class="mb-3 text-dark">Sort by</h6>
+                        <select name="sort" class="form-control form-control-sm mb-3" style="padding: 0.25rem 0.5rem;">
                             <option value="">Select</option>
                             <option value="low_to_high" {% if sort_option == 'low_to_high' %}selected{% endif %}>Price: Low to High</option>
                             <option value="high_to_low" {% if sort_option == 'high_to_low' %}selected{% endif %}>Price: High to Low</option>
@@ -210,14 +210,14 @@
         
                         <!-- Buttons -->
                         <div class="d-flex justify-content-between">
-                            <button type="submit" class="btn btn-primary">Apply Filters</button>
-                            <a href="{% url 'shop' %}" class="btn btn-primary">Clear Filters</a>
+                            <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
+                            <a href="{% url 'shop' %}" class="btn btn-danger btn-sm">Clear Filters</a>
                         </div>
                     </form>
                 </div>
             </div>
         </div>
-        <!-- Sidebar End -->
+        
         
 
         <!-- Main Content Start (Products) -->

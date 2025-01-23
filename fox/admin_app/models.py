@@ -83,10 +83,10 @@ class Product(models.Model):
 
         super().save(*args, **kwargs)
 
-def get_discounted_price(self):
-    if self.offer and self.offer.is_valid():
-        return self.price * (1 - self.offer.discount_percentage / 100)
-    return self.price
+    def get_discounted_price(self):
+        if self.offer and self.offer.is_valid():
+            return self.price * (1 - self.offer.discount_percentage / 100)
+        return self.price
 
 #model for product varient
 class ProductVariant(models.Model):
@@ -140,6 +140,9 @@ class Coupon(models.Model):
 
     def __str__(self):
         return self.code
+    
+
+
 
 class Offer(models.Model):
     PRODUCT = 'product'
