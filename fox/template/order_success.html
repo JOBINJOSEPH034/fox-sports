@@ -166,11 +166,23 @@
                     <p>Your order has been placed successfully.</p>
                     <p>Order ID: <strong>#{{ order.id }}</strong></p>
                     <p>Total: <strong>₹{{ order.total_price }}</strong></p>
-                    <a href="{% url 'shop' %}" class="btn btn-primary mt-3">Continue Shopping</a>
+    
+                    <!-- Button container for alignment -->
+                    <div class="button-container mt-4">
+                        <form method="POST" style="display: inline-block; margin-right: 20px;">
+                            {% csrf_token %}
+                            <button type="submit" name="download_invoice" class="btn btn-success btn-sm">Download Invoice</button>
+                        </form>
+    
+                        <a href="{% url 'shop' %}" class="btn btn-primary btn-sm">Continue Shopping</a>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+    
+    <!-- Add this CSS to improve the alignment -->
+   
     
 
 

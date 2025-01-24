@@ -80,62 +80,84 @@
 
 <!-- Add this to your CSS for modern design updates -->
 <style>
-   /* Style for Available Coupons Section */
+ /* Modal Styles */
+.coupon-popup {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    justify-content: center;
+    align-items: center;
+    z-index: 1050;
+}
+
+.popup-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: -1;
+}
+
+.popup-content {
+    background-color: white;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 400px;
+    padding: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    animation: fadeIn 0.3s ease;
+}
+
+h6 {
+    font-size: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+button {
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #f0f0f0;
+}
+
 #viewCouponsBtn {
-    background-color: transparent;
-    border: none;
-    color: #007bff;
     font-size: 1rem;
     cursor: pointer;
+    color: #007bff; /* Change this to any color you prefer */
+    text-decoration: underline; /* Optional: makes the text look like a link */
 }
 
 #viewCouponsBtn:hover {
-    color: #0056b3;
+    color: #0056b3; /* Hover color (darker shade) */
+    text-decoration: underline; /* Keeps the underline on hover */
 }
 
-/* Popup Styling */
-.coupon-popup {
-    display: none;
-    position: absolute;
-    top: 50px;
-    left: 0;
-    background-color: #fff;
-    border: 1px solid #ddd;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-    padding: 20px;
-    width: 100%;
-    max-width: 500px;
-    z-index: 1000;
-}
 
-.coupon-popup .popup-content {
-    max-height: 300px;
-    overflow-y: auto;
-}
-
-.coupon-popup ul.list-unstyled {
-    margin-bottom: 15px;
-}
-
-.coupon-popup li {
-    border-bottom: 1px solid #ddd;
-    padding: 10px 0;
-}
-
-.coupon-popup li:hover {
-    background-color: #f7f7f7;
-    cursor: pointer;
-}
-
-.coupon-popup .btn {
-    font-size: 0.875rem;
-}
-
-/* Close Button */
 #closePopupBtn {
-    margin-top: 15px;
-    width: 100%;
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    margin-top: 1rem;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+/* Modal Animation */
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
 }
 
 </style>
@@ -309,6 +331,10 @@
                                         <button type="button" class="btn btn-sm btn-primary" id="increment-btn-{{ item.id }}" style="width: 40px; height: 40px;">+</button>
                                     </div>
                                 </form>
+                                <div id="stock-error-{{ item.id }}" class="text-danger mt-2" style="display: none;">
+                                    Stock is not sufficient! Only {{ item.variant.stock }} available.
+                                </div>
+
                             </td>
                             <td class="align-middle">₹{{ item.total_price|floatformat:2 }}</td>
                             <td class="align-middle">
@@ -327,32 +353,49 @@
             </table>
         </div>
         
-        <!-- JavaScript for Increment and Decrement -->
-        <script>
-            {% for item in cart_items %}
-                // Increment button functionality
-                document.getElementById('increment-btn-{{ item.id }}').addEventListener('click', function() {
-                    var quantityInput = document.getElementById('quantity-input-{{ item.id }}');
-                    var quantity = parseInt(quantityInput.value);
+       <!-- JavaScript for Increment and Decrement -->
+       <script>
+        {% for item in cart_items %}
+            // Increment button functionality
+            document.getElementById('increment-btn-{{ item.id }}').addEventListener('click', function() {
+                var quantityInput = document.getElementById('quantity-input-{{ item.id }}');
+                var quantity = parseInt(quantityInput.value);
+                var stock = {{ item.variant.stock }};
+                
+                if (quantity < stock) {
+                    // Increment the quantity
                     quantityInput.value = quantity + 1;
                     
-                    // Submit the form after quantity update
+                    // Submit the form to update the cart
                     document.getElementById('update-cart-form-{{ item.id }}').submit();
-                });
-        
-                // Decrement button functionality
-                document.getElementById('decrement-btn-{{ item.id }}').addEventListener('click', function() {
-                    var quantityInput = document.getElementById('quantity-input-{{ item.id }}');
-                    var quantity = parseInt(quantityInput.value);
-                    if (quantity > 1) {
-                        quantityInput.value = quantity - 1;
-                        
-                        // Submit the form after quantity update
-                        document.getElementById('update-cart-form-{{ item.id }}').submit();
-                    }
-                });
-            {% endfor %}
-        </script>
+                    
+                    // Hide stock error if quantity is valid
+                    document.getElementById('stock-error-{{ item.id }}').style.display = 'none';
+                } else {
+                    // Show stock error if quantity exceeds available stock
+                    document.getElementById('stock-error-{{ item.id }}').style.display = 'block';
+                }
+            });
+    
+            // Decrement button functionality
+            document.getElementById('decrement-btn-{{ item.id }}').addEventListener('click', function() {
+                var quantityInput = document.getElementById('quantity-input-{{ item.id }}');
+                var quantity = parseInt(quantityInput.value);
+                
+                if (quantity > 1) {
+                    // Decrement the quantity
+                    quantityInput.value = quantity - 1;
+                    
+                    // Submit the form to update the cart
+                    document.getElementById('update-cart-form-{{ item.id }}').submit();
+                    
+                    // Hide stock error
+                    document.getElementById('stock-error-{{ item.id }}').style.display = 'none';
+                }
+            });
+        {% endfor %}
+    </script>
+    
 
         
 <div class="col-lg-4">
@@ -428,8 +471,9 @@
             <button id="viewCouponsBtn" class="btn btn-sm btn-link ml-auto text-decoration-none">View Coupons</button>
         </h6>
         
-        <!-- Popup (Hidden by Default) -->
+        <!-- Modal Popup (Hidden by Default) -->
         <div id="couponPopup" class="coupon-popup">
+            <div class="popup-overlay"></div> <!-- Overlay to dim the background -->
             <div class="popup-content">
                 <h6 class="text-center mb-3">Select a Coupon</h6>
                 <ul class="list-unstyled">
@@ -464,18 +508,21 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // Show the popup when the "View Coupons" button is clicked
     viewCouponsBtn.addEventListener("click", function() {
-        couponPopup.style.display = "block";
+        couponPopup.style.display = "flex";
+        document.body.style.overflow = "hidden"; // Prevent background scroll
     });
 
     // Hide the popup when the "Close" button is clicked
     closePopupBtn.addEventListener("click", function() {
         couponPopup.style.display = "none";
+        document.body.style.overflow = "auto"; // Restore background scroll
     });
 
     // Close the popup if clicked outside of it (optional)
     window.addEventListener("click", function(event) {
         if (event.target === couponPopup) {
             couponPopup.style.display = "none";
+            document.body.style.overflow = "auto"; // Restore background scroll
         }
     });
 });
@@ -494,6 +541,8 @@ document.addEventListener("DOMContentLoaded", function() {
         <div class="pt-2">
             <a href="{% url 'checkout' %}" class="btn btn-block btn-primary font-weight-bold my-3 py-3">Proceed To Checkout</a>
         </div>
+
+
     </div>
     {% else %}
     <div class="text-center">

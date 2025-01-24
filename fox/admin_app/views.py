@@ -677,12 +677,18 @@ def dashboard_view(request):
 
     return render(request, 'index.html', context)
 
+from django.shortcuts import render
+from django.db.models import Sum, F
+from django.core.paginator import Paginator
+from django.utils import timezone
+from datetime import datetime, timedelta
 
-#admin sales report
 @login_required
 def sales_report(request):
-    date_filter = request.GET.get('date_filter', 'today')  # Default to today
+    # Get date filter value from GET request, default to 'today'
+    date_filter = request.GET.get('date_filter', 'today')
     
+    # Handle the date filters
     if date_filter == 'today':
         start_date = timezone.make_aware(datetime.combine(datetime.today(), datetime.min.time()))
         end_date = timezone.make_aware(datetime.combine(datetime.today(), datetime.max.time()))
@@ -703,22 +709,42 @@ def sales_report(request):
         else:
             start_date = end_date = None
 
+    # Get order status filter
+    selected_statuses = request.GET.getlist('status_filter')  # List of selected statuses
+    
+    # Filter orders based on date and status
     orders = Order.objects.all().order_by('-created_at')
     if start_date and end_date:
         orders = orders.filter(created_at__range=[start_date, end_date])
+    
+    if selected_statuses:
+        orders = orders.filter(status__in=selected_statuses)
 
+    # Price filters
+    min_price = request.GET.get('min_price')
+    max_price = request.GET.get('max_price')
+    if min_price:
+        orders = orders.filter(total_price__gte=float(min_price))
+    if max_price:
+        orders = orders.filter(total_price__lte=float(max_price))
+
+
+    # Filter by applied offer or coupon
+    offer_applied = request.GET.get('offer_applied', '')
+    if offer_applied:
+        orders = orders.filter(offer_discount__gt=0)  # Assuming offer_discount is a field that stores applied discount
+
+    # Filter by coupon applied
+    coupon_applied = request.GET.get('coupon_applied', '')
+    if coupon_applied:
+        orders = orders.filter(coupon_discount__gt=0)  # Assuming coupon_discount is a field for coupon discounts
+
+    # Pagination
     paginator = Paginator(orders, 6)  
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
     non_canceled_orders = orders.exclude(status='canceled')
-
-    min_price = request.GET.get('min_price')
-    max_price = request.GET.get('max_price')
-    if min_price:
-        non_canceled_orders = non_canceled_orders.filter(total_price__gte=float(min_price))
-    if max_price:
-        non_canceled_orders = non_canceled_orders.filter(total_price__lte=float(max_price))
 
     total_sales = non_canceled_orders.aggregate(total_sales=Sum('total_price'))['total_sales'] or 0
     total_orders = non_canceled_orders.count()
@@ -729,30 +755,78 @@ def sales_report(request):
 
     average_order_value = total_sales / total_orders if total_orders > 0 else 0
     
+    # Prepare context with filters and calculations
     context = {
-        'orders': page_obj,  
+        'orders': page_obj,
         'total_sales': total_sales,
         'total_orders': total_orders,
         'total_discount': total_discount,
         'average_order_value': round(average_order_value, 2),
         'date_filter': date_filter,
+        'selected_statuses': selected_statuses,
+        'offer_applied': offer_applied,
+        'coupon_applied': coupon_applied,
+        'min_price': min_price,
+        'max_price': max_price,
+        'available_statuses': [
+            ('Pending', 'Pending'),
+            ('Processing', 'Processing'),
+            ('Shipped', 'Shipped'),
+            ('Out for Delivery', 'Out for Delivery'),
+            ('Delivered', 'Delivered'),
+            ('Cancelled', 'Cancelled'),
+            ('Return Pending', 'Return Pending'),
+            ('Return Accepted', 'Return Accepted'),
+        ]
     }
 
     return render(request, 'sales_report.html', context)
 
+
 #to excel
 def export_to_excel(request):
+    # Get the orders based on applied filters
+    date_filter = request.GET.get('date_filter', 'today')
+    start_date = None
+    end_date = None
+
+    if date_filter == 'today':
+        today = datetime.today()
+        start_date = timezone.make_aware(datetime.combine(today, datetime.min.time()))
+        end_date = timezone.make_aware(datetime.combine(today, datetime.max.time()))
+    elif date_filter == 'this_week':
+        today = datetime.today()
+        start_date = timezone.make_aware(datetime.combine(today - timedelta(days=today.weekday()), datetime.min.time()))
+        end_date = timezone.make_aware(datetime.combine(today + timedelta(days=(6 - today.weekday())), datetime.max.time()))
+    elif date_filter == 'this_month':
+        today = datetime.today()
+        start_date = timezone.make_aware(datetime.combine(today.replace(day=1), datetime.min.time()))
+        end_date = timezone.make_aware(datetime.combine(today.replace(day=1) + timedelta(days=32), datetime.min.time()) - timedelta(seconds=1))
+    elif date_filter == 'custom':
+        start_date_str = request.GET.get('start_date', '')
+        end_date_str = request.GET.get('end_date', '')
+        if start_date_str and end_date_str:
+            start_date = timezone.make_aware(datetime.combine(datetime.strptime(start_date_str, '%Y-%m-%d'), datetime.min.time()))
+            end_date = timezone.make_aware(datetime.combine(datetime.strptime(end_date_str, '%Y-%m-%d'), datetime.max.time()))
+
+    # Apply filters
     orders = Order.objects.all()
-    
+    if start_date and end_date:
+        orders = orders.filter(created_at__range=[start_date, end_date])
+
+    # Excel export logic
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = 'Sales Report'
     
-    ws.append(['Order ID', 'Date', 'Customer', 'Items', 'Subtotal', 'Offer Discount', 'Final Amount', 'Status'])
+    # Define the header row
+    ws.append(['Order ID', 'Date', 'Customer', 'Items', 'Subtotal', 'Offer Discount', 'Coupon Discount', 'Final Amount', 'Status'])
     
+    # Add order data
     for order in orders:
-        items = ', '.join([str(item.product_id) for item in order.items.all()]) 
+        items = ', '.join([str(item.product_id) for item in order.items.all()])
         
+        # Adding offer discount and coupon discount
         ws.append([
             order.id, 
             order.created_at.strftime('%Y-%m-%d'),
@@ -760,27 +834,68 @@ def export_to_excel(request):
             items,
             order.total_price,
             order.offer_discount,
-            order.total_price - order.offer_discount,
+            order.coupon_discount,  # Assuming you have 'coupon_discount' field
+            order.total_price - order.offer_discount - order.coupon_discount,  # Final amount after discounts
             order.status
         ])
     
+    # Prepare the response for the Excel file
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename=sales_report.xlsx'
     wb.save(response)
     
     return response
-
-#to pdf
 def export_to_pdf(request):
+    # Get the orders based on applied filters
+    date_filter = request.GET.get('date_filter', 'today')
+    start_date = None
+    end_date = None
+    status_filter = request.GET.getlist('status', [])
+
+    # Apply date filter
+    if date_filter == 'today':
+        today = datetime.today()
+        start_date = timezone.make_aware(datetime.combine(today, datetime.min.time()))
+        end_date = timezone.make_aware(datetime.combine(today, datetime.max.time()))
+    elif date_filter == 'this_week':
+        today = datetime.today()
+        start_date = timezone.make_aware(datetime.combine(today - timedelta(days=today.weekday()), datetime.min.time()))
+        end_date = timezone.make_aware(datetime.combine(today + timedelta(days=(6 - today.weekday())), datetime.max.time()))
+    elif date_filter == 'this_month':
+        today = datetime.today()
+        start_date = timezone.make_aware(datetime.combine(today.replace(day=1), datetime.min.time()))
+        end_date = timezone.make_aware(datetime.combine(today.replace(day=1) + timedelta(days=32), datetime.min.time()) - timedelta(seconds=1))
+    elif date_filter == 'custom':
+        start_date_str = request.GET.get('start_date', '')
+        end_date_str = request.GET.get('end_date', '')
+        if start_date_str and end_date_str:
+            start_date = timezone.make_aware(datetime.combine(datetime.strptime(start_date_str, '%Y-%m-%d'), datetime.min.time()))
+            end_date = timezone.make_aware(datetime.combine(datetime.strptime(end_date_str, '%Y-%m-%d'), datetime.max.time()))
+
+    # Apply filters
     orders = Order.objects.all()
-    html_content = render_to_string('sales_report.html', {'orders': orders, 'is_pdf': True})
-    pdf_file = HTML(string=html_content).write_pdf()
+    if start_date and end_date:
+        orders = orders.filter(created_at__range=[start_date, end_date])
+
+    if status_filter:
+        orders = orders.filter(status__in=status_filter)
+
+    # Render only the table part of the page
+    context = {
+        'orders': orders,
+        'is_pdf': True,  # Flag to render only table in the template
+    }
     
+    # Render the template as HTML string for the PDF
+    html_content = render_to_string('sales_report.html', context)
+
+    # Generate the PDF from the rendered HTML
+    pdf_file = HTML(string=html_content).write_pdf()
+
+    # Send the PDF as a response
     response = HttpResponse(pdf_file, content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename=sales_report.pdf'
     return response
-
-
 
 def search_view(request):
     query = request.GET.get('q', '')

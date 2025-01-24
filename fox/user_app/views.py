@@ -292,12 +292,28 @@ def product_details(request, product_id):
         'discounted_price': discounted_price,
         'variant_offers': variant_offers,  # Pass the dictionary
     })
-
-
 @login_required
 def cart_page(request):
     cart, created = Cart.objects.get_or_create(user=request.user)
     cart_items = CartItem.objects.filter(cart=cart)
+
+    # Validate stock for each item in the cart
+    for item in cart_items:
+        # Check if the item has a variant and if the variant's stock is valid
+        if item.variant and item.variant.stock is not None:
+            if item.quantity > item.variant.stock:
+                item.quantity = item.variant.stock
+                item.save()
+                messages.warning(
+                    request, 
+                    f"The quantity of {item.variant.product.name} has been adjusted to available stock ({item.variant.stock})."
+                )
+        else:
+            # Handle the case where variant or stock is None
+            messages.warning(
+                request, 
+                f"Stock for {item.product.name} is unavailable or variant data is missing."
+            )
 
     # Recalculate cart total and apply discounts
     cart_total = sum(item.total_price for item in cart_items)
@@ -308,12 +324,9 @@ def cart_page(request):
     coupon_code = None
 
     # Fetch all available coupons
-    available_coupons = Coupon.objects.filter(is_active=True)
+    available_coupons = Coupon.objects.filter(is_active=True, used=False).exclude(used_orders__user=request.user)
 
-    # Check if the user has used any coupon
-    used_coupons = Coupon.objects.filter(used_orders__user=request.user)
-
-    # Apply coupon if available
+    # Check if a coupon is applied to the cart
     if cart.applied_coupon:
         coupon = cart.applied_coupon
         discount_amount = (cart_total * coupon.discount_percentage) / 100
@@ -321,28 +334,47 @@ def cart_page(request):
         coupon_code = coupon.code
 
     if request.method == 'POST':
-        # Apply or remove coupon
-        if 'coupon_code' in request.POST:
+        if 'update_quantity' in request.POST:
+            cart_item_id = request.POST.get('cart_item_id')
+            new_quantity = int(request.POST.get('quantity'))
+            try:
+                cart_item = CartItem.objects.get(id=cart_item_id, cart=cart)
+                if new_quantity > cart_item.variant.stock:
+                    messages.error(
+                        request, 
+                        f"Cannot add more than available stock ({cart_item.variant.stock}) for {cart_item.variant.product.name}."
+                    )
+                else:
+                    cart_item.quantity = new_quantity
+                    cart_item.save()
+                    cart_total = sum(item.total_price for item in cart_items)
+                    final_total = cart_total - discount_amount
+                    messages.success(request, f"Quantity updated for {cart_item.variant.product.name}.")
+            except CartItem.DoesNotExist:
+                messages.error(request, "Cart item not found.")
+
+        elif 'coupon_code' in request.POST:
             coupon_code = request.POST.get('coupon_code')
             try:
-                coupon = Coupon.objects.get(code=coupon_code, is_active=True)
-                # Check if this coupon has already been used by the user
-                if coupon in used_coupons:
-                    messages.error(request, f"You've already used the {coupon.code} coupon.")
-                else:
-                    cart.applied_coupon = coupon
-                    cart.save()
-                    discount_amount = (cart_total * coupon.discount_percentage) / 100
-                    final_total = cart_total - discount_amount
-                    messages.success(request, f"Coupon applied! You get {coupon.discount_percentage}% off.")
+                coupon = Coupon.objects.get(code=coupon_code, is_active=True, used=False)
+                cart.applied_coupon = coupon
+                cart.save()
+                discount_amount = (cart_total * coupon.discount_percentage) / 100
+                final_total = cart_total - discount_amount
+                messages.success(request, f"Coupon {coupon_code} applied successfully!")
             except Coupon.DoesNotExist:
                 messages.error(request, "Invalid or expired coupon code.")
+        
         elif 'remove_coupon' in request.POST:
-            cart.applied_coupon = None
-            cart.save()
-            discount_amount = 0
-            final_total = cart_total
-            messages.success(request, "Coupon removed successfully.")
+            if cart.applied_coupon:
+                cart.applied_coupon = None
+                cart.save()
+                discount_amount = 0
+                final_total = cart_total
+                messages.success(request, "Coupon removed successfully.")
+            else:
+                messages.error(request, "No coupon applied to remove.")
+
         return redirect('cart_page')
 
     return render(request, 'cart.html', {
@@ -352,8 +384,7 @@ def cart_page(request):
         'discount_amount': discount_amount,
         'final_total': final_total,
         'coupon_code': coupon_code,
-        'available_coupons': available_coupons,  # Pass available coupons
-        'used_coupons': used_coupons,  # Pass the list of used coupons
+        'available_coupons': available_coupons,
     })
 
 
@@ -544,10 +575,9 @@ def delete_address(request, address_id):
     return redirect('manage_addresses')
 
 
-#user checkout
 @login_required
 def checkout(request):
-    cart, created = Cart.objects.get_or_create(user=request.user)
+    cart = Cart.objects.get(user=request.user)
     cart_items = CartItem.objects.filter(cart=cart)
     cart_total = sum(item.total_price for item in cart_items)
     addresses = Address.objects.filter(user=request.user)
@@ -579,68 +609,41 @@ def checkout(request):
 
         selected_address = get_object_or_404(Address, id=address_id, user=request.user)
 
-        if payment_method == 'razorpay':
-            return JsonResponse({'order_id': razorpay_order['id'], 'final_total': final_total})
-
-        elif payment_method == 'cod':
+        if payment_method in ['razorpay', 'cod', 'wallet']:
+            # Create an order
             order = Order.objects.create(
                 user=request.user,
                 address=selected_address,
                 total_price=final_total,
-                subtotal=cart_total,  # Store cart total before discounts
+                subtotal=cart_total,
                 discount_percentage=cart.applied_coupon.discount_percentage if cart.applied_coupon else 0,
                 coupon_discount=discount_amount,
-                payment_method='cod'
+                payment_method=payment_method
             )
 
+            # Save Order Items and reduce stock
             for item in cart_items:
-                item.variant.reduce_stock(item.quantity)  # Reduce stock based on the cart item quantity
-
                 OrderItem.objects.create(
                     order=order,
-                    product=item.product,
+                    product=item.variant.product,
                     variant=item.variant,
                     quantity=item.quantity,
                     total_price=item.total_price
                 )
+                item.variant.stock -= item.quantity
+                item.variant.save()
 
+            # Mark coupon as used only if an order is placed
+            if cart.applied_coupon:
+                cart.applied_coupon.used = True
+                cart.applied_coupon.save()
+
+            # Clear the cart
             cart_items.delete()
-            messages.success(request, "Order placed successfully!")
-            return redirect('order_success', order_id=order.id)
+            cart.applied_coupon = None
+            cart.save()
 
-        elif payment_method == 'wallet':
-            wallet = Wallet.objects.get(user=request.user)
-            if wallet.balance < Decimal(final_total):
-                messages.error(request, "Insufficient wallet balance.")
-                return redirect('checkout')
-
-            wallet.balance -= Decimal(final_total)
-            wallet.save()
-
-            order = Order.objects.create(
-                user=request.user,
-                address=selected_address,
-                total_price=final_total,
-                subtotal=cart_total,  
-                discount_percentage=cart.applied_coupon.discount_percentage if cart.applied_coupon else 0,
-                coupon_discount=discount_amount,
-                payment_method='wallet'
-            )
-
-    
-            for item in cart_items:
-                item.variant.reduce_stock(item.quantity)  # Reduce stock based on the cart item quantity
-
-                OrderItem.objects.create(
-                    order=order,
-                    product=item.product,
-                    variant=item.variant,
-                    quantity=item.quantity,
-                    total_price=item.total_price
-                )
-
-            cart_items.delete()
-            messages.success(request, "Order placed successfully using wallet!")
+            messages.success(request, f"Order placed successfully using {payment_method}!")
             return redirect('order_success', order_id=order.id)
 
     return render(request, 'checkout.html', {
@@ -687,15 +690,86 @@ def verify_payment(request):
     
 razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
 
+from django.http import HttpResponse
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Paragraph
+from reportlab.lib.styles import getSampleStyleSheet
+from django.shortcuts import get_object_or_404, render
+from .models import Order
 
-
-
-
-#display order sucess messg 
 @login_required
 def order_success(request, order_id):
     order = get_object_or_404(Order, id=order_id)
+    
+    # Logic to display order details on the order success page
+    if request.method == 'POST' and 'download_invoice' in request.POST:
+        # Call the function to generate PDF and return it
+        return generate_invoice(request, order)
+
     return render(request, 'order_success.html', {'order': order})
+
+def generate_invoice(request, order):
+    # Create a response object to serve the PDF file
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename=invoice_{order.id}.pdf'
+
+    # Create the PDF document
+    doc = SimpleDocTemplate(response, pagesize=letter)
+
+    # Get styles for paragraphs
+    styles = getSampleStyleSheet()
+
+    # Create elements for the document (title, order info, product list, etc.)
+    elements = []
+
+    # Title - Invoice
+    title = f"Invoice - Order #{order.id}"
+    title_paragraph = Paragraph(title, styles['Title'])
+    elements.append(title_paragraph)
+
+    # Add a line break for clarity
+    elements.append(Paragraph("<br/>", styles['Normal']))
+
+    # Order Information Section
+    order_info = f"""
+        <b>Order ID:</b> {order.id}<br/>
+        <b>Total Amount:</b> ₹{order.total_price}<br/>
+        <b>Date:</b> {order.created_at.strftime('%d/%m/%Y')}<br/>
+        <b>Shipping Address:</b> {order.address}<br/>
+        <b>Payment Method:</b> {order.payment_method}<br/><br/>
+    """
+    order_info_paragraph = Paragraph(order_info, styles['Normal'])
+    elements.append(order_info_paragraph)
+
+    # Add the order items list (without a table)
+    items_list = "<b>Ordered Items:</b><br/>"
+    
+    for item in order.items.all():
+        items_list += f"{item.product.name} - Quantity: {item.quantity} - Total: ₹{item.total_price}<br/>"
+    
+    items_paragraph = Paragraph(items_list, styles['Normal'])
+    elements.append(items_paragraph)
+
+    # Add total information (including tax and grand total)
+    total_info = f"""
+        <b>Total Amount:</b> ₹{order.total_price}<br/>
+        <b>Tax (10%):</b> ₹{order.total_price * 0.1}<br/>
+        <b>Grand Total:</b> ₹{order.total_price + (order.total_price * 0.1)}<br/><br/>
+    """
+    total_info_paragraph = Paragraph(total_info, styles['Normal'])
+    elements.append(total_info_paragraph)
+
+    # Add a "Continue Shopping" section with a link
+    continue_shopping_paragraph = Paragraph('<a href="/shop/">Continue Shopping</a>', styles['Normal'])
+    elements.append(continue_shopping_paragraph)
+
+    # Build the PDF
+    doc.build(elements)
+
+    return response
+
+
 
 #user order 
 def order_management(request):
@@ -706,6 +780,14 @@ def order_management(request):
     page_obj = paginator.get_page(page_number)
     
     return render(request, 'profile/orders.html', {'page_obj': page_obj})
+
+
+
+
+
+
+
+
 
 @login_required
 def cancel_order(request, order_id):

@@ -7,6 +7,10 @@ from django.utils.timezone import now
 from django.db.models import Q
 from decimal import Decimal
 from django.utils import timezone
+from django.core.exceptions import ValidationError
+
+
+
 
 #for user cart 
 class Cart(models.Model):
@@ -86,8 +90,11 @@ class Address(models.Model):
             Address.objects.filter(user=self.user).update(is_default=False)
         super().save(*args, **kwargs)
 
+from django.db import models
+from datetime import timedelta
+from decimal import Decimal
+from django.utils.timezone import now
 
-#order for user    
 class Order(models.Model):
     STATUS_CHOICES = [
         ('Pending', 'Pending'),
@@ -106,28 +113,26 @@ class Order(models.Model):
         ('wallet', 'Wallet'),
     ]
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders') 
-    address = models.ForeignKey(Address, on_delete=models.SET_NULL, null=True, blank=True,related_name='address') 
-    variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, null=True, blank=True)  
-    product_name = models.CharField(max_length=100,null=True, blank=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
+    address = models.ForeignKey(Address, on_delete=models.SET_NULL, null=True, blank=True, related_name='address')
+    variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, null=True, blank=True)
+    product_name = models.CharField(max_length=100, null=True, blank=True)
     quantity = models.IntegerField(default=1)
     total_price = models.FloatField()
-    payment_method = models.CharField(max_length=20, choices=PAYMENT_CHOICES,default='cod')
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_CHOICES, default='cod')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
     created_at = models.DateTimeField(auto_now_add=True)
     return_requested_at = models.DateTimeField(null=True, blank=True)
-    offer_discount = models.FloatField(default=0)  
+    offer_discount = models.FloatField(default=0)
     coupon_discount = models.FloatField(default=0)
-    coupons = models.ManyToManyField(Coupon, related_name="used_orders", blank=True) 
-    subtotal = models.FloatField(default=0) 
+    coupons = models.ManyToManyField(Coupon, related_name="used_orders", blank=True)
+    subtotal = models.FloatField(default=0)
     discount_percentage = models.FloatField(default=0)
-
 
     def __str__(self):
         return f"Order {self.id} - {self.user.username}"
-    
+
     def reduce_inventory(self):
-        
         for item in self.items.all():
             item.reduce_stock()
 
@@ -136,8 +141,7 @@ class Order(models.Model):
         if self.status == 'Delivered':
             return now() <= self.created_at + timedelta(days=14)
         return False
-     
- 
+
     def refund_wallet(self):
         if self.payment_method == 'wallet' and self.status == 'Return Accepted':
             wallet = self.user.wallet
@@ -145,24 +149,21 @@ class Order(models.Model):
                 wallet.balance += Decimal(self.total_price)
                 wallet.save()
 
-            
-    def restore_inventory(self):  
-       
+    def restore_inventory(self):
         for item in self.items.all():
-            if item.variant:                                 
+            if item.variant:
                 item.variant.stock += item.quantity
                 item.variant.save()
             elif item.product:
                 item.product.stock += item.quantity
-                item.product.save()        
-
+                item.product.save()
 
     @property
     def discounted_price(self):
         return self.total_price - self.offer_discount
-    
+
     @property
-    def offer_or_coupon(self):      #Determines whether an offer or coupon is applied to the order.
+    def offer_or_coupon(self):
         if self.coupon_discount > 0:
             return f"Coupon"
         elif self.offer_discount > 0:
@@ -170,9 +171,24 @@ class Order(models.Model):
         return "None"
 
     @property
-    def final_amount(self):      # Calculates the final amount after applying discounts.
+    def final_amount(self):
         discount_amount = (self.total_price * self.offer_discount / 100) + (self.total_price * self.coupon_discount / 100)
         return self.total_price - discount_amount
+
+    def save(self, *args, **kwargs):
+        """
+        Mark the coupon as used when the order is placed.
+        """
+        # Save the Order instance first to ensure it gets an id
+        super().save(*args, **kwargs)
+
+        # Now that the Order has an id, we can update the ManyToMany relationship
+        if self.coupons.exists():
+            for coupon in self.coupons.all():
+                coupon.used = True
+                coupon.save()
+
+    
 
 #for use orderreturn
 class OrderReturn(models.Model):
