@@ -182,6 +182,8 @@ EMAIL_HOST_PASSWORD = 'fsvh gpoq hjqg rlml'
 #google authetication
 SITE_ID = 2
 
+SOCIALACCOUNT_LOGIN_ON_GET = True  
+
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'SCOPE': [

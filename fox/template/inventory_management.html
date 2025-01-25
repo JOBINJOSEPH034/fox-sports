@@ -20,6 +20,16 @@
                 <div class="card card-table">
                     <div class="card-body">
                         <div class="table-responsive">
+                            {% if messages %}
+                            <div class="alert-container">
+                                {% for message in messages %}
+                                    <div class="alert alert-{{ message.tags }}">
+                                        {{ message }}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            
                             <table class="table table-bordered table-hover table-striped">
                                 <thead class="thead-light">
                                     <tr>
@@ -27,7 +37,7 @@
                                         <th>Product Name</th>
                                         <th>Brand</th>
                                         <th>Variants</th>
-                                        <th>Stock</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -42,31 +52,20 @@
                                                 {% for variant in product.variants.all %}
                                                 <li class="d-flex justify-content-between align-items-center py-2">
                                                     <div>
-                                                        <span><strong>Size:</strong> {{ variant.size }} | <strong>Color:</strong> {{ variant.color }}</span>
+                                                        <strong>Size:</strong> {{ variant.size }} | <strong>Color:</strong> {{ variant.color }}
                                                     </div>
-                                                    <button type="button" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#editStockModal{{ variant.id }}">
-                                                        Edit Stock
-                                                    </button>
+                                                    <div>
+                                                        <strong>Stock:</strong> <span class="variant-stock" id="stock-{{ variant.id }}">{{ variant.stock }}</span>
+                                                    </div>
+                                                    <button class="btn btn-sm btn-primary update-variant-stock" data-variant-id="{{ variant.id }}">Edit Stock</button>
                                                 </li>
                                                 {% endfor %}
                                             </ul>
                                             {% else %}
-                                            <span class="text-muted">No Variants</span>
+                                            <span>No Variants</span>
                                             {% endif %}
                                         </td>
-                                        <td>
-                                            {% if product.variants.exists %}
-                                            <ul class="list-unstyled">
-                                                {% for variant in product.variants.all %}
-                                                <li class="d-flex justify-content-between align-items-center py-2">
-                                                    <span class="badge badge-secondary">Stock: {{ variant.stock }}</span>
-                                                </li>
-                                                {% endfor %}
-                                            </ul>
-                                            {% else %}
-                                            <span class="text-muted">No Stock Information</span>
-                                            {% endif %}
-                                        </td>
+                                        <td></td>
                                     </tr>
                                     {% empty %}
                                     <tr>
@@ -75,6 +74,10 @@
                                     {% endfor %}
                                 </tbody>
                             </table>
+                            
+                            
+                            
+                            
 
                             <!-- Pagination Controls -->
                                                  
@@ -165,28 +168,40 @@
     {% endfor %}
 {% endfor %}
 
-
 <script>
     $(document).ready(function() {
-        // Handle stock update for all variants of a product using AJAX
-        $('.update-stock').on('click', function() {
-            var productId = $(this).data('product-id');
-            var newStock = prompt('Enter new stock for all variants of this product:');
-            if (newStock) {
-                $.post("{% url 'update_variant_stock' product_id=0 %}".replace('product_id=0', 'product_id=' + productId), {
-                    'stock': newStock,
-                    'csrfmiddlewaretoken': '{{ csrf_token }}'
-                }, function(response) {
-                    if (response.success) {
-                        alert('Stock updated for all variants of product ' + productId);
-                    } else {
-                        alert('Error updating stock');
+        $('.update-variant-stock').on('click', function() {
+            var variantId = $(this).data('variant-id');
+            var currentStock = $('#stock-' + variantId).text().trim();
+            var newStock = prompt('Enter new stock for this variant (Current Stock: ' + currentStock + '):');
+            
+            if (newStock !== null && newStock !== currentStock) {
+                $.ajax({
+                    url: '/update_variant_stock/' + variantId + '/', // Use correct URL for variant update
+                    method: 'POST',
+                    data: {
+                        'stock': newStock,
+                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            // Update the stock value directly in the DOM
+                            $('#stock-' + variantId).text(newStock);
+                            alert('Stock updated successfully!');
+                        } else {
+                            alert('Error: ' + response.error);
+                        }
+                    },
+                    error: function(xhr) {
+                        alert('An error occurred: ' + xhr.statusText);
                     }
                 });
             }
         });
     });
 </script>
+
+
 
 
 <script src="{% static 'assets/js/jquery-3.6.0.min.js' %}"></script>

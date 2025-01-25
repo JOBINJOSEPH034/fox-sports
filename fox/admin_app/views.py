@@ -343,28 +343,32 @@ def update_stock_for_product(request, product_id):
         return redirect('inventory_management')
 
     return redirect('inventory_management')
-
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from .models import ProductVariant
 
 @login_required
 def update_variant_stock(request, variant_id):
     variant = get_object_or_404(ProductVariant, id=variant_id)
-    product = variant.product
 
     if request.method == 'POST':
-        new_stock = int(request.POST.get('stock', variant.stock))  
-        if new_stock != variant.stock:  
-            variant.stock = new_stock
-            variant.save()
+        try:
+            new_stock = int(request.POST.get('stock'))
+            
+            # Update stock if it's different
+            if new_stock != variant.stock:
+                variant.stock = new_stock
+                variant.save()
 
-            total_variant_stock = sum(v.stock for v in product.variants.all())
-            product.stock = total_variant_stock
-            product.save()
+                # Optionally, you can update the product's total stock here
+                product = variant.product
+                product.stock = sum(v.stock for v in product.variants.all())
+                product.save()
 
-            messages.success(request, f"Stock updated for variant: {variant.size} - {variant.color}")
-        return redirect('inventory_management')
-
-    return redirect('inventory_management')
-  
+            return JsonResponse({'success': True})
+        except ValueError:
+            return JsonResponse({'success': False, 'error': 'Invalid stock value'})
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
 def create_order(request, product_id, variant_id=None):
     if variant_id:
@@ -407,6 +411,7 @@ def create_order(request, product_id, variant_id=None):
         else:
             messages.error(request, f"Insufficient stock for product: {product.name}")
         return redirect('product_detail', product.id)
+
 
 def create_order_with_variant(request, variant_id):
     variant = get_object_or_404(ProductVariant, id=variant_id)
@@ -677,6 +682,12 @@ def dashboard_view(request):
 
     return render(request, 'index.html', context)
 
+
+from django.shortcuts import render
+from django.db.models import Sum, F
+from django.core.paginator import Paginator
+from django.utils import timezone
+from datetime import datetime, timedelta
 from django.shortcuts import render
 from django.db.models import Sum, F
 from django.core.paginator import Paginator
@@ -687,7 +698,7 @@ from datetime import datetime, timedelta
 def sales_report(request):
     # Get date filter value from GET request, default to 'today'
     date_filter = request.GET.get('date_filter', 'today')
-    
+
     # Handle the date filters
     if date_filter == 'today':
         start_date = timezone.make_aware(datetime.combine(datetime.today(), datetime.min.time()))
@@ -700,7 +711,7 @@ def sales_report(request):
         today = datetime.today()
         start_date = timezone.make_aware(datetime.combine(today.replace(day=1), datetime.min.time()))
         end_date = timezone.make_aware(datetime.combine(today.replace(day=1) + timedelta(days=32), datetime.min.time()) - timedelta(seconds=1))
-    else:                                                                           
+    else:
         start_date_str = request.GET.get('start_date', '')
         end_date_str = request.GET.get('end_date', '')
         if start_date_str and end_date_str:
@@ -711,12 +722,12 @@ def sales_report(request):
 
     # Get order status filter
     selected_statuses = request.GET.getlist('status_filter')  # List of selected statuses
-    
+
     # Filter orders based on date and status
     orders = Order.objects.all().order_by('-created_at')
     if start_date and end_date:
         orders = orders.filter(created_at__range=[start_date, end_date])
-    
+
     if selected_statuses:
         orders = orders.filter(status__in=selected_statuses)
 
@@ -727,7 +738,6 @@ def sales_report(request):
         orders = orders.filter(total_price__gte=float(min_price))
     if max_price:
         orders = orders.filter(total_price__lte=float(max_price))
-
 
     # Filter by applied offer or coupon
     offer_applied = request.GET.get('offer_applied', '')
@@ -740,7 +750,7 @@ def sales_report(request):
         orders = orders.filter(coupon_discount__gt=0)  # Assuming coupon_discount is a field for coupon discounts
 
     # Pagination
-    paginator = Paginator(orders, 6)  
+    paginator = Paginator(orders, 6)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -748,13 +758,16 @@ def sales_report(request):
 
     total_sales = non_canceled_orders.aggregate(total_sales=Sum('total_price'))['total_sales'] or 0
     total_orders = non_canceled_orders.count()
-    
+
     total_discount = non_canceled_orders.aggregate(
         total_discount=Sum(F('offer_discount') + F('coupon_discount'))
     )['total_discount'] or 0
 
     average_order_value = total_sales / total_orders if total_orders > 0 else 0
-    
+
+    # Check if PDF export is requested
+    is_pdf = request.GET.get('pdf', False)
+
     # Prepare context with filters and calculations
     context = {
         'orders': page_obj,
@@ -777,9 +790,11 @@ def sales_report(request):
             ('Cancelled', 'Cancelled'),
             ('Return Pending', 'Return Pending'),
             ('Return Accepted', 'Return Accepted'),
-        ]
+        ],
+        'is_pdf': is_pdf  # Pass the is_pdf flag to the template
     }
 
+    # Return the rendered template
     return render(request, 'sales_report.html', context)
 
 
@@ -845,12 +860,22 @@ def export_to_excel(request):
     wb.save(response)
     
     return response
+
+
+from django.http import HttpResponse
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
+from io import BytesIO
+from datetime import datetime, timedelta
+from django.utils import timezone
+
 def export_to_pdf(request):
     # Get the orders based on applied filters
     date_filter = request.GET.get('date_filter', 'today')
     start_date = None
     end_date = None
-    status_filter = request.GET.getlist('status', [])
+    status_filter = request.GET.getlist('status_filter', [])
 
     # Apply date filter
     if date_filter == 'today':
@@ -872,58 +897,96 @@ def export_to_pdf(request):
             start_date = timezone.make_aware(datetime.combine(datetime.strptime(start_date_str, '%Y-%m-%d'), datetime.min.time()))
             end_date = timezone.make_aware(datetime.combine(datetime.strptime(end_date_str, '%Y-%m-%d'), datetime.max.time()))
 
-    # Apply filters
+    # Fetch orders with filters applied
     orders = Order.objects.all()
     if start_date and end_date:
         orders = orders.filter(created_at__range=[start_date, end_date])
-
     if status_filter:
         orders = orders.filter(status__in=status_filter)
 
-    # Render only the table part of the page
-    context = {
-        'orders': orders,
-        'is_pdf': True,  # Flag to render only table in the template
-    }
-    
-    # Render the template as HTML string for the PDF
-    html_content = render_to_string('sales_report.html', context)
+    # Create a buffer to store the PDF
+    buffer = BytesIO()
 
-    # Generate the PDF from the rendered HTML
-    pdf_file = HTML(string=html_content).write_pdf()
+    # Create the PDF object
+    pdf = SimpleDocTemplate(buffer, pagesize=letter)
 
-    # Send the PDF as a response
-    response = HttpResponse(pdf_file, content_type='application/pdf')
-    response['Content-Disposition'] = 'attachment; filename=sales_report.pdf'
+    # Define the table data with headings
+    table_data = [
+        ["Order ID", "Date", "Customer", "Items", "Subtotal", "Offer/Coupon", "Offer Discount", "Final Amount", "Status"]
+    ]
+
+    # Add rows to the table data
+    for order in orders:
+        items = ", ".join([str(item.product.name) for item in order.items.all()])
+        offer_coupon = order.offer_or_coupon
+        offer_discount = order.offer_discount + order.coupon_discount
+        final_amount = order.discounted_price
+        status = f"[CANCELED] {order.status}" if order.status == 'canceled' else order.status
+
+        # Append data to the table
+        table_data.append([
+            str(order.id),
+            order.created_at.strftime("%Y-%m-%d"),
+            order.user.username,
+            items,
+            f"${order.subtotal:.2f}",
+            offer_coupon,
+            f"${offer_discount:.2f}",
+            f"${final_amount:.2f}",
+            status
+        ])
+
+    # Create the table
+    table = Table(table_data)
+
+    # Add style to the table
+    style = TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),  # Header row background
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),  # Header row text color
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),  # Center align all cells
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),  # Header row font
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),  # Header row padding
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),  # Table body background
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),  # Add grid lines
+        ('TEXTCOLOR', (0, -1), (-1, -1), colors.red),  # Highlight canceled orders
+    ])
+
+    table.setStyle(style)
+
+    # Build the PDF
+    elements = [table]
+    pdf.build(elements)
+
+    # Get the PDF content from the buffer
+    pdf_content = buffer.getvalue()
+    buffer.close()
+
+    # Return the PDF as a response
+    response = HttpResponse(pdf_content, content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="sales_report.pdf"'
     return response
 
+
+
+
+from django.shortcuts import redirect
+
 def search_view(request):
-    query = request.GET.get('q', '')
-    
+    query = request.GET.get('q', '').strip()
+
     if query:
-        products = Product.objects.filter(name__icontains=query)
-        categories = Category.objects.filter(name__icontains=query)
-        offers = Offer.objects.filter(name__icontains=query)
-        coupons = Coupon.objects.filter(code__icontains=query)
-        brands = Brand.objects.filter(name__icontains=query)
-        orders = Order.objects.filter(id__icontains=query)
-        
-        results = {
-            'products': list(products.values('id', 'name', 'description')),
-            'categories': list(categories.values('id', 'name')),
-            'offers': list(offers.values('id', 'name', 'discount_percentage')),
-            'coupons': list(coupons.values('id', 'code', 'discount_percentage')),
-            'brands': list(brands.values('id', 'name')),
-            'orders': list(orders.values('id', 'user__username')),
-        }
-        
-        return JsonResponse(results)
-    
-    return JsonResponse({
-        'products': [],
-        'categories': [],
-        'offers': [],
-        'coupons': [],
-        'brands': [],
-        'orders': [],
-    })
+        if Product.objects.filter(name__icontains=query).exists():
+            return redirect('product', search=query)  # Redirect to the products page
+        elif Category.objects.filter(name__icontains=query).exists():
+            return redirect('category', search=query)  # Redirect to the categories page
+        elif Offer.objects.filter(name__icontains=query).exists():
+            return redirect('manage_offers', search=query)  # Redirect to offers page
+        elif Coupon.objects.filter(code__icontains=query).exists():
+            return redirect('coupon_list', search=query)  # Redirect to coupons page
+        elif Brand.objects.filter(name__icontains=query).exists():
+            return redirect('brand_management', search=query)  # Redirect to brands page
+        elif Order.objects.filter(id__icontains=query).exists():
+            return redirect('admin_order_management', search=query)  # Redirect to orders page
+
+    # Redirect back to a default page if no match is found
+    return redirect('admin_home')

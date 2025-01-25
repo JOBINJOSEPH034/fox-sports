@@ -42,7 +42,7 @@ urlpatterns = [
     path('create_order/<int:product_id>/', views.create_order, name='create_order'),
     path('create_order/<int:product_id>/<int:variant_id>/', views.create_order, name='create_order_variant'),  
     path('update_variant_stock/<int:variant_id>/', views.update_variant_stock, name='update_variant_stock'),
-    path('update_stock/<int:product_id>/', views.update_stock_for_product, name='update_stock_for_product'),
+    path('update_stock_for_product/<int:product_id>/', views.update_stock_for_product, name='update_stock_for_product'),
 
     #url for brand management
     path('brand-management/', views.brand_management, name='brand_management'),

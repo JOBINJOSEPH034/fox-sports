@@ -25,6 +25,7 @@ urlpatterns = [
 
     #checkout
     path('checkout/', views.checkout, name='checkout'),
+   path('payment/verify/', views.verify_payment, name='verify_payment'),
 
 
     #addrss management

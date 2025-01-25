@@ -21,6 +21,11 @@
 
       <link href="{% static 'css/msg.css' %}" rel="stylesheet">
 
+      <!-- Bootstrap CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 
 <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
@@ -28,19 +33,29 @@
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
 
-  </body>
-      <head>
+
+    
          ...
          <!-- Add Google Fonts link in <head> -->
          <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
          ...
          <link rel="stylesheet" href="{% static 'css/custom.css' %}">
 
-       </head>
-       
+    
+       <style>
+        .sidebar-menu a {
+    text-decoration: none !important;
+}
+
+.sidebar-menu a:hover {
+    text-decoration: none !important;
+}
+
+       </style>
 
    </head>
    <body><div class="main-wrapper">
+
       <div class="header">
           <div class="header-left">
               <a href=" " class="logo">
@@ -56,10 +71,17 @@
 
     <!-- Search Form with your button and input style -->
     <div class="top-nav-search">
-        <form id="search-form">
-            <input type="text" id="search-input" class="form-control" placeholder="Search here" />
-            <button class="btn" type="submit"><i class="fas fa-search"></i></button>
+        <form method="get" action="{% url 'search_view' %}" class="search-form">
+            <div class="input-group">
+                <input type="text" name="q" class="form-control" placeholder="Search...">
+                <div class="input-group-append">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
         </form>
+        
     </div>
 
     <!-- Section to display search results -->

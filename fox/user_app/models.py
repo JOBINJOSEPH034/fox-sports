@@ -105,6 +105,7 @@ class Order(models.Model):
         ('Cancelled', 'Cancelled'),
         ('Return Pending', 'Return Pending'),
         ('Return Accepted', 'Return Accepted'),
+        ('Paid', 'Paid'),  # Add 'Paid' status
     ]
 
     PAYMENT_CHOICES = [
@@ -128,6 +129,7 @@ class Order(models.Model):
     coupons = models.ManyToManyField(Coupon, related_name="used_orders", blank=True)
     subtotal = models.FloatField(default=0)
     discount_percentage = models.FloatField(default=0)
+    payment_id = models.CharField(max_length=255, null=True, blank=True)  # Add Razorpay Payment ID
 
     def __str__(self):
         return f"Order {self.id} - {self.user.username}"

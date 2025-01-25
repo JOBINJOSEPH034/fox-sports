@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #333;
+            color: white;
+        }
+        .table-danger {
+            background-color: #ffcccc;
+        }
+        .text-danger {
+            color: #dc3545;
+        }
+        .font-weight-bold {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h2>Sales Report</h2>
+    <table class="table table-bordered">
+        <thead class="thead-dark">
+            <tr>
+                <th>Order ID</th>
+                <th>Date</th>
+                <th>Customer</th>
+                <th>Items</th>
+                <th>Subtotal</th>
+                <th>Offer/Coupon</th>
+                <th>Offer Discount</th>
+                <th>Final Amount</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in orders %}
+            <tr {% if order.status == 'canceled' %} class="table-danger" {% endif %}>
+                <td>{{ order.id }}</td>
+                <td>{{ order.created_at }}</td>
+                <td>{{ order.user.username }}</td>
+                <td>
+                    {% for item in order.items.all %}
+                        {{ item.product.name }}{% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                </td>
+                <td>{{ order.subtotal|floatformat:2 }}</td>
+                <td>{{ order.offer_or_coupon }}</td>
+                <td>{{ order.offer_discount|add:order.coupon_discount }}</td>
+                <td>{{ order.discounted_price|floatformat:2 }}</td>
+                <td>
+                    {% if order.status == 'canceled' %}
+                        <span class="text-danger font-weight-bold">Canceled</span>
+                    {% else %}
+                        {{ order.status }}
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

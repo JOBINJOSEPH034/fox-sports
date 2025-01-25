@@ -657,36 +657,103 @@ def checkout(request):
         'razorpay_key_id': settings.RAZORPAY_KEY_ID,
         'final_total_in_paise': final_total * 100,
     })
+from django.shortcuts import render, redirect
+from django.http import JsonResponse
+import razorpay
+import json
+from django.views.decorators.csrf import csrf_exempt
+from .models import Order, Address, Cart, CartItem, OrderItem
 
+# Razorpay client setup
+razorpay_client = razorpay.Client(auth=("your_razorpay_key_id", "your_razorpay_secret_key"))
+import json
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from .models import Order, Address, Cart, CartItem, OrderItem
+import razorpay
 
-
+razorpay_client = razorpay.Client(auth=("your_razorpay_key_id", "your_razorpay_key_secret"))
 
 @csrf_exempt
 def verify_payment(request):
     data = json.loads(request.body)
-    razorpay_payment_id = data['razorpay_payment_id']
-    razorpay_order_id = data['razorpay_order_id']
-    razorpay_signature = data['razorpay_signature']
+    payment_method = data['payment_method']
     address_id = data['address_id']
+    selected_address = Address.objects.get(id=address_id)
 
-    try:
-        razorpay_client.utility.verify_payment_signature({
-            'razorpay_order_id': razorpay_order_id,
-            'razorpay_payment_id': razorpay_payment_id,
-            'razorpay_signature': razorpay_signature
-        })
-        selected_address = Address.objects.get(id=address_id)
+    if payment_method == 'razorpay':
+        razorpay_payment_id = data['razorpay_payment_id']
+        razorpay_order_id = data['razorpay_order_id']
+        razorpay_signature = data['razorpay_signature']
 
+        try:
+            # Verify Razorpay payment signature
+            razorpay_client.utility.verify_payment_signature({
+                'razorpay_order_id': razorpay_order_id,
+                'razorpay_payment_id': razorpay_payment_id,
+                'razorpay_signature': razorpay_signature
+            })
+
+            # Create the order after successful verification
+            order = Order.objects.create(
+                user=request.user,
+                address=selected_address,
+                total_price=data['final_total'],
+                payment_method='razorpay',
+                payment_id=razorpay_payment_id
+            )
+
+            # Save Order Items and reduce stock
+            cart = Cart.objects.get(user=request.user)
+            cart_items = CartItem.objects.filter(cart=cart)
+            for item in cart_items:
+                OrderItem.objects.create(
+                    order=order,
+                    product=item.variant.product,
+                    variant=item.variant,
+                    quantity=item.quantity,
+                    total_price=item.total_price
+                )
+                item.variant.stock -= item.quantity
+                item.variant.save()
+
+            cart_items.delete()  # Clear the cart after successful order
+
+            # Return success response with the order ID
+            return JsonResponse({'success': True, 'order_id': order.id})
+
+        except razorpay.errors.SignatureVerificationError:
+            return JsonResponse({'success': False, 'message': 'Signature verification failed.'})
+
+    else:
+        # Handle other payment methods like COD or Wallet
         order = Order.objects.create(
             user=request.user,
             address=selected_address,
             total_price=data['final_total'],
-            payment_method='razorpay',
-            payment_id=razorpay_payment_id
+            payment_method=payment_method
         )
+
+        # Save Order Items and reduce stock
+        cart = Cart.objects.get(user=request.user)
+        cart_items = CartItem.objects.filter(cart=cart)
+        for item in cart_items:
+            OrderItem.objects.create(
+                order=order,
+                product=item.variant.product,
+                variant=item.variant,
+                quantity=item.quantity,
+                total_price=item.total_price
+            )
+            item.variant.stock -= item.quantity
+            item.variant.save()
+
+        cart_items.delete()  # Clear the cart after successful order
+
         return JsonResponse({'success': True, 'order_id': order.id})
-    except razorpay.errors.SignatureVerificationError:
-        return JsonResponse({'success': False})
+
+
+
     
 razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
 
