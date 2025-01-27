@@ -237,22 +237,39 @@
             <h5 class="section-title position-relative text-uppercase mb-3">
                 <span class="bg-secondary pr-3">Payment Options</span>
             </h5>
+            
+            <!-- Cash on Delivery Option -->
             <div class="form-check">
                 <input type="radio" name="payment_method" value="cod" id="cod" class="form-check-input" checked>
                 <label for="cod" class="form-check-label">Cash on Delivery</label>
             </div>
+            
+            <!-- Wallet Payment Option -->
             <div class="form-check">
-                <input type="radio" name="payment_method" value="wallet" id="wallet" class="form-check-input">
-                <label for="wallet" class="form-check-label">Wallet Payment</label>
+                <input type="radio" name="payment_method" value="wallet" id="wallet" class="form-check-input" 
+                       {% if wallet_disabled %}disabled{% endif %}>
+                <label for="wallet" class="form-check-label">
+                    Wallet Payment (Balance: ₹{{ wallet_balance }})
+                </label>
+                {% if wallet_disabled %}
+                <small class="text-danger d-block">Insufficient balance</small>
+                {% endif %}
             </div>
+            
+            <!-- Razorpay Payment Option -->
             <div class="form-check">
                 <input type="radio" name="payment_method" value="razorpay" id="razorpay" class="form-check-input">
                 <label for="razorpay" class="form-check-label">Online Payment (Razorpay)</label>
             </div>
+            
+            <!-- Checkout Button -->
             <div class="pt-2">
-                <button type="submit" class="btn btn-block btn-primary font-weight-bold my-3 py-3" id="checkout-button">Checkout</button>
+                <button type="submit" class="btn btn-block btn-primary font-weight-bold my-3 py-3" id="checkout-button">
+                    Checkout
+                </button>
             </div>
         </div>
+        
         
        <!-- Razorpay Script to Handle Payment Modal Opening -->
 <!-- Razorpay Script to Handle Payment Modal Opening -->

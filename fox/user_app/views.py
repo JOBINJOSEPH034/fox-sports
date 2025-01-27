@@ -575,6 +575,7 @@ def delete_address(request, address_id):
     return redirect('manage_addresses')
 
 
+
 @login_required
 def checkout(request):
     cart = Cart.objects.get(user=request.user)
@@ -597,6 +598,10 @@ def checkout(request):
         'currency': 'INR',
         'payment_capture': '1'
     })
+
+    # Fetch wallet balance for the user
+    wallet_balance = request.user.wallet.balance if hasattr(request.user, 'wallet') else 0
+    wallet_disabled = wallet_balance < final_total  # Check if wallet balance is insufficient
 
     if request.method == 'POST':
         payment_method = request.POST.get('payment_method')
@@ -638,6 +643,13 @@ def checkout(request):
                 cart.applied_coupon.used = True
                 cart.applied_coupon.save()
 
+            
+            # Deduct wallet balance if payment method is wallet
+            if payment_method == 'wallet':
+                wallet = request.user.wallet
+                wallet.balance -= Decimal(final_total)
+                wallet.save()    
+
             # Clear the cart
             cart_items.delete()
             cart.applied_coupon = None
@@ -656,7 +668,11 @@ def checkout(request):
         'razorpay_order_id': razorpay_order['id'],
         'razorpay_key_id': settings.RAZORPAY_KEY_ID,
         'final_total_in_paise': final_total * 100,
+        'wallet_balance': wallet_balance,
+        'wallet_disabled': wallet_disabled,
     })
+
+
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 import razorpay
@@ -1001,57 +1017,93 @@ def remove_from_wishlist(request, id):
     wishlist_item.delete()
     return redirect('wishlist')
 
-#user transaction 
-@login_required
-def wallet_page(request):
-    wallet, created = Wallet.objects.get_or_create(user=request.user)
-    transactions = wallet.transactions.all().order_by('-created_at')
 
-    paginator = Paginator(transactions, 8)  
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.shortcuts import render
+from django.conf import settings
+from django.core.paginator import Paginator  # Import Paginator
+import razorpay
+import json
+from decimal import Decimal  # Import Decimal for handling monetary values
+
+# Initialize Razorpay client
+razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+
+def wallet_page(request):
+    """Render the wallet page with balance and transaction history."""
+    user_wallet = request.user.wallet  # Assuming a wallet model tied to the user
+    transactions = user_wallet.transactions.all().order_by('-created_at')  # Fetch transactions in descending order
+
+    # Pagination
+    paginator = Paginator(transactions, 8)  # Show 10 transactions per page
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-   
-    if request.method == 'POST':
-        action = request.POST.get('action')
-        amount = request.POST.get('amount')
-
-        try:
-            amount = Decimal(amount)
-            if amount <= 0:
-                raise ValueError("Amount must be greater than zero.")
-            
-            if action == 'add':
-                wallet.balance += amount
-                transaction_type = 'deposit'
-            elif action == 'withdraw':
-                if amount > wallet.balance:
-                    messages.error(request, "Insufficient balance.")
-                    return redirect('wallet_page')
-                wallet.balance -= amount
-                transaction_type = 'withdraw'
-            else:
-                messages.error(request, "Invalid transaction type.")
-                return redirect('wallet_page')
-
-            wallet.save()
-
-            Transaction.objects.create(
-                wallet=wallet,
-                transaction_id=str(uuid.uuid4()),  
-                type=transaction_type,
-                amount=amount,
-            )
-            messages.success(request, f"{action.capitalize()} successful!")
-        except ValueError as e:
-            messages.error(request, str(e))
-
-        return redirect('wallet_page')
-
     return render(request, 'profile/wallet_page.html', {
-        'wallet': wallet,
-        'transactions': transactions,
-        'page_obj': page_obj, 
+        'wallet': user_wallet,
+        'transactions': page_obj,  # Pass paginated transactions
+        'razorpay_key': settings.RAZORPAY_KEY_ID
     })
 
+@csrf_exempt
+def create_razorpay_order(request):
+    """API to create Razorpay order."""
+    if request.method == "POST":
+        data = json.loads(request.body)
+        amount = int(data.get("amount", 0)) * 100  # Amount in paise
+        if amount <= 0:
+            return JsonResponse({"status": "error", "message": "Invalid amount."}, status=400)
+        
+        try:
+            order = razorpay_client.order.create({
+                "amount": amount,
+                "currency": "INR",
+                "payment_capture": 1
+            })
+            return JsonResponse({
+                "status": "success",
+                "order_id": order["id"],
+                "amount": amount,
+                "currency": "INR"
+            })
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=500)
 
+    return JsonResponse({"status": "error", "message": "Invalid request method."}, status=400)
+
+@csrf_exempt
+def verify_payment(request):
+    """API to verify Razorpay payment and update wallet balance."""
+    if request.method == "POST":
+        data = json.loads(request.body)
+        payment_id = data.get("razorpay_payment_id")
+        order_id = data.get("razorpay_order_id")
+        signature = data.get("razorpay_signature")  # Get the signature
+        amount = Decimal(data.get("amount", 0))  # Convert amount to Decimal
+
+        try:
+            # Validate Razorpay payment
+            razorpay_client.utility.verify_payment_signature({
+                "razorpay_order_id": order_id,
+                "razorpay_payment_id": payment_id,
+                "razorpay_signature": signature  # Include the signature
+            })
+
+            # Update wallet balance
+            user_wallet = request.user.wallet
+            user_wallet.balance += amount  # Add the amount (already in Decimal)
+            user_wallet.save()
+
+            # Log the transaction
+            user_wallet.transactions.create(
+                transaction_id=payment_id,
+                amount=amount,
+                type="add"
+            )
+
+            return JsonResponse({"status": "success", "message": "Wallet updated."})
+        except Exception as e:
+            return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+    return JsonResponse({"status": "error", "message": "Invalid request method."}, status=400)

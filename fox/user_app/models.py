@@ -145,7 +145,7 @@ class Order(models.Model):
         return False
 
     def refund_wallet(self):
-        if self.payment_method == 'wallet' and self.status == 'Return Accepted':
+        if self.payment_method == 'wallet' and self.status in ['Return Accepted', 'Cancelled']:
             wallet = self.user.wallet
             if wallet:
                 wallet.balance += Decimal(self.total_price)
@@ -181,8 +181,15 @@ class Order(models.Model):
         """
         Mark the coupon as used when the order is placed.
         """
+        original_status = None
+        if self.pk:
+            original_order = Order.objects.get(pk=self.pk)
+            original_status = original_order.status
         # Save the Order instance first to ensure it gets an id
         super().save(*args, **kwargs)
+
+        if self.status in ['Return Accepted', 'Cancelled'] and self.status != original_status:
+            self.refund_wallet()
 
         # Now that the Order has an id, we can update the ManyToMany relationship
         if self.coupons.exists():

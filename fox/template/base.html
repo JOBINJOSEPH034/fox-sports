@@ -32,6 +32,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
 <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
 
     
@@ -49,6 +50,26 @@
 
 .sidebar-menu a:hover {
     text-decoration: none !important;
+}.search-results-container {
+    margin-top: 20px;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+.search-results-container h3 {
+    margin-bottom: 10px;
+}
+
+.search-results-container ul {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.search-results-container ul li {
+    padding: 5px 0;
+    border-bottom: 1px solid #eee;
 }
 
        </style>
@@ -68,24 +89,22 @@
           <a href="javascript:void(0);" id="toggle_btn">
               <i class="fas fa-align-left"></i>
           </a>
-
-    <!-- Search Form with your button and input style -->
-    <div class="top-nav-search">
-        <form method="get" action="{% url 'search_view' %}" class="search-form">
-            <div class="input-group">
-                <input type="text" name="q" class="form-control" placeholder="Search...">
-                <div class="input-group-append">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-search"></i>
-                    </button>
+          
+          <div class="top-nav-search">
+            <form method="get" action="{% url 'search_view' %}" class="search-form">
+                <div class="input-group">
+                    <input type="text" id="search-input" name="q" class="form-control" placeholder="Search...">
+                    <input type="hidden" id="current-page" name="current_page" value="{{ current_page }}">
+                    <div class="input-group-append">
+                        <button type="submit" id="search-btn" class="btn btn-primary">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
                 </div>
-            </div>
-        </form>
+            </form>
+        </div>
         
-    </div>
-
-    <!-- Section to display search results -->
-    <div id="search-results"></div>
+        <!-- Section to display search results -->
 
 
 
@@ -325,96 +344,92 @@ $(document).ready(function() {
     }, 5000);  // 5000 milliseconds = 5 seconds
 });
 </script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const searchInput = document.getElementById('search-input');
+    const searchBtn = document.getElementById('search-btn');
+    const resultsContainer = document.getElementById('search-results');
+    const currentPage = document.getElementById('current-page').value; // Get the current page
 
-    <script>
-        // Get the search input and button elements
-        const searchInput = document.getElementById('search-input');
-        const searchBtn = document.getElementById('search-btn');
-        const resultsContainer = document.getElementById('search-results');
+    // Event listener for the search button click
+    searchBtn.addEventListener('click', function (event) {
+        event.preventDefault(); // Prevent form submission
+        const query = searchInput.value.trim(); // Get the query text
 
-        // Event listener for the search button click
-        searchBtn.addEventListener('click', function() {
-            const query = searchInput.value.trim(); // Get the query text
+        if (!query) {
+            resultsContainer.innerHTML = "<p>Please enter a search query.</p>";
+            return;
+        }
 
-            if (!query) {
-                resultsContainer.innerHTML = "<p>Please enter a search query.</p>";
-                return;
-            }
+        // Fetch search results from the server
+        fetch(`/search/?q=${query}&current_page=${currentPage}`)
+            .then(response => response.json())
+            .then(data => {
+                let resultsHTML = '<h3>Search Results</h3>';
 
-            // Fetch search results from the server
-            fetch(`/search/?q=${query}`)
-                .then(response => response.json())
-                .then(data => {
-                    let resultsHTML = '<h3>Search Results</h3>';
+                // Display results based on the current page
+                if (currentPage === 'product' && data.products.length) {
+                    resultsHTML += '<h4>Products</h4><ul>';
+                    data.products.forEach(product => {
+                        resultsHTML += `<li>${product.name} - ${product.description}</li>`;
+                    });
+                    resultsHTML += '</ul>';
+                } else if (currentPage === 'category' && data.categories.length) {
+                    resultsHTML += '<h4>Categories</h4><ul>';
+                    data.categories.forEach(category => {
+                        resultsHTML += `<li>${category.name}</li>`;
+                    });
+                    resultsHTML += '</ul>';
+                } else if (currentPage === 'offer' && data.offers.length) {
+                    resultsHTML += '<h4>Offers</h4><ul>';
+                    data.offers.forEach(offer => {
+                        resultsHTML += `<li>${offer.name} - ${offer.discount_percentage}% off</li>`;
+                    });
+                    resultsHTML += '</ul>';
+                } else if (currentPage === 'coupon' && data.coupons.length) {
+                    resultsHTML += '<h4>Coupons</h4><ul>';
+                    data.coupons.forEach(coupon => {
+                        resultsHTML += `<li>${coupon.code} - ${coupon.discount_percentage}% off</li>`;
+                    });
+                    resultsHTML += '</ul>';
+                } else if (currentPage === 'brand' && data.brands.length) {
+                    resultsHTML += '<h4>Brands</h4><ul>';
+                    data.brands.forEach(brand => {
+                        resultsHTML += `<li>${brand.name}</li>`;
+                    });
+                    resultsHTML += '</ul>';
+                } else if (currentPage === 'order' && data.orders.length) {
+                    resultsHTML += '<h4>Orders</h4><ul>';
+                    data.orders.forEach(order => {
+                        resultsHTML += `<li>Order ID: ${order.id} - Customer: ${order.user__username}</li>`;
+                    });
+                    resultsHTML += '</ul>';
+                } else if (currentPage === 'customer' && data.customers.length) {
+                    resultsHTML += '<h4>Customers</h4><ul>';
+                    data.customers.forEach(customer => {
+                        resultsHTML += `<li>${customer.name} - ${customer.email}</li>`;
+                    });
+                    resultsHTML += '</ul>';
+                } else if (currentPage === 'inventory' && data.inventory.length) {
+                    resultsHTML += '<h4>Inventory</h4><ul>';
+                    data.inventory.forEach(item => {
+                        resultsHTML += `<li>${item.product__name} - Quantity: ${item.quantity}</li>`;
+                    });
+                    resultsHTML += '</ul>';
+                } else {
+                    resultsHTML = '<h3>No results found</h3>';
+                }
 
-                    // Display results for products
-                    if (data.products.length) {
-                        resultsHTML += '<h4>Products</h4><ul>';
-                        data.products.forEach(product => {
-                            resultsHTML += `<li>${product.name} - ${product.description}</li>`;
-                        });
-                        resultsHTML += '</ul>';
-                    }
-
-                    // Display results for categories
-                    if (data.categories.length) {
-                        resultsHTML += '<h4>Categories</h4><ul>';
-                        data.categories.forEach(category => {
-                            resultsHTML += `<li>${category.name}</li>`;
-                        });
-                        resultsHTML += '</ul>';
-                    }
-
-                    // Display results for offers
-                    if (data.offers.length) {
-                        resultsHTML += '<h4>Offers</h4><ul>';
-                        data.offers.forEach(offer => {
-                            resultsHTML += `<li>${offer.name} - ${offer.discount_percentage}% off</li>`;
-                        });
-                        resultsHTML += '</ul>';
-                    }
-
-                    // Display results for coupons
-                    if (data.coupons.length) {
-                        resultsHTML += '<h4>Coupons</h4><ul>';
-                        data.coupons.forEach(coupon => {
-                            resultsHTML += `<li>${coupon.code} - ${coupon.discount_percentage}% off</li>`;
-                        });
-                        resultsHTML += '</ul>';
-                    }
-
-                    // Display results for brands
-                    if (data.brands.length) {
-                        resultsHTML += '<h4>Brands</h4><ul>';
-                        data.brands.forEach(brand => {
-                            resultsHTML += `<li>${brand.name}</li>`;
-                        });
-                        resultsHTML += '</ul>';
-                    }
-
-                    // Display results for orders
-                    if (data.orders.length) {
-                        resultsHTML += '<h4>Orders</h4><ul>';
-                        data.orders.forEach(order => {
-                            resultsHTML += `<li>Order ID: ${order.id} - Customer: ${order.user__username}</li>`;
-                        });
-                        resultsHTML += '</ul>';
-                    }
-
-                    // If no results found for any category
-                    if (!data.products.length && !data.categories.length && !data.offers.length && !data.coupons.length && !data.brands.length && !data.orders.length) {
-                        resultsHTML = '<h3>No results found</h3>';
-                    }
-
-                    // Insert the results into the search-results div
-                    resultsContainer.innerHTML = resultsHTML;
-                })
-                .catch(error => {
-                    console.error('Error fetching search results:', error);
-                    resultsContainer.innerHTML = "<p>An error occurred while fetching the search results.</p>";
-                });
-        });
-    </script>
+                // Insert the results into the search-results div
+                resultsContainer.innerHTML = resultsHTML;
+            })
+            .catch(error => {
+                console.error('Error fetching search results:', error);
+                resultsContainer.innerHTML = "<p>An error occurred while fetching the search results.</p>";
+            });
+    });
+});
+</script>
 
   </body>
   </html>

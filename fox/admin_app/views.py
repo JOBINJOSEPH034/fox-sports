@@ -56,17 +56,22 @@ def admin_home(request):
     return render(request,'index.html',context)
 
 
-#ADMIN PRODUCT
 @login_required
 @never_cache
 def product_list(request):
+    query = request.GET.get('q', '').strip()  # Get the search query from the URL parameter 'q'
     products = Product.objects.all().order_by('-created_at')
 
+    # Filter products if a search query is provided
+    if query:
+        products = products.filter(name__icontains=query)  # Case-insensitive search for product names
+
+    # Paginate the filtered or unfiltered products
     paginator = Paginator(products, 8)  
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    return render(request,'product.html',{'page_obj': page_obj})
+    return render(request, 'product.html', {'page_obj': page_obj, 'query': query})
 
 
 @login_required
@@ -965,28 +970,54 @@ def export_to_pdf(request):
     response = HttpResponse(pdf_content, content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="sales_report.pdf"'
     return response
-
-
-
-
-from django.shortcuts import redirect
+from django.http import JsonResponse
+from django.db.models import Q
+from .models import Product, Category, Offer, Coupon, Brand
 
 def search_view(request):
     query = request.GET.get('q', '').strip()
+    current_page = request.GET.get('current_page', '').strip()  # Get the current page context
+    results = {
+        'products': [],
+        'categories': [],
+        'offers': [],
+        'coupons': [],
+        'brands': [],
+        'orders': [],
+        'customers': [],
+        'inventory': [],
+    }
 
     if query:
-        if Product.objects.filter(name__icontains=query).exists():
-            return redirect('product', search=query)  # Redirect to the products page
-        elif Category.objects.filter(name__icontains=query).exists():
-            return redirect('category', search=query)  # Redirect to the categories page
-        elif Offer.objects.filter(name__icontains=query).exists():
-            return redirect('manage_offers', search=query)  # Redirect to offers page
-        elif Coupon.objects.filter(code__icontains=query).exists():
-            return redirect('coupon_list', search=query)  # Redirect to coupons page
-        elif Brand.objects.filter(name__icontains=query).exists():
-            return redirect('brand_management', search=query)  # Redirect to brands page
-        elif Order.objects.filter(id__icontains=query).exists():
-            return redirect('admin_order_management', search=query)  # Redirect to orders page
+        # Search for products (only if on the product page or no specific page is selected)
+        if current_page == 'product' or not current_page:
+            products = Product.objects.filter(name__icontains=query).values('id', 'name', 'description')
+            results['products'] = list(products)
 
-    # Redirect back to a default page if no match is found
-    return redirect('admin_home')
+        # Search for categories (only if on the category page or no specific page is selected)
+        if current_page == 'category' or not current_page:
+            categories = Category.objects.filter(name__icontains=query).values('id', 'name')
+            results['categories'] = list(categories)
+
+        # Search for offers (only if on the offer page or no specific page is selected)
+        if current_page == 'offer' or not current_page:
+            offers = Offer.objects.filter(name__icontains=query).values('id', 'name', 'discount_percentage')
+            results['offers'] = list(offers)
+
+        # Search for coupons (only if on the coupon page or no specific page is selected)
+        if current_page == 'coupon' or not current_page:
+            coupons = Coupon.objects.filter(code__icontains=query).values('id', 'code', 'discount_percentage')
+            results['coupons'] = list(coupons)
+
+        # Search for brands (only if on the brand page or no specific page is selected)
+        if current_page == 'brand' or not current_page:
+            brands = Brand.objects.filter(name__icontains=query).values('id', 'name')
+            results['brands'] = list(brands)
+
+        # Search for orders (only if on the order page or no specific page is selected)
+        if current_page == 'order' or not current_page:
+            orders = Order.objects.filter(id__icontains=query).values('id', 'user__username')
+            results['orders'] = list(orders)
+
+        
+    return JsonResponse(results)

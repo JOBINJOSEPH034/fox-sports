@@ -68,6 +68,7 @@ urlpatterns = [
 
     #profile wallet
     path('wallet/', views.wallet_page, name='wallet_page'), 
+    path('wallet/create-order/', views.create_razorpay_order, name='create_razorpay_order'),
 
     #profile coupon
     path('apply-coupon/', views.apply_coupon, name='apply_coupon'),

@@ -211,3 +211,9 @@
     });
 </script>
 {% endblock %}
+
+{% block extra_scripts %}
+    <script>
+        document.getElementById('current-page').value = 'product'; // Set the current page context
+    </script>
+{% endblock %}
