@@ -94,6 +94,10 @@ from django.db import models
 from datetime import timedelta
 from decimal import Decimal
 from django.utils.timezone import now
+from django.db import models
+from decimal import Decimal
+from datetime import timedelta
+from django.utils.timezone import now
 
 class Order(models.Model):
     STATUS_CHOICES = [
@@ -105,7 +109,7 @@ class Order(models.Model):
         ('Cancelled', 'Cancelled'),
         ('Return Pending', 'Return Pending'),
         ('Return Accepted', 'Return Accepted'),
-        ('Paid', 'Paid'),  # Add 'Paid' status
+        ('Paid', 'Paid'),
     ]
 
     PAYMENT_CHOICES = [
@@ -130,6 +134,7 @@ class Order(models.Model):
     subtotal = models.FloatField(default=0)
     discount_percentage = models.FloatField(default=0)
     payment_id = models.CharField(max_length=255, null=True, blank=True)  # Add Razorpay Payment ID
+    is_refunded = models.BooleanField(default=False)  # To track if refund is processed
 
     def __str__(self):
         return f"Order {self.id} - {self.user.username}"
@@ -145,11 +150,27 @@ class Order(models.Model):
         return False
 
     def refund_wallet(self):
-        if self.payment_method == 'wallet' and self.status in ['Return Accepted', 'Cancelled']:
+        """
+        Refund the wallet balance if the payment method is wallet and the order status is cancelled or return accepted.
+        Ensure the refund is only processed once.
+        """
+        if self.payment_method == 'wallet' and not self.is_refunded and self.status in ['Return Accepted', 'Cancelled']:
             wallet = self.user.wallet
             if wallet:
                 wallet.balance += Decimal(self.total_price)
                 wallet.save()
+
+                # Log the transaction for refund
+                wallet.transactions.create(
+                    transaction_id=f"refund-{self.id}",
+                    type="credit",  # Transaction type is "credit" for refunds
+                    amount=Decimal(self.total_price),
+                    description=f"Refund for order #{self.id}"
+                )
+
+                # Mark the order as refunded
+                self.is_refunded = True
+                self.save(update_fields=['is_refunded'])
 
     def restore_inventory(self):
         for item in self.items.all():
@@ -179,25 +200,26 @@ class Order(models.Model):
 
     def save(self, *args, **kwargs):
         """
-        Mark the coupon as used when the order is placed.
+        Override the save method to trigger refund logic when the order status changes.
         """
         original_status = None
         if self.pk:
             original_order = Order.objects.get(pk=self.pk)
             original_status = original_order.status
-        # Save the Order instance first to ensure it gets an id
-        super().save(*args, **kwargs)
 
+        super().save(*args, **kwargs)  # Save the order first to ensure it has an id
+
+        # Trigger the refund if the order status changes to 'Return Accepted' or 'Cancelled'
         if self.status in ['Return Accepted', 'Cancelled'] and self.status != original_status:
             self.refund_wallet()
 
-        # Now that the Order has an id, we can update the ManyToMany relationship
+        # Mark the coupon as used when the order is placed
         if self.coupons.exists():
             for coupon in self.coupons.all():
                 coupon.used = True
                 coupon.save()
 
-    
+
 
 #for use orderreturn
 class OrderReturn(models.Model):
@@ -280,3 +302,4 @@ class Transaction(models.Model):
     type = models.CharField(max_length=10, choices=TRANSACTION_TYPES)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
+    description = models.TextField(null=True, blank=True)

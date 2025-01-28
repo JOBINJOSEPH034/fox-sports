@@ -279,6 +279,7 @@ def admin_order_management(request):
     orders_page = paginator.get_page(page_number)
 
     return render(request, 'admin_order.html', {'orders': orders_page})
+
 @login_required
 def admin_update_order_status(request, order_id, status):
     order = get_object_or_404(Order, id=order_id)
