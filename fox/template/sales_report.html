@@ -43,10 +43,7 @@
                         </div>
                     </li>
                     {% endfor %}
-                    <li class="dropdown-divider"></li>
-                    <li class="dropdown-item">
-                        <button type="button" class="btn btn-primary btn-sm w-100" onclick="applyStatusFilter()">Apply</button>
-                    </li>
+                    
                 </ul>
             </div>
         </div>
@@ -60,14 +57,7 @@
             </div>
         </div>
 
-        <!-- Offer/Coupon Filter -->
-        <div class="col-md-2">
-            <label class="form-label">Offer/Coupon</label>
-            <div class="form-check form-switch">
-                <input type="checkbox" name="offer_applied" class="form-check-input" role="switch" id="offer_applied" value="1" {% if offer_applied %}checked{% endif %}>
-                <label class="form-check-label" for="offer_applied">Applied</label>
-            </div>
-        </div>
+        
 
         <!-- Buttons -->
         <div class="col-md-2 d-flex align-items-end">
@@ -136,7 +126,7 @@
     }
     .btn-outline-primary {
         border-color: #0d6efd;
-        color: #0d6efd;
+        color: #ffffff;
     }
     .btn-outline-primary:hover {
         background-color: #0d6efd;
@@ -172,15 +162,31 @@
 <div class="row mb-3">
     <div class="col-md-12 text-end">
         <div class="d-flex justify-content-end gap-4">
-            <!-- Export to Excel Button -->
-            <form method="GET" action="{% url 'export_to_excel' %}">
-                <button type="submit" class="btn btn-outline-success">Export to Excel</button>
-            </form>
+           <!-- Export to Excel Button -->
+           <form method="GET" action="{% url 'export_to_excel' %}">
+            <input type="hidden" name="date_filter" value="{{ request.GET.date_filter }}">
+            <input type="hidden" name="start_date" value="{{ request.GET.start_date }}">
+            <input type="hidden" name="end_date" value="{{ request.GET.end_date }}">
+            <input type="hidden" name="min_price" value="{{ request.GET.min_price }}">
+            <input type="hidden" name="max_price" value="{{ request.GET.max_price }}">
+            <input type="hidden" name="status_filter" value="{{ request.GET.status_filter }}">
+            <button type="submit" class="btn btn-outline-success">Export to Excel</button>
+        </form>
+        
+
 
             <!-- Export to PDF Button -->
-            <form method="GET" action="{% url 'export_to_pdf' %}">
-                <button type="submit" class="btn btn-outline-danger">Export to PDF</button>
-            </form>
+            <!-- Export to PDF Button -->
+<form method="GET" action="{% url 'export_to_pdf' %}">
+    <!-- Pass all filter parameters to the PDF export view -->
+    <input type="hidden" name="date_filter" value="{{ request.GET.date_filter }}">
+    <input type="hidden" name="start_date" value="{{ request.GET.start_date }}">
+    <input type="hidden" name="end_date" value="{{ request.GET.end_date }}">
+    <input type="hidden" name="min_price" value="{{ request.GET.min_price }}">
+    <input type="hidden" name="max_price" value="{{ request.GET.max_price }}">
+    <input type="hidden" name="offer_applied" value="{{ request.GET.offer_applied }}">
+    <button type="submit" class="btn btn-outline-danger">Export to PDF</button>
+</form>
         </div>
     </div>
 </div>

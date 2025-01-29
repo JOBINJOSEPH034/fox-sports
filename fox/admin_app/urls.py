@@ -64,8 +64,8 @@ urlpatterns = [
     path('export-to-excel/', views.export_to_excel, name='export_to_excel'),
     path('export-to-pdf/', views.export_to_pdf, name='export_to_pdf'),
 
-
-    path('search/', views.search_view, name='search_view'),
+    #admin search
+    path('search/', views.search_view, name='search_view'), # not finish
 ]
 
 urlpatterns += static(settings.MEDIA_URL,document_root=settings.MEDIA_ROOT)

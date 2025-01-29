@@ -14,12 +14,12 @@ from django.core.paginator import Paginator
 from datetime import datetime,timedelta
 from django.db.models import Sum, F
 from django.utils import timezone
-from django.template.loader import render_to_string
-from weasyprint import HTML
-import openpyxl
-
-
-
+import openpyxl  
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from io import BytesIO
 
 
 # Create your views here.
@@ -511,7 +511,6 @@ def toggle_brand_status(request, brand_id):
 
 
 
-
 # admin coupon management
 def coupon_list(request):
     coupons = Coupon.objects.all()
@@ -639,7 +638,7 @@ def delete_offer(request, offer_id):
 
 
 
-#admin dashboard  ( not finished )
+#admin dashboard  ( not finished demo )
 def dashboard_view(request):
     total_sales = Order.objects.filter(status='Delivered').aggregate(total_sales=Sum('total_price'))['total_sales'] or 0
     
@@ -689,23 +688,12 @@ def dashboard_view(request):
     return render(request, 'index.html', context)
 
 
-from django.shortcuts import render
-from django.db.models import Sum, F
-from django.core.paginator import Paginator
-from django.utils import timezone
-from datetime import datetime, timedelta
-from django.shortcuts import render
-from django.db.models import Sum, F
-from django.core.paginator import Paginator
-from django.utils import timezone
-from datetime import datetime, timedelta
 
+#admin sales report
 @login_required
 def sales_report(request):
-    # Get date filter value from GET request, default to 'today'
     date_filter = request.GET.get('date_filter', 'today')
 
-    # Handle the date filters
     if date_filter == 'today':
         start_date = timezone.make_aware(datetime.combine(datetime.today(), datetime.min.time()))
         end_date = timezone.make_aware(datetime.combine(datetime.today(), datetime.max.time()))
@@ -726,10 +714,8 @@ def sales_report(request):
         else:
             start_date = end_date = None
 
-    # Get order status filter
-    selected_statuses = request.GET.getlist('status_filter')  # List of selected statuses
+    selected_statuses = request.GET.getlist('status_filter') 
 
-    # Filter orders based on date and status
     orders = Order.objects.all().order_by('-created_at')
     if start_date and end_date:
         orders = orders.filter(created_at__range=[start_date, end_date])
@@ -737,7 +723,6 @@ def sales_report(request):
     if selected_statuses:
         orders = orders.filter(status__in=selected_statuses)
 
-    # Price filters
     min_price = request.GET.get('min_price')
     max_price = request.GET.get('max_price')
     if min_price:
@@ -745,18 +730,15 @@ def sales_report(request):
     if max_price:
         orders = orders.filter(total_price__lte=float(max_price))
 
-    # Filter by applied offer or coupon
     offer_applied = request.GET.get('offer_applied', '')
     if offer_applied:
-        orders = orders.filter(offer_discount__gt=0)  # Assuming offer_discount is a field that stores applied discount
+        orders = orders.filter(offer_discount__gt=0) 
 
-    # Filter by coupon applied
     coupon_applied = request.GET.get('coupon_applied', '')
     if coupon_applied:
-        orders = orders.filter(coupon_discount__gt=0)  # Assuming coupon_discount is a field for coupon discounts
+        orders = orders.filter(coupon_discount__gt=0) 
 
-    # Pagination
-    paginator = Paginator(orders, 6)
+    paginator = Paginator(orders, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -771,10 +753,8 @@ def sales_report(request):
 
     average_order_value = total_sales / total_orders if total_orders > 0 else 0
 
-    # Check if PDF export is requested
     is_pdf = request.GET.get('pdf', False)
 
-    # Prepare context with filters and calculations
     context = {
         'orders': page_obj,
         'total_sales': total_sales,
@@ -797,57 +777,25 @@ def sales_report(request):
             ('Return Pending', 'Return Pending'),
             ('Return Accepted', 'Return Accepted'),
         ],
-        'is_pdf': is_pdf  # Pass the is_pdf flag to the template
+        'is_pdf': is_pdf 
     }
 
-    # Return the rendered template
     return render(request, 'sales_report.html', context)
 
 
 #to excel
 def export_to_excel(request):
-    # Get the orders based on applied filters
-    date_filter = request.GET.get('date_filter', 'today')
-    start_date = None
-    end_date = None
-
-    if date_filter == 'today':
-        today = datetime.today()
-        start_date = timezone.make_aware(datetime.combine(today, datetime.min.time()))
-        end_date = timezone.make_aware(datetime.combine(today, datetime.max.time()))
-    elif date_filter == 'this_week':
-        today = datetime.today()
-        start_date = timezone.make_aware(datetime.combine(today - timedelta(days=today.weekday()), datetime.min.time()))
-        end_date = timezone.make_aware(datetime.combine(today + timedelta(days=(6 - today.weekday())), datetime.max.time()))
-    elif date_filter == 'this_month':
-        today = datetime.today()
-        start_date = timezone.make_aware(datetime.combine(today.replace(day=1), datetime.min.time()))
-        end_date = timezone.make_aware(datetime.combine(today.replace(day=1) + timedelta(days=32), datetime.min.time()) - timedelta(seconds=1))
-    elif date_filter == 'custom':
-        start_date_str = request.GET.get('start_date', '')
-        end_date_str = request.GET.get('end_date', '')
-        if start_date_str and end_date_str:
-            start_date = timezone.make_aware(datetime.combine(datetime.strptime(start_date_str, '%Y-%m-%d'), datetime.min.time()))
-            end_date = timezone.make_aware(datetime.combine(datetime.strptime(end_date_str, '%Y-%m-%d'), datetime.max.time()))
-
-    # Apply filters
     orders = Order.objects.all()
-    if start_date and end_date:
-        orders = orders.filter(created_at__range=[start_date, end_date])
-
-    # Excel export logic
+    
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = 'Sales Report'
     
-    # Define the header row
-    ws.append(['Order ID', 'Date', 'Customer', 'Items', 'Subtotal', 'Offer Discount', 'Coupon Discount', 'Final Amount', 'Status'])
+    ws.append(['Order ID', 'Date', 'Customer', 'Items', 'Subtotal', 'Offer Discount', 'Final Amount', 'Status'])
     
-    # Add order data
     for order in orders:
-        items = ', '.join([str(item.product_id) for item in order.items.all()])
+        items = ', '.join([str(item.product_id) for item in order.items.all()]) 
         
-        # Adding offer discount and coupon discount
         ws.append([
             order.id, 
             order.created_at.strftime('%Y-%m-%d'),
@@ -855,12 +803,10 @@ def export_to_excel(request):
             items,
             order.total_price,
             order.offer_discount,
-            order.coupon_discount,  # Assuming you have 'coupon_discount' field
-            order.total_price - order.offer_discount - order.coupon_discount,  # Final amount after discounts
+            order.total_price - order.offer_discount,
             order.status
         ])
     
-    # Prepare the response for the Excel file
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename=sales_report.xlsx'
     wb.save(response)
@@ -868,116 +814,132 @@ def export_to_excel(request):
     return response
 
 
-from django.http import HttpResponse
-from reportlab.lib.pagesizes import letter
-from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
-from io import BytesIO
-from datetime import datetime, timedelta
-from django.utils import timezone
 
 def export_to_pdf(request):
-    # Get the orders based on applied filters
     date_filter = request.GET.get('date_filter', 'today')
     start_date = None
     end_date = None
     status_filter = request.GET.getlist('status_filter', [])
 
-    # Apply date filter
+    heading = "Sales Report"  
+
     if date_filter == 'today':
         today = datetime.today()
         start_date = timezone.make_aware(datetime.combine(today, datetime.min.time()))
         end_date = timezone.make_aware(datetime.combine(today, datetime.max.time()))
+        heading = f"Sales Report for {today.strftime('%d %B %Y')}" 
     elif date_filter == 'this_week':
         today = datetime.today()
         start_date = timezone.make_aware(datetime.combine(today - timedelta(days=today.weekday()), datetime.min.time()))
         end_date = timezone.make_aware(datetime.combine(today + timedelta(days=(6 - today.weekday())), datetime.max.time()))
+        heading = "Sales Report for the Week"  
     elif date_filter == 'this_month':
         today = datetime.today()
         start_date = timezone.make_aware(datetime.combine(today.replace(day=1), datetime.min.time()))
         end_date = timezone.make_aware(datetime.combine(today.replace(day=1) + timedelta(days=32), datetime.min.time()) - timedelta(seconds=1))
+        heading = f"Sales Report for {today.strftime('%B %Y')}"
     elif date_filter == 'custom':
         start_date_str = request.GET.get('start_date', '')
         end_date_str = request.GET.get('end_date', '')
         if start_date_str and end_date_str:
             start_date = timezone.make_aware(datetime.combine(datetime.strptime(start_date_str, '%Y-%m-%d'), datetime.min.time()))
             end_date = timezone.make_aware(datetime.combine(datetime.strptime(end_date_str, '%Y-%m-%d'), datetime.max.time()))
+            heading = f"Sales Report from {start_date.strftime('%d %B %Y')} to {end_date.strftime('%d %B %Y')}" 
 
-    # Fetch orders with filters applied
+
     orders = Order.objects.all()
     if start_date and end_date:
         orders = orders.filter(created_at__range=[start_date, end_date])
     if status_filter:
         orders = orders.filter(status__in=status_filter)
 
-    # Create a buffer to store the PDF
     buffer = BytesIO()
 
-    # Create the PDF object
     pdf = SimpleDocTemplate(buffer, pagesize=letter)
 
-    # Define the table data with headings
     table_data = [
-        ["Order ID", "Date", "Customer", "Items", "Subtotal", "Offer/Coupon", "Offer Discount", "Final Amount", "Status"]
+        ["Order ID", "Date", "Customer", "Items", "Subtotal", "Offer/Coupon", "Offer Discount", "Final Amount"]
     ]
 
-    # Add rows to the table data
+    total_subtotal = 0
+    total_offer_discount = 0
+    total_final_amount = 0
+
+    styles = getSampleStyleSheet()
+    item_style = ParagraphStyle(name="ItemStyle", fontSize=10, leading=12, wordWrap='CJK')
+
     for order in orders:
-        items = ", ".join([str(item.product.name) for item in order.items.all()])
+        items = Paragraph(", ".join([str(item.product.name) for item in order.items.all()]), item_style)
         offer_coupon = order.offer_or_coupon
         offer_discount = order.offer_discount + order.coupon_discount
         final_amount = order.discounted_price
-        status = f"[CANCELED] {order.status}" if order.status == 'canceled' else order.status
 
-        # Append data to the table
+        total_subtotal += order.subtotal
+        total_offer_discount += offer_discount
+        total_final_amount += final_amount
+
         table_data.append([
             str(order.id),
             order.created_at.strftime("%Y-%m-%d"),
             order.user.username,
-            items,
-            f"${order.subtotal:.2f}",
+            items, 
+            f"{order.subtotal:.2f}", 
             offer_coupon,
-            f"${offer_discount:.2f}",
-            f"${final_amount:.2f}",
-            status
+            f"{offer_discount:.2f}",  
+            f"{final_amount:.2f}" 
         ])
 
-    # Create the table
-    table = Table(table_data)
+    table_data.append([
+        "Total",
+        "",
+        "",
+        "",
+        f"{total_subtotal:.2f}",
+        "",
+        f"{total_offer_discount:.2f}",
+        f"{total_final_amount:.2f}"
+    ])
 
-    # Add style to the table
+    table = Table(table_data, colWidths=[45, 60, 80, 110, 50, 75, 80, 80])  
+
     style = TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),  # Header row background
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),  # Header row text color
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),  # Center align all cells
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),  # Header row font
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),  # Header row padding
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),  # Table body background
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),  # Add grid lines
-        ('TEXTCOLOR', (0, -1), (-1, -1), colors.red),  # Highlight canceled orders
+        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),        # Header row background
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),    # Header row text color
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),                # Center align all cells
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),        # Header row font
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),                     # Header row padding
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),          # Table body background
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),        # Add grid lines
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),                      # Align text to the top of the row
+        # Styling the total row
+        ('BACKGROUND', (0, -1), (-1, -1), colors.lightgrey),    # Total row background
+        ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),       # Total row font
+        ('TEXTCOLOR', (0, -1), (-1, -1), colors.black),         # Total row text color
+        ('ALIGN', (0, -1), (-1, -1), 'CENTER'),               # Center align total row
     ])
 
     table.setStyle(style)
 
-    # Build the PDF
-    elements = [table]
+    title_style = styles['Title']
+    title_style.fontName = 'Helvetica-Bold'
+    title_style.fontSize = 16
+    title_style.spaceAfter = 12
+    title = Paragraph(heading, title_style)
+
+    elements = [title, Spacer(1, 12), table]
     pdf.build(elements)
 
-    # Get the PDF content from the buffer
     pdf_content = buffer.getvalue()
     buffer.close()
 
-    # Return the PDF as a response
     response = HttpResponse(pdf_content, content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="sales_report.pdf"'
     return response
-from django.http import JsonResponse
-from django.db.models import Q
-from .models import Product, Category, Offer, Coupon, Brand
 
+#admin search (not finished)
 def search_view(request):
     query = request.GET.get('q', '').strip()
-    current_page = request.GET.get('current_page', '').strip()  # Get the current page context
+    current_page = request.GET.get('current_page', '').strip() 
     results = {
         'products': [],
         'categories': [],
@@ -990,32 +952,26 @@ def search_view(request):
     }
 
     if query:
-        # Search for products (only if on the product page or no specific page is selected)
         if current_page == 'product' or not current_page:
             products = Product.objects.filter(name__icontains=query).values('id', 'name', 'description')
             results['products'] = list(products)
 
-        # Search for categories (only if on the category page or no specific page is selected)
         if current_page == 'category' or not current_page:
             categories = Category.objects.filter(name__icontains=query).values('id', 'name')
             results['categories'] = list(categories)
 
-        # Search for offers (only if on the offer page or no specific page is selected)
         if current_page == 'offer' or not current_page:
             offers = Offer.objects.filter(name__icontains=query).values('id', 'name', 'discount_percentage')
             results['offers'] = list(offers)
 
-        # Search for coupons (only if on the coupon page or no specific page is selected)
         if current_page == 'coupon' or not current_page:
             coupons = Coupon.objects.filter(code__icontains=query).values('id', 'code', 'discount_percentage')
             results['coupons'] = list(coupons)
 
-        # Search for brands (only if on the brand page or no specific page is selected)
         if current_page == 'brand' or not current_page:
             brands = Brand.objects.filter(name__icontains=query).values('id', 'name')
             results['brands'] = list(brands)
 
-        # Search for orders (only if on the order page or no specific page is selected)
         if current_page == 'order' or not current_page:
             orders = Order.objects.filter(id__icontains=query).values('id', 'user__username')
             results['orders'] = list(orders)

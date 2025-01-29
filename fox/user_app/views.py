@@ -3,7 +3,7 @@ import razorpay
 import json
 from django.shortcuts import render ,redirect,get_object_or_404
 from admin_app.models import Category ,Product,ProductVariant,Brand,Coupon,Offer
-from .models import Cart, CartItem,Address, Order,OrderItem,Wishlist,OrderReturn,Wallet,Transaction
+from .models import Cart, CartItem,Address, Order,OrderItem,Wishlist,OrderReturn
 from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.views.decorators.csrf import csrf_exempt
@@ -16,7 +16,12 @@ from django.db.models import Q
 from django.http import Http404
 from django.conf import settings
 from decimal import Decimal
-import uuid
+from django.http import HttpResponse
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph
+from reportlab.lib.styles import getSampleStyleSheet
+from django.shortcuts import get_object_or_404, render
+
 
 
 #USER HOME PAGE
@@ -297,9 +302,7 @@ def cart_page(request):
     cart, created = Cart.objects.get_or_create(user=request.user)
     cart_items = CartItem.objects.filter(cart=cart)
 
-    # Validate stock for each item in the cart
     for item in cart_items:
-        # Check if the item has a variant and if the variant's stock is valid
         if item.variant and item.variant.stock is not None:
             if item.quantity > item.variant.stock:
                 item.quantity = item.variant.stock
@@ -309,13 +312,11 @@ def cart_page(request):
                     f"The quantity of {item.variant.product.name} has been adjusted to available stock ({item.variant.stock})."
                 )
         else:
-            # Handle the case where variant or stock is None
             messages.warning(
                 request, 
                 f"Stock for {item.product.name} is unavailable or variant data is missing."
             )
 
-    # Recalculate cart total and apply discounts
     cart_total = sum(item.total_price for item in cart_items)
     total_items = cart_items.aggregate(total_items=Sum('quantity'))['total_items'] or 0
 
@@ -323,10 +324,8 @@ def cart_page(request):
     final_total = cart_total
     coupon_code = None
 
-    # Fetch all available coupons
     available_coupons = Coupon.objects.filter(is_active=True, used=False).exclude(used_orders__user=request.user)
 
-    # Check if a coupon is applied to the cart
     if cart.applied_coupon:
         coupon = cart.applied_coupon
         discount_amount = (cart_total * coupon.discount_percentage) / 100
@@ -583,7 +582,6 @@ def checkout(request):
     cart_total = sum(item.total_price for item in cart_items)
     addresses = Address.objects.filter(user=request.user)
 
-    # Coupon-related calculations
     coupon_code = cart.applied_coupon.code if cart.applied_coupon else None
     discount_amount = 0
     if cart.applied_coupon:
@@ -591,17 +589,16 @@ def checkout(request):
 
     final_total = cart_total - discount_amount
 
-    # Razorpay Client Initialization
     razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
     razorpay_order = razorpay_client.order.create({
-        'amount': int(final_total * 100),  # Amount in paise
+        'amount': int(final_total * 100), 
         'currency': 'INR',
         'payment_capture': '1'
     })
 
     # Fetch wallet balance for the user
     wallet_balance = request.user.wallet.balance if hasattr(request.user, 'wallet') else 0
-    wallet_disabled = wallet_balance < final_total  # Check if wallet balance is insufficient
+    wallet_disabled = wallet_balance < final_total 
 
     if request.method == 'POST':
         payment_method = request.POST.get('payment_method')
@@ -615,7 +612,7 @@ def checkout(request):
         selected_address = get_object_or_404(Address, id=address_id, user=request.user)
 
         if payment_method in ['razorpay', 'cod', 'wallet']:
-            # Create an order
+
             order = Order.objects.create(
                 user=request.user,
                 address=selected_address,
@@ -626,7 +623,6 @@ def checkout(request):
                 payment_method=payment_method
             )
 
-            # Save Order Items and reduce stock
             for item in cart_items:
                 OrderItem.objects.create(
                     order=order,
@@ -638,19 +634,16 @@ def checkout(request):
                 item.variant.stock -= item.quantity
                 item.variant.save()
 
-            # Mark coupon as used only if an order is placed
             if cart.applied_coupon:
                 cart.applied_coupon.used = True
                 cart.applied_coupon.save()
 
             
-            # Deduct wallet balance if payment method is wallet
             if payment_method == 'wallet':
                 wallet = request.user.wallet
                 wallet.balance -= Decimal(final_total)
                 wallet.save()    
 
-            # Clear the cart
             cart_items.delete()
             cart.applied_coupon = None
             cart.save()
@@ -673,23 +666,8 @@ def checkout(request):
     })
 
 
-from django.shortcuts import render, redirect
-from django.http import JsonResponse
-import razorpay
-import json
-from django.views.decorators.csrf import csrf_exempt
-from .models import Order, Address, Cart, CartItem, OrderItem
-
-# Razorpay client setup
-razorpay_client = razorpay.Client(auth=("your_razorpay_key_id", "your_razorpay_secret_key"))
-import json
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from .models import Order, Address, Cart, CartItem, OrderItem
-import razorpay
 
 razorpay_client = razorpay.Client(auth=("your_razorpay_key_id", "your_razorpay_key_secret"))
-
 @csrf_exempt
 def verify_payment(request):
     data = json.loads(request.body)
@@ -703,14 +681,13 @@ def verify_payment(request):
         razorpay_signature = data['razorpay_signature']
 
         try:
-            # Verify Razorpay payment signature
+           
             razorpay_client.utility.verify_payment_signature({
                 'razorpay_order_id': razorpay_order_id,
                 'razorpay_payment_id': razorpay_payment_id,
                 'razorpay_signature': razorpay_signature
             })
 
-            # Create the order after successful verification
             order = Order.objects.create(
                 user=request.user,
                 address=selected_address,
@@ -719,7 +696,6 @@ def verify_payment(request):
                 payment_id=razorpay_payment_id
             )
 
-            # Save Order Items and reduce stock
             cart = Cart.objects.get(user=request.user)
             cart_items = CartItem.objects.filter(cart=cart)
             for item in cart_items:
@@ -733,16 +709,14 @@ def verify_payment(request):
                 item.variant.stock -= item.quantity
                 item.variant.save()
 
-            cart_items.delete()  # Clear the cart after successful order
+            cart_items.delete()  #
 
-            # Return success response with the order ID
             return JsonResponse({'success': True, 'order_id': order.id})
 
         except razorpay.errors.SignatureVerificationError:
             return JsonResponse({'success': False, 'message': 'Signature verification failed.'})
 
     else:
-        # Handle other payment methods like COD or Wallet
         order = Order.objects.create(
             user=request.user,
             address=selected_address,
@@ -750,7 +724,6 @@ def verify_payment(request):
             payment_method=payment_method
         )
 
-        # Save Order Items and reduce stock
         cart = Cart.objects.get(user=request.user)
         cart_items = CartItem.objects.filter(cart=cart)
         for item in cart_items:
@@ -764,57 +737,38 @@ def verify_payment(request):
             item.variant.stock -= item.quantity
             item.variant.save()
 
-        cart_items.delete()  # Clear the cart after successful order
+        cart_items.delete()  
 
         return JsonResponse({'success': True, 'order_id': order.id})
 
 
 
-    
-razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
-
-from django.http import HttpResponse
-from reportlab.lib.pagesizes import letter
-from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Paragraph
-from reportlab.lib.styles import getSampleStyleSheet
-from django.shortcuts import get_object_or_404, render
-from .models import Order
 
 @login_required
 def order_success(request, order_id):
     order = get_object_or_404(Order, id=order_id)
     
-    # Logic to display order details on the order success page
     if request.method == 'POST' and 'download_invoice' in request.POST:
-        # Call the function to generate PDF and return it
         return generate_invoice(request, order)
 
     return render(request, 'order_success.html', {'order': order})
 
 def generate_invoice(request, order):
-    # Create a response object to serve the PDF file
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'attachment; filename=invoice_{order.id}.pdf'
 
-    # Create the PDF document
     doc = SimpleDocTemplate(response, pagesize=letter)
 
-    # Get styles for paragraphs
     styles = getSampleStyleSheet()
 
-    # Create elements for the document (title, order info, product list, etc.)
     elements = []
 
-    # Title - Invoice
     title = f"Invoice - Order #{order.id}"
     title_paragraph = Paragraph(title, styles['Title'])
     elements.append(title_paragraph)
 
-    # Add a line break for clarity
     elements.append(Paragraph("<br/>", styles['Normal']))
 
-    # Order Information Section
     order_info = f"""
         <b>Order ID:</b> {order.id}<br/>
         <b>Total Amount:</b> ₹{order.total_price}<br/>
@@ -825,7 +779,6 @@ def generate_invoice(request, order):
     order_info_paragraph = Paragraph(order_info, styles['Normal'])
     elements.append(order_info_paragraph)
 
-    # Add the order items list (without a table)
     items_list = "<b>Ordered Items:</b><br/>"
     
     for item in order.items.all():
@@ -834,7 +787,6 @@ def generate_invoice(request, order):
     items_paragraph = Paragraph(items_list, styles['Normal'])
     elements.append(items_paragraph)
 
-    # Add total information (including tax and grand total)
     total_info = f"""
         <b>Total Amount:</b> ₹{order.total_price}<br/>
         <b>Tax (10%):</b> ₹{order.total_price * 0.1}<br/>
@@ -843,11 +795,9 @@ def generate_invoice(request, order):
     total_info_paragraph = Paragraph(total_info, styles['Normal'])
     elements.append(total_info_paragraph)
 
-    # Add a "Continue Shopping" section with a link
     continue_shopping_paragraph = Paragraph('<a href="/shop/">Continue Shopping</a>', styles['Normal'])
     elements.append(continue_shopping_paragraph)
 
-    # Build the PDF
     doc.build(elements)
 
     return response
@@ -863,12 +813,6 @@ def order_management(request):
     page_obj = paginator.get_page(page_number)
     
     return render(request, 'profile/orders.html', {'page_obj': page_obj})
-
-
-
-
-
-
 
 
 
@@ -1018,40 +962,26 @@ def remove_from_wishlist(request, id):
     return redirect('wishlist')
 
 
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.shortcuts import render
-from django.conf import settings
-from django.core.paginator import Paginator  # Import Paginator
-import razorpay
-import json
-from decimal import Decimal  # Import Decimal for handling monetary values
-
-# Initialize Razorpay client
-razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
 
 def wallet_page(request):
-    """Render the wallet page with balance and transaction history."""
-    user_wallet = request.user.wallet  # Assuming a wallet model tied to the user
-    transactions = user_wallet.transactions.all().order_by('-created_at')  # Fetch transactions in descending order
+    user_wallet = request.user.wallet  
+    transactions = user_wallet.transactions.all().order_by('-created_at')
 
-    # Pagination
-    paginator = Paginator(transactions, 8)  # Show 10 transactions per page
+    paginator = Paginator(transactions, 8)  
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
     return render(request, 'profile/wallet_page.html', {
         'wallet': user_wallet,
-        'transactions': page_obj,  # Pass paginated transactions
+        'transactions': page_obj,  
         'razorpay_key': settings.RAZORPAY_KEY_ID
     })
 
 @csrf_exempt
 def create_razorpay_order(request):
-    """API to create Razorpay order."""
     if request.method == "POST":
         data = json.loads(request.body)
-        amount = int(data.get("amount", 0)) * 100  # Amount in paise
+        amount = int(data.get("amount", 0)) * 100  
         if amount <= 0:
             return JsonResponse({"status": "error", "message": "Invalid amount."}, status=400)
         
@@ -1074,28 +1004,24 @@ def create_razorpay_order(request):
 
 @csrf_exempt
 def verify_wallet_payment(request):
-    """API to verify Razorpay payment and update wallet balance."""
     if request.method == "POST":
         data = json.loads(request.body)
         payment_id = data.get("razorpay_payment_id")
         order_id = data.get("razorpay_order_id")
-        signature = data.get("razorpay_signature")  # Get the signature
-        amount = Decimal(data.get("amount", 0))  # Convert amount to Decimal
+        signature = data.get("razorpay_signature") 
+        amount = Decimal(data.get("amount", 0))  
 
         try:
-            # Validate Razorpay payment
             razorpay_client.utility.verify_payment_signature({
                 "razorpay_order_id": order_id,
                 "razorpay_payment_id": payment_id,
-                "razorpay_signature": signature  # Include the signature
+                "razorpay_signature": signature  
             })
 
-            # Update wallet balance
             user_wallet = request.user.wallet
-            user_wallet.balance += amount  # Add the amount (already in Decimal)
+            user_wallet.balance += amount  
             user_wallet.save()
 
-            # Log the transaction
             user_wallet.transactions.create(
                 transaction_id=payment_id,
                 amount=amount,
