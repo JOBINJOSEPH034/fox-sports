@@ -114,7 +114,7 @@
                         name: "Wallet Add Funds",
                         handler: function (response) {
                             // Verify payment
-                            fetch("{% url 'verify_payment' %}", {
+                            fetch("{% url 'verify_wallet_payment' %}", {  // Updated function name
                                 method: "POST",
                                 headers: {
                                     "X-CSRFToken": "{{ csrf_token }}",

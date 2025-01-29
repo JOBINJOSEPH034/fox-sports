@@ -1073,7 +1073,7 @@ def create_razorpay_order(request):
     return JsonResponse({"status": "error", "message": "Invalid request method."}, status=400)
 
 @csrf_exempt
-def verify_payment(request):
+def verify_wallet_payment(request):
     """API to verify Razorpay payment and update wallet balance."""
     if request.method == "POST":
         data = json.loads(request.body)
