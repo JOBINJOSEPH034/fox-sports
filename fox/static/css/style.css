@@ -9522,7 +9522,7 @@ a.text-dark:hover, a.text-dark:focus {
 .navbar-vertical.navbar-light .navbar-nav .nav-link {
   padding: 8px 30px;
   border-bottom: 1px solid #F5F5F5;
-  background-color: #1e3a8a 
+  background-color:#343a40 
 }
 
 .navbar-light .dropdown-toggle::after,

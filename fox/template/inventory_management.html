@@ -11,6 +11,17 @@
                         <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
                         <li class="breadcrumb-item active">Inventory</li>
                     </ul>
+                    <div class="row mb-3">
+                        <div class="col-auto ml-auto">
+                            <form method="get" class="form-inline d-flex justify-content-end">
+                                <input type="text" name="search" value="{{ search_query }}" class="form-control mr-2" placeholder="Search Products...">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    
                 </div>
             </div>
         </div>
@@ -34,8 +45,10 @@
                                 <thead class="thead-light">
                                     <tr>
                                         <th>Product ID</th>
+                                        <th>Image</th>  
                                         <th>Product Name</th>
                                         <th>Brand</th>
+                                        
                                         <th>Variants</th>
                                         <th>Actions</th>
                                     </tr>
@@ -44,8 +57,19 @@
                                     {% for product in page_obj %}
                                     <tr>
                                         <td>{{ product.id }}</td>
+                                        <td>
+                                            {% if product.image1 %}
+                                                <img src="{{ product.image1.url }}" alt="{{ product.name }}" width="80" height="80">
+                                            {% else %}
+                                                <span>No Image</span>
+                                            {% endif %}
+                                        </td>
                                         <td>{{ product.name }}</td>
                                         <td>{{ product.brand.name }}</td>
+                                        
+                                      
+                                        
+                                        
                                         <td>
                                             {% if product.variants.exists %}
                                             <ul class="list-unstyled">
@@ -65,11 +89,12 @@
                                             <span>No Variants</span>
                                             {% endif %}
                                         </td>
+                                        
                                         <td></td>
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="5" class="text-center">No products found</td>
+                                        <td colspan="6" class="text-center">No products found</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>

@@ -141,22 +141,22 @@ class Order(models.Model):
         return False
 
     def refund_wallet(self):
-       
-        if self.payment_method == 'wallet' and not self.is_refunded and self.status in ['Return Accepted', 'Cancelled']:
-            wallet = self.user.wallet
+
+        if not self.is_refunded and self.status in ['Return Accepted', 'Cancelled']:
+            wallet = self.user.wallet 
             if wallet:
-                wallet.balance += Decimal(self.total_price)
+                wallet.balance += Decimal(self.total_price)  
                 wallet.save()
 
-                wallet.transactions.create(
-                    transaction_id=f"refund-{self.id}",
-                    type="credit", 
-                    amount=Decimal(self.total_price),
-                    description=f"Refund for order #{self.id}"
-                )
+            wallet.transactions.create(
+                transaction_id=f"refund-{self.id}",
+                type="credit",
+                amount=Decimal(self.total_price),
+                description=f"Refund for order #{self.id} (Payment method: {self.payment_method})"
+            )
 
-                self.is_refunded = True
-                self.save(update_fields=['is_refunded'])
+            self.is_refunded = True
+            self.save(update_fields=['is_refunded'])
 
     def restore_inventory(self):
         for item in self.items.all():
@@ -196,7 +196,6 @@ class Order(models.Model):
         if self.status in ['Return Accepted', 'Cancelled'] and self.status != original_status:
             self.refund_wallet()
 
-        # Mark the coupon as used when the order is placed
         if self.coupons.exists():
             for coupon in self.coupons.all():
                 coupon.used = True

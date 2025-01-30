@@ -22,6 +22,8 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from io import BytesIO
 
 
+
+
 # Create your views here.
 
 #ADMIN HOME
@@ -59,14 +61,13 @@ def admin_home(request):
 @login_required
 @never_cache
 def product_list(request):
-    query = request.GET.get('q', '').strip()  # Get the search query from the URL parameter 'q'
+    query = request.GET.get('q', '').strip() 
     products = Product.objects.all().order_by('-created_at')
 
-    # Filter products if a search query is provided
+    
     if query:
-        products = products.filter(name__icontains=query)  # Case-insensitive search for product names
+        products = products.filter(name__icontains=query)  
 
-    # Paginate the filtered or unfiltered products
     paginator = Paginator(products, 8)  
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -112,7 +113,7 @@ def add_product(request):
 @never_cache
 def edit_product(request, product_id):
     product = get_object_or_404(Product, id=product_id)
-    extra_forms = int(request.GET.get('extra', 0))  # Default to 0
+    extra_forms = int(request.GET.get('extra', 0)) 
     VariantFormSet = modelformset_factory(ProductVariant, form=ProductVariantForm, extra=extra_forms, can_delete=True)
 
     if request.method == "POST":
@@ -189,16 +190,19 @@ def product_variant_list(request, product_id):
 
 
 #ADMIN CUSTOMER
+
 def customer_list(request):
-    users = User.objects.filter(is_superuser=False)  
-    
-    
-    paginator = Paginator(users, 10)  
-    page_number = request.GET.get('page')  
-    page_obj = paginator.get_page(page_number)  
+    query = request.GET.get('q', '').strip()  
+    users = User.objects.filter(is_superuser=False)
 
-    return render(request, 'customer.html', {'page_obj': page_obj})
+    if query:
+        users = users.filter(username__icontains=query) | users.filter(email__icontains=query)
 
+    paginator = Paginator(users,3)  
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'customer.html', {'page_obj': page_obj, 'query': query})
 
 
 def block_user(request, user_id):
@@ -216,6 +220,12 @@ def unblock_user(request, user_id):
     return redirect('customer')
 
 
+def delete_user(request, user_id):
+    user = get_object_or_404(User, id=user_id)
+    user.delete()
+    return redirect('customer')
+
+
 def edit_customer(request):
     return render(request,'edit-customer.html')
 
@@ -226,14 +236,17 @@ def edit_customer(request):
 @login_required
 @never_cache
 def category_list(request):
-    categories = Category.objects.all()  
-    
-    # Paginate the categories
+    query = request.GET.get('q', '')  
+    categories = Category.objects.all()
+
+    if query:
+        categories = categories.filter(name__icontains=query)  
+
     paginator = Paginator(categories, 10)  
     page_number = request.GET.get('page')  
     page_obj = paginator.get_page(page_number)  
-    
-    return render(request, 'category.html', {'page_obj': page_obj})
+
+    return render(request, 'category.html', {'page_obj': page_obj, 'query': query})
 
 
 def add_category(request):
@@ -265,8 +278,6 @@ def toggle_category_status(request, category_id):
     messages.success(request, f"Category '{category.name}' has been {status}.")
     return redirect('category')
 
-
-#admin order management
 @login_required
 @never_cache
 def admin_order_management(request):
@@ -274,11 +285,20 @@ def admin_order_management(request):
         .prefetch_related('items__product', 'items__variant') \
         .order_by('-created_at')
 
-    paginator = Paginator(orders, 10)  
+    search_query = request.GET.get('search', '').strip()
+    
+    if search_query:
+        orders = orders.filter(
+            Q(user__username__icontains=search_query) |  
+            Q(items__product__name__icontains=search_query) |  
+            Q(status__icontains=search_query)  
+        ).distinct()
+
+    paginator = Paginator(orders, 10)
     page_number = request.GET.get('page')
     orders_page = paginator.get_page(page_number)
 
-    return render(request, 'admin_order.html', {'orders': orders_page})
+    return render(request, 'admin_order.html', {'orders': orders_page, 'search_query': search_query})
 
 @login_required
 def admin_update_order_status(request, order_id, status):
@@ -303,7 +323,6 @@ def admin_cancel_order(request, order_id):
                 item.product.stock += item.quantity
                 item.product.save()
 
-        # Update order status
         order.status = 'Cancelled'
         order.save()
 
@@ -321,13 +340,20 @@ def admin_cancel_order(request, order_id):
 @login_required
 @never_cache
 def inventory_management(request):
+    search_query = request.GET.get('search', '').strip()
+    
     products = Product.objects.all().prefetch_related('variants')
+    
+    if search_query:
+        products = products.filter(name__icontains=search_query)  
+    
     paginator = Paginator(products, 8)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
     return render(request, 'inventory_management.html', {
         'page_obj': page_obj,
+        'search_query': search_query,  
     })
 
 
@@ -336,8 +362,8 @@ def update_stock_for_product(request, product_id):
     product = get_object_or_404(Product, id=product_id)
     
     if request.method == 'POST':
-        new_stock = int(request.POST.get('stock', product.stock))   # Get new stock value for the product
-        if new_stock != product.stock:                              # Only update if the stock value has changed
+        new_stock = int(request.POST.get('stock', product.stock))   
+        if new_stock != product.stock:                             
             product.stock = new_stock
             product.save()
 
@@ -349,9 +375,9 @@ def update_stock_for_product(request, product_id):
         return redirect('inventory_management')
 
     return redirect('inventory_management')
-from django.http import JsonResponse
-from django.shortcuts import get_object_or_404
-from .models import ProductVariant
+
+
+
 
 @login_required
 def update_variant_stock(request, variant_id):
@@ -361,12 +387,10 @@ def update_variant_stock(request, variant_id):
         try:
             new_stock = int(request.POST.get('stock'))
             
-            # Update stock if it's different
             if new_stock != variant.stock:
                 variant.stock = new_stock
                 variant.save()
 
-                # Optionally, you can update the product's total stock here
                 product = variant.product
                 product.stock = sum(v.stock for v in product.variants.all())
                 product.save()
@@ -385,7 +409,7 @@ def create_order(request, product_id, variant_id=None):
             variant.stock -= quantity
             variant.save()
 
-            variant.product.stock -= quantity  # Reduce the product stock as well
+            variant.product.stock -= quantity  
             variant.product.save()
 
             Order.objects.create(
@@ -427,7 +451,7 @@ def create_order_with_variant(request, variant_id):
         variant.stock -= quantity
         variant.save()
 
-        product = variant.product          # Reduce the product stock as well
+        product = variant.product         
         product.stock -= quantity
         product.save()
 
@@ -445,9 +469,11 @@ def create_order_with_variant(request, variant_id):
 
     return redirect('product_detail', variant.product.id)
 
+from django.db.models import Q
 
-#Brand management
 def brand_management(request):
+    search_query = request.GET.get('search', '')  
+    
     if request.method == "POST":
         name = request.POST.get("name")
         description = request.POST.get("description")
@@ -457,9 +483,12 @@ def brand_management(request):
             return redirect("brand_management")
         else:
             messages.error(request, "Brand name is required.")
-
     
-    brands = Brand.objects.all()
+    if search_query:
+        brands = Brand.objects.filter(Q(name__icontains=search_query) | Q(description__icontains=search_query))
+    else:
+        brands = Brand.objects.all()
+
     paginator = Paginator(brands, 10)  
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -477,6 +506,7 @@ def brand_management(request):
     context = {
         "brand_data": brand_data,
         "page_obj": page_obj,  
+        "search_query": search_query  
     }
 
     return render(request, "brand_management.html", context)
@@ -512,8 +542,14 @@ def toggle_brand_status(request, brand_id):
 
 
 # admin coupon management
+
 def coupon_list(request):
+    search_query = request.GET.get('search', '')  
     coupons = Coupon.objects.all()
+
+    if search_query:
+        coupons = coupons.filter(code__icontains=search_query) 
+
     if request.method == 'POST':
         code = request.POST.get('code')
         discount_percentage = request.POST.get('discount_percentage')
@@ -523,7 +559,7 @@ def coupon_list(request):
         Coupon.objects.create(code=code, discount_percentage=discount_percentage, description=description, is_active=is_active)
         messages.success(request, 'Coupon created successfully!')
 
-    return render(request, 'coupon_management.html', {'coupons': coupons})
+    return render(request, 'coupon_management.html', {'coupons': coupons, 'search_query': search_query})
 
 # Delete a coupon
 def delete_coupon(request, coupon_id):
@@ -533,14 +569,33 @@ def delete_coupon(request, coupon_id):
     return redirect('coupon_list')
 
 
-#user offer 
+def apply_coupon(request):
+    if request.method == 'POST':
+        code = request.POST.get('coupon_code')
+        
+        try:
+            coupon = Coupon.objects.get(code=code, is_active=True, used=False)  
+            coupon.mark_as_used()  
+            messages.success(request, "Coupon applied successfully!")
+        except Coupon.DoesNotExist:
+            messages.error(request, "Invalid or expired coupon.")
+
+    return redirect('checkout_page')
+
+
+
 def manage_offers(request):
     products = Product.objects.all()
     categories = Category.objects.all()
 
-    
-    offers = Offer.objects.all()  
-    paginator = Paginator(offers, 10)  
+    search_query = request.GET.get('search', '')
+
+    if search_query:
+        offers = Offer.objects.filter(name__icontains=search_query) 
+    else:
+        offers = Offer.objects.all()
+
+    paginator = Paginator(offers, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
@@ -559,7 +614,6 @@ def manage_offers(request):
             'applied_items': applied_items
         })
 
-
     if request.method == 'POST':
         offer_id = request.POST.get('offer_id', None)
         name = request.POST.get('name')
@@ -571,7 +625,6 @@ def manage_offers(request):
         categories_selected = request.POST.getlist('categories')
         referral_code = request.POST.get('referral_code', '')
 
-        
         if not name or not discount_percentage or not start_date or not end_date or not offer_type:
             messages.error(request, "All fields are required.")
             return redirect('manage_offers')
@@ -608,7 +661,7 @@ def manage_offers(request):
                     end_date=end_date,
                     offer_type=offer_type
                 )
-                
+
                 if offer_type == 'product':
                     offer.products.set(Product.objects.filter(id__in=products_selected))
                 elif offer_type == 'category':
@@ -627,7 +680,9 @@ def manage_offers(request):
         'products': products,
         'categories': categories,
         'page_obj': page_obj,
+        'search_query': search_query,  
     })
+
 
 def delete_offer(request, offer_id):
     offer = get_object_or_404(Offer, id=offer_id)
@@ -689,10 +744,10 @@ def dashboard_view(request):
 
 
 
-#admin sales report
 @login_required
 def sales_report(request):
     date_filter = request.GET.get('date_filter', 'today')
+    search_query = request.GET.get('search', '')
 
     if date_filter == 'today':
         start_date = timezone.make_aware(datetime.combine(datetime.today(), datetime.min.time()))
@@ -714,7 +769,7 @@ def sales_report(request):
         else:
             start_date = end_date = None
 
-    selected_statuses = request.GET.getlist('status_filter') 
+    selected_statuses = request.GET.getlist('status_filter')
 
     orders = Order.objects.all().order_by('-created_at')
     if start_date and end_date:
@@ -723,6 +778,14 @@ def sales_report(request):
     if selected_statuses:
         orders = orders.filter(status__in=selected_statuses)
 
+    if search_query:
+        orders = orders.filter(
+            Q(id__icontains=search_query) |  
+            Q(user__username__icontains=search_query) | 
+            Q(user__email__icontains=search_query) | 
+            Q(variant__product__name__icontains=search_query) 
+        ).distinct()
+
     min_price = request.GET.get('min_price')
     max_price = request.GET.get('max_price')
     if min_price:
@@ -730,27 +793,21 @@ def sales_report(request):
     if max_price:
         orders = orders.filter(total_price__lte=float(max_price))
 
-    offer_applied = request.GET.get('offer_applied', '')
-    if offer_applied:
-        orders = orders.filter(offer_discount__gt=0) 
-
-    coupon_applied = request.GET.get('coupon_applied', '')
-    if coupon_applied:
-        orders = orders.filter(coupon_discount__gt=0) 
+    if request.GET.get('offer_applied', ''):
+        orders = orders.filter(offer_discount__gt=0)
+    if request.GET.get('coupon_applied', ''):
+        orders = orders.filter(coupon_discount__gt=0)
 
     paginator = Paginator(orders, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    non_canceled_orders = orders.exclude(status='canceled')
-
+    non_canceled_orders = orders.exclude(status='Cancelled')
     total_sales = non_canceled_orders.aggregate(total_sales=Sum('total_price'))['total_sales'] or 0
     total_orders = non_canceled_orders.count()
-
     total_discount = non_canceled_orders.aggregate(
         total_discount=Sum(F('offer_discount') + F('coupon_discount'))
     )['total_discount'] or 0
-
     average_order_value = total_sales / total_orders if total_orders > 0 else 0
 
     is_pdf = request.GET.get('pdf', False)
@@ -763,8 +820,7 @@ def sales_report(request):
         'average_order_value': round(average_order_value, 2),
         'date_filter': date_filter,
         'selected_statuses': selected_statuses,
-        'offer_applied': offer_applied,
-        'coupon_applied': coupon_applied,
+        'search_query': search_query,
         'min_price': min_price,
         'max_price': max_price,
         'available_statuses': [
@@ -777,7 +833,7 @@ def sales_report(request):
             ('Return Pending', 'Return Pending'),
             ('Return Accepted', 'Return Accepted'),
         ],
-        'is_pdf': is_pdf 
+        'is_pdf': is_pdf,
     }
 
     return render(request, 'sales_report.html', context)

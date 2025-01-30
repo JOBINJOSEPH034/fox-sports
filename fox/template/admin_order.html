@@ -21,6 +21,14 @@
                         <li class="breadcrumb-item active">Orders</li>
                     </ul>
                 </div>
+                <div class="col-auto">
+                    <form method="get" class="form-inline d-flex justify-content-end">
+                        <input type="text" name="search" value="{{ search_query }}" class="form-control mr-2" placeholder="Search orders...">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
 

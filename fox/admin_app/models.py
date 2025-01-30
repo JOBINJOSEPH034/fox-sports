@@ -143,6 +143,10 @@ class Coupon(models.Model):
     def __str__(self):
         return self.code
     
+    def mark_as_used(self):
+        self.used = True
+        self.is_active = False
+        self.save()
 
 
 
@@ -170,7 +174,7 @@ class Offer(models.Model):
     def __str__(self):
         return f"{self.name} - {self.discount_percentage}%"
     
-    def is_valid(self):        #        Check if the offer is valid based on the current date
+    def is_valid(self):                                               #        Check if the offer is valid based on the current date
         return self.start_date <= date.today() <= self.end_date
     
     def apply_discount_to_product(self):                            # Apply discount to products linked with this offer

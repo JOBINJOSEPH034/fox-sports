@@ -574,7 +574,6 @@ def delete_address(request, address_id):
     return redirect('manage_addresses')
 
 
-
 @login_required
 def checkout(request):
     cart = Cart.objects.get(user=request.user)
@@ -591,20 +590,18 @@ def checkout(request):
 
     razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
     razorpay_order = razorpay_client.order.create({
-        'amount': int(final_total * 100), 
+        'amount': int(final_total * 100),  
         'currency': 'INR',
         'payment_capture': '1'
     })
 
-    # Fetch wallet balance for the user
     wallet_balance = request.user.wallet.balance if hasattr(request.user, 'wallet') else 0
-    wallet_disabled = wallet_balance < final_total 
+    wallet_disabled = wallet_balance < final_total  
 
     if request.method == 'POST':
         payment_method = request.POST.get('payment_method')
         address_id = request.POST.get('selected_address')
 
-        # Address validation
         if not address_id:
             messages.error(request, "Please select an address.")
             return redirect('checkout')
@@ -612,7 +609,6 @@ def checkout(request):
         selected_address = get_object_or_404(Address, id=address_id, user=request.user)
 
         if payment_method in ['razorpay', 'cod', 'wallet']:
-
             order = Order.objects.create(
                 user=request.user,
                 address=selected_address,
@@ -667,7 +663,9 @@ def checkout(request):
 
 
 
+
 razorpay_client = razorpay.Client(auth=("your_razorpay_key_id", "your_razorpay_key_secret"))
+
 @csrf_exempt
 def verify_payment(request):
     data = json.loads(request.body)
@@ -681,7 +679,6 @@ def verify_payment(request):
         razorpay_signature = data['razorpay_signature']
 
         try:
-           
             razorpay_client.utility.verify_payment_signature({
                 'razorpay_order_id': razorpay_order_id,
                 'razorpay_payment_id': razorpay_payment_id,
@@ -709,7 +706,7 @@ def verify_payment(request):
                 item.variant.stock -= item.quantity
                 item.variant.save()
 
-            cart_items.delete()  #
+            cart_items.delete()  
 
             return JsonResponse({'success': True, 'order_id': order.id})
 
@@ -737,10 +734,12 @@ def verify_payment(request):
             item.variant.stock -= item.quantity
             item.variant.save()
 
-        cart_items.delete()  
+        cart_items.delete() 
 
         return JsonResponse({'success': True, 'order_id': order.id})
 
+   
+razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
 
 
 

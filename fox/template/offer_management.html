@@ -8,6 +8,16 @@
 
     <!-- Add New Offer Button -->
     <a href="#addOfferModal" data-bs-toggle="modal" class="btn btn-primary mb-3">Add New Offer</a>
+    <div class="col-auto">
+        <form method="get" action="{% url 'manage_offers' %}" class="form-inline d-flex justify-content-end">
+            <input type="text" class="form-control mr-2" name="search" value="{{ search_query }}" placeholder="Search Offers">
+            <button class="btn btn-primary" type="submit">
+                <i class="fas fa-search"></i>
+            </button>
+        </form>
+    </div>
+    
+    
 
     <!-- Offers List Table -->
     <table class="table table-bordered">
@@ -94,8 +104,6 @@
         </nav>
     </div>
     
-    <!-- Add/Edit Offer Modal -->
-    <!-- Add/Edit Offer Modal -->
 <!-- Add/Edit Offer Modal -->
 <div class="modal fade" id="addOfferModal" tabindex="-1" aria-labelledby="addOfferModalLabel" aria-hidden="true">
     <div class="modal-dialog">
