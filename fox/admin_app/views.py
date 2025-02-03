@@ -3,7 +3,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse
 from django.contrib import messages
 from . models import Category,Product,Brand,ProductVariant,Coupon,Offer
-from user_app.models import Order
+from user_app.models import Order,OrderItem
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
@@ -20,42 +20,106 @@ from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from io import BytesIO
+from django.db.models.functions import TruncMonth,TruncYear
+
+
+from django.shortcuts import render
+from django.db.models import Sum
+from django.db.models.functions import TruncMonth, TruncYear, TruncWeek, TruncDay
+from django.http import JsonResponse
 
 
 
+from django.db.models import Sum, F
+from django.http import JsonResponse
+from user_app.models import OrderItem
+from django.db.models.functions import ExtractWeek, ExtractYear, ExtractMonth, ExtractDay
+from django.db.models import Sum, F
+from django.http import JsonResponse
 
+
+from django.shortcuts import render
+from django.db.models import Sum
 # Create your views here.
 
-#ADMIN HOME
 @login_required
 @never_cache
+
 def admin_home(request):
-  
-    total_products = Product.objects.count()
-    active_products = Product.objects.filter(is_active=True).count()
-    deactivated_products = Product.objects.filter(is_active=False).count()
+    print('Admin home view executed')  # Debugging print statement
 
-    total_categories = Category.objects.count()
-    active_categories = Category.objects.filter(is_active=True).count()
-    deactivated_categories = Category.objects.filter(is_active=False).count()
+    # Top-selling products, categories, and brands
+    top_products = OrderItem.objects.values('product__name') \
+        .annotate(total_sold=Sum('quantity')) \
+        .order_by('-total_sold')[:10]
 
-    total_users = User.objects.filter(is_superuser=False).count()  # excluding admin users
-    active_users = User.objects.filter(is_active=True).count()
-    deactivated_users = User.objects.filter(is_active=False).count()
+    top_categories = OrderItem.objects.values('product__category__name') \
+        .annotate(total_sold=Sum('quantity')) \
+        .order_by('-total_sold')[:10]
+
+    top_brands = OrderItem.objects.values('product__brand__name') \
+        .annotate(total_sold=Sum('quantity')) \
+        .order_by('-total_sold')[:10]
+
+    # Sales data based on filter type
+    filter_type = request.GET.get('filter', 'daily')
+
+    if filter_type == 'monthly':
+        sales = (
+            OrderItem.objects
+            .annotate(month=ExtractMonth('order__created_at'), year=ExtractYear('order__created_at'))
+            .values('month', 'year')
+            .annotate(total_sales=Sum('quantity'))
+            .order_by('year', 'month')
+        )
+        labels = [f"{sale['month']}-{sale['year']}" for sale in sales]
+
+    elif filter_type == 'yearly':
+        sales = (
+            OrderItem.objects
+            .annotate(year=ExtractYear('order__created_at'))
+            .values('year')
+            .annotate(total_sales=Sum('quantity'))
+            .order_by('year')
+        )
+        labels = [str(sale['year']) for sale in sales]
+
+    elif filter_type == 'weekly':
+        sales = (
+            OrderItem.objects
+            .annotate(week=ExtractWeek('order__created_at'), year=ExtractYear('order__created_at'))
+            .values('week', 'year')
+            .annotate(total_sales=Sum('quantity'))
+            .order_by('year', 'week')
+        )
+        labels = [f"Week {sale['week']}-{sale['year']}" for sale in sales]
+
+    elif filter_type == 'daily':
+        sales = (
+            OrderItem.objects
+            .annotate(day=ExtractDay('order__created_at'), month=ExtractMonth('order__created_at'), year=ExtractYear('order__created_at'))
+            .values('day', 'month', 'year')
+            .annotate(total_sales=Sum('quantity'))
+            .order_by('year', 'month', 'day')
+        )
+        labels = [f"{sale['day']}-{sale['month']}-{sale['year']}" for sale in sales]
+
+    else:
+        return JsonResponse({'error': 'Invalid filter type'}, status=400)
+
+    data = [sale['total_sales'] for sale in sales]
+
+    
 
     context = {
-        'total_products': total_products,
-        'active_products': active_products,
-        'deactivated_products': deactivated_products,
-        'total_categories': total_categories,
-        'active_categories': active_categories,
-        'deactivated_categories': deactivated_categories,
-        'total_users': total_users,
-        'active_users': active_users,
-        'deactivated_users': deactivated_users,
+        'top_products': top_products,
+        'top_categories': top_categories,
+        'top_brands': top_brands,
+        'sales_labels': labels,
+        'sales_data': data,
     }
 
-    return render(request,'index.html',context)
+    return render(request, 'index.html', context)
 
 
 @login_required
@@ -991,46 +1055,3 @@ def export_to_pdf(request):
     response = HttpResponse(pdf_content, content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="sales_report.pdf"'
     return response
-
-#admin search (not finished)
-def search_view(request):
-    query = request.GET.get('q', '').strip()
-    current_page = request.GET.get('current_page', '').strip() 
-    results = {
-        'products': [],
-        'categories': [],
-        'offers': [],
-        'coupons': [],
-        'brands': [],
-        'orders': [],
-        'customers': [],
-        'inventory': [],
-    }
-
-    if query:
-        if current_page == 'product' or not current_page:
-            products = Product.objects.filter(name__icontains=query).values('id', 'name', 'description')
-            results['products'] = list(products)
-
-        if current_page == 'category' or not current_page:
-            categories = Category.objects.filter(name__icontains=query).values('id', 'name')
-            results['categories'] = list(categories)
-
-        if current_page == 'offer' or not current_page:
-            offers = Offer.objects.filter(name__icontains=query).values('id', 'name', 'discount_percentage')
-            results['offers'] = list(offers)
-
-        if current_page == 'coupon' or not current_page:
-            coupons = Coupon.objects.filter(code__icontains=query).values('id', 'code', 'discount_percentage')
-            results['coupons'] = list(coupons)
-
-        if current_page == 'brand' or not current_page:
-            brands = Brand.objects.filter(name__icontains=query).values('id', 'name')
-            results['brands'] = list(brands)
-
-        if current_page == 'order' or not current_page:
-            orders = Order.objects.filter(id__icontains=query).values('id', 'user__username')
-            results['orders'] = list(orders)
-
-        
-    return JsonResponse(results)

@@ -8,35 +8,57 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <meta content="Free HTML Templates" name="keywords">
     <meta content="Free HTML Templates" name="description">
+<!-- Favicon -->
+<link href="{% static 'img/favicon.ico' %}" rel="icon">
 
-    <!-- Favicon -->
-    <link href="{% static 'img/favicon.ico' %}" rel="icon">
+<!-- Google Web Fonts -->
+<link rel="preconnect" href="https://fonts.gstatic.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">  
 
-    <!-- Google Web Fonts -->
-    <link rel="preconnect" href="https://fonts.gstatic.com">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">  
+<!-- Font Awesome (Latest Version) -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
 
-    <!-- Font Awesome -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.10.0/css/all.min.css" rel="stylesheet">
+<!-- Libraries Stylesheet -->
+<link href="{% static 'lib/animate/animate.min.css' %}" rel="stylesheet">
+<link href="{% static 'lib/owlcarousel/assets/owl.carousel.min.css' %}" rel="stylesheet">
 
-    <!-- Libraries Stylesheet -->
-    <link href="{% static 'lib/animate/animate.min.css' %}" rel="stylesheet">
-    <link href="{% static 'lib/owlcarousel/assets/owl.carousel.min.css' %}" rel="stylesheet">
+<!-- Customized Bootstrap Stylesheet -->
+<link href="{% static 'css/style.css' %}" rel="stylesheet">
+<link href="{% static 'css/new.css' %}" rel="stylesheet">
+<link href="{% static 'css/msg.css' %}" rel="stylesheet">
 
-    <!-- Customized Bootstrap Stylesheet -->
-    <link href="{% static 'css/style.css' %}" rel="stylesheet">
-    <link href="{% static 'css/new.css' %}" rel="stylesheet">
-    
-    <link href="{% static 'css/msg.css' %}" rel="stylesheet">
+<!-- jQuery (Latest Version) -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
+<!-- Popper.js (Latest Version) -->
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
 
- 
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    
-    
-    
+<!-- Bootstrap JS (Latest Version) -->
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+
+    <style>
+       .modal-content {
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+    background-color: #343a40;
+    color: white;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+.modal-body {
+    font-size: 16px;
+}
+
+.modal .close {
+    color: white;
+    font-size: 20px;
+}
+
+    </style>
 
 </head>
 
@@ -158,7 +180,7 @@
 
 <div class="container-fluid">
     <div class="row px-xl-5">
-        <form method="POST" action="{% url 'checkout' %}" class="row w-100">
+        <form method="POST" action="{% url 'checkout' %}" class="row w-100" id="checkout-form">
             {% csrf_token %}
 
             <!-- Address Section -->
@@ -179,11 +201,11 @@
                                 value="{{ address.id }}" 
                                 id="address-radio-{{ address.id }}" 
                                 class="form-check-input"
-                                {% if address.is_default %}checked{% endif %}>
+                                {% if address.is_default %}checked{% endif %}
+                                onchange="updateDeliveryCharge('{{ address.state }}')"> <!-- Add onchange event -->
                             <label for="address-radio-{{ address.id }}" class="form-check-label">Select this address</label>
                         </div>
                         <button type="button" class="btn btn-primary btn-sm" onclick="editAddress('{{ address.id }}')">Edit</button>
-                        
                     </div>
                     {% empty %}
                     <p>No addresses found. <a href="{% url 'manage_addresses' %}">Add Address</a></p>
@@ -191,90 +213,93 @@
                 </div>
             </div>
 
-           <!-- Order Summary Section -->
-<div class="col-lg-4">
-    <div class="bg-light p-30 mb-5">
-        <h5 class="section-title position-relative text-uppercase mb-3">
-            <span class="bg-secondary pr-3">Order Summary</span>
-        </h5>
-        <div class="border-bottom pb-2">
-            <!-- Subtotal -->
-            <div class="d-flex justify-content-between mb-3">
-                <h6>Subtotal</h6>
-                <h6>₹{{ cart_total|floatformat:2 }}</h6>
-            </div>
-        
-            <!-- Applied Coupon -->
-            {% if coupon_code %}
-            <div class="d-flex justify-content-between mb-3">
-                <h6>Coupon Applied (<strong>{{ coupon_code }}</strong>)</h6>
-                <h6>- ₹{{ discount_amount|floatformat:2 }}</h6>
-            </div>
-            {% endif %}
+            <!-- Order Summary Section -->
+            <div class="col-lg-4">
+                <div class="bg-light p-30 mb-5">
+                    <h5 class="section-title position-relative text-uppercase mb-3">
+                        <span class="bg-secondary pr-3">Order Summary</span>
+                    </h5>
+                    <div class="border-bottom pb-2">
+                        <!-- Subtotal -->
+                        <div class="d-flex justify-content-between mb-3">
+                            <h6>Subtotal</h6>
+                            <h6>₹{{ cart_total|floatformat:2 }}</h6>
+                        </div>
+                    
+                        <!-- Applied Coupon -->
+                        {% if coupon_code %}
+                        <div class="d-flex justify-content-between mb-3">
+                            <h6>Coupon Applied (<strong>{{ coupon_code }}</strong>)</h6>
+                            <h6>- ₹{{ discount_amount|floatformat:2 }}</h6>
+                        </div>
+                        {% endif %}
 
-            <!-- Platform Fee -->
-            <div class="d-flex justify-content-between mb-3">
-                <h6>Platform Fee</h6>
-                <h6>₹ 0</h6>
-            </div>
+                        <!-- Platform Fee -->
+                        <div class="d-flex justify-content-between mb-3">
+                            <h6>Platform Fee</h6>
+                            <h6>₹ 0</h6>
+                        </div>
 
-            <!-- Delivery Charge -->
-            <div class="d-flex justify-content-between mb-3">
-                <h6>Delivery Charge</h6>
-                <h6>₹ Free</h6>
+                        <!-- Delivery Charge -->
+                        <div class="d-flex justify-content-between mb-3">
+                            <h6>Delivery Charge</h6>
+                            <h6 id="delivery-charge-display">₹ Free</h6> <!-- Dynamic delivery charge -->
+                        </div>
+                    
+                        <!-- Final Total -->
+                        <div class="d-flex justify-content-between mb-3">
+                            <h5>Total</h5>
+                            <h5 id="final-total-display">₹{{ final_total|floatformat:2 }}</h5> <!-- Dynamic final total -->
+                        </div>
+                    </div>
+                    
+                    <div class="pt-2">
+                        <h5 class="section-title position-relative text-uppercase mb-3">
+                            <span class="bg-secondary pr-3">Payment Options</span>
+                        </h5>
+                        
+                        <!-- Cash on Delivery Option -->
+                        <div class="form-check">
+                            <input type="radio" name="payment_method" value="cod" id="cod" class="form-check-input" checked>
+                            <label for="cod" class="form-check-label">Cash on Delivery</label>
+                        </div>
+                        
+                        <!-- Wallet Payment Option -->
+                        <div class="form-check">
+                            <input type="radio" name="payment_method" value="wallet" id="wallet" class="form-check-input" 
+                                   {% if wallet_disabled %}disabled{% endif %}>
+                            <label for="wallet" class="form-check-label">
+                                Wallet Payment (Balance: ₹{{ wallet_balance }})
+                            </label>
+                            {% if wallet_disabled %}
+                            <small class="text-danger d-block">Insufficient balance</small>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Razorpay Payment Option -->
+                        <div class="form-check">
+                            <input type="radio" name="payment_method" value="razorpay" id="razorpay" class="form-check-input">
+                            <label for="razorpay" class="form-check-label">Online Payment (Razorpay)</label>
+                        </div>
+                        
+                        <!-- Checkout Button -->
+                        <div class="pt-2">
+                            <button type="submit" class="btn btn-block btn-primary font-weight-bold my-3 py-3" id="checkout-button">
+                                Checkout
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
 
-            </div>
-        
-            <!-- Final Total -->
-            <div class="d-flex justify-content-between mb-3">
-                <h5>Total</h5>
-                <h5>₹{{ final_total|floatformat:2 }}</h5>
-            </div>
-        </div>
-        
-        
-        <div class="pt-2">
-            <h5 class="section-title position-relative text-uppercase mb-3">
-                <span class="bg-secondary pr-3">Payment Options</span>
-            </h5>
-            
-            <!-- Cash on Delivery Option -->
-            <div class="form-check">
-                <input type="radio" name="payment_method" value="cod" id="cod" class="form-check-input" checked>
-                <label for="cod" class="form-check-label">Cash on Delivery</label>
-            </div>
-            
-            <!-- Wallet Payment Option -->
-            <div class="form-check">
-                <input type="radio" name="payment_method" value="wallet" id="wallet" class="form-check-input" 
-                       {% if wallet_disabled %}disabled{% endif %}>
-                <label for="wallet" class="form-check-label">
-                    Wallet Payment (Balance: ₹{{ wallet_balance }})
-                </label>
-                {% if wallet_disabled %}
-                <small class="text-danger d-block">Insufficient balance</small>
-                {% endif %}
-            </div>
-            
-            <!-- Razorpay Payment Option -->
-            <div class="form-check">
-                <input type="radio" name="payment_method" value="razorpay" id="razorpay" class="form-check-input">
-                <label for="razorpay" class="form-check-label">Online Payment (Razorpay)</label>
-            </div>
-            
-            <!-- Checkout Button -->
-            <div class="pt-2">
-                <button type="submit" class="btn btn-block btn-primary font-weight-bold my-3 py-3" id="checkout-button">
-                    Checkout
-                </button>
-            </div>
-        </div>
-        
-        
-<!-- Razorpay Script to Handle Payment Modal Opening -->
+<!-- Razorpay Integration Script -->
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
     const checkoutButton = document.getElementById('checkout-button');
+    const checkoutForm = document.getElementById('checkout-form');
 
     checkoutButton.addEventListener('click', function(event) {
         const paymentMethod = document.querySelector('input[name="payment_method"]:checked').value;
@@ -284,7 +309,7 @@
 
             const options = {
                 key: "{{ razorpay_key_id }}",  // Razorpay Key ID
-                amount: "{{ final_total_in_paise }}",  // Final Total in paise
+                amount: "{{ final_total_in_paise }}",  // Final Total in paise (including delivery charge)
                 currency: "INR",
                 name: "Your Store Name",
                 description: "Order Payment",
@@ -303,7 +328,7 @@
                             razorpay_signature: response.razorpay_signature,
                             address_id: document.querySelector('input[name="selected_address"]:checked').value,
                             payment_method: 'razorpay',
-                            final_total: "{{ final_total }}"  // Add the final total to the request
+                            final_total: "{{ final_total }}"  // Pass the final total (including delivery charge)
                         }),
                     }).then(res => res.json()).then(data => {
                         if (data.success) {
@@ -323,26 +348,42 @@
                     color: "#3399cc",
                 },
             };
+
             const rzp = new Razorpay(options);
+
+            // Handle payment failure
+            rzp.on('payment.failed', function (response) {
+                fetch('/payment/failed/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}',
+                    },
+                    body: JSON.stringify({
+                        error_code: response.error.code,
+                        error_description: response.error.description,
+                        address_id: document.querySelector('input[name="selected_address"]:checked').value,
+                        payment_method: 'razorpay',
+                        final_total: "{{ final_total }}"  // Pass the final total (including delivery charge)
+                    }),
+                }).then(res => res.json()).then(data => {
+                    if (data.success) {
+                        alert('Payment failed! Please try again.');
+                        window.location.href = '/order-management/';  // Redirect to order management page
+                    } else {
+                        alert('Failed to process payment failure!');
+                    }
+                });
+            });
+
             rzp.open();  // Open Razorpay payment modal
         } else {
             // Handle COD or Wallet payment, if selected
+            checkoutForm.submit();
         }
     });
 </script>
 
-
-
-        
-    </div>
-</div>
-
-            
-        </form>
-
-        
-    </div>
-</div>
 
 <!-- Modal for Editing Address -->
 <div class="modal fade" id="editAddressModal" tabindex="-1" aria-labelledby="editAddressModalLabel" aria-hidden="true">
@@ -452,6 +493,42 @@ document.getElementById('editAddressForm').addEventListener('submit', function (
 
 </script>
 
+
+
+<!-- JavaScript to Update Delivery Charge Dynamically -->
+<script>
+    // Define delivery charges based on state
+    const deliveryCharges = {
+        'Kerala': 50,
+        'Tamil Nadu': 120,
+        'Karnataka': 150,
+        'Default': 180  // Default charge for other states
+    };
+
+    // Function to update delivery charge and final total
+    function updateDeliveryCharge(state) {
+        const deliveryCharge = deliveryCharges[state] || deliveryCharges['Default'];
+        const discountAmount = parseFloat("{{ discount_amount }}") || 0;
+        const cartTotal = parseFloat("{{ cart_total }}") || 0;
+
+        // Update delivery charge display
+        document.getElementById('delivery-charge-display').innerText = `₹${deliveryCharge.toFixed(2)}`;
+
+        // Calculate and update final total
+        const finalTotal = cartTotal - discountAmount + deliveryCharge;
+        document.getElementById('final-total-display').innerText = `₹${finalTotal.toFixed(2)}`;
+
+        // Update Razorpay amount (if needed)
+        const razorpayAmount = finalTotal * 100;
+        console.log('Razorpay Amount:', razorpayAmount);  // For debugging
+    }
+
+    // Initialize delivery charge based on the default selected address
+    document.addEventListener('DOMContentLoaded', function() {
+        const defaultAddressState = "{{ addresses.first.state }}";  // Get the state of the default address
+        updateDeliveryCharge(defaultAddressState);
+    });
+</script>
     
     <!-- Footer Start -->
     <div class="container-fluid bg-dark text-secondary mt-5 pt-5">
@@ -573,30 +650,70 @@ document.getElementById('editAddressForm').addEventListener('submit', function (
 
 <!-- base.html or your main template file -->
 {% if messages %}
-    <div class="container mt-3">
-        <div class="message-container">
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} alert-dismissible fade show message-bar" role="alert">
-                    <strong>{{ message.level_tag|title }}!</strong> {{ message }}
-                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+    <div id="messageModal" class="modal fade" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        {% for message in messages %}
+                            {{ message.level_tag|title }}
+                        {% endfor %}
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
-            {% endfor %}
+                <div class="modal-body">
+                    {% for message in messages %}
+                        <p class="alert alert-{{ message.tags }}">{{ message }}</p>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
     </div>
 {% endif %}
 
 
+<style>
+    /* Force visibility of alert messages */
+    .alert {
+        font-weight: bold;
+        padding: 15px;
+        font-size: 16px;
+        border-radius: 5px;
+    }
+
+    .alert-danger {
+        background-color: #ffcccc !important;  /* Bright red background */
+        color: #8b0000 !important;  /* Dark red text */
+        border: 2px solid #ff0000 !important;  /* Red border */
+    }
+
+    .alert-success {
+        background-color: #d4edda !important;  /* Light green background */
+        color: #155724 !important;  /* Dark green text */
+        border: 2px solid #28a745 !important;  /* Green border */
+    }
+
+    .message-bar {
+        font-weight: bold;
+        text-align: center;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+</style>
+
 <script>
-    // Auto-dismiss messages after 5 seconds
-    $(document).ready(function() {
-        setTimeout(function () {
-            $('.message-bar').fadeOut('slow');
-        }, 5000);  // 5000 milliseconds = 5 seconds
+    $(document).ready(function () {
+        if ($("#messageModal .modal-body p").length > 0) {
+            $("#messageModal").modal("show"); // Show the modal
+
+            setTimeout(function () {
+                $("#messageModal").modal("hide"); // Auto-hide after 5 seconds
+            }, 5000);
+        }
     });
 </script>
-
 
 
 </body>

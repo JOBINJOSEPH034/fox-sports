@@ -1,69 +1,334 @@
 {% extends 'base.html' %}
 {% load static %}
+
 {% block body %}
 <div class="page-wrapper">
-    <div class="content container-fluid">
-        <div class="page-header">
-            <div class="row">
-                <div class="col-sm-12">
-                    <h3 class="page-title">Welcome Admin!</h3>
-                    <ul class="breadcrumb">
-                        <li class="breadcrumb-item active">Dashboard</li>
-                    </ul>
+    <div class="content container-fluid" style="background-color: #f8f9fa; min-height: 100vh; padding: 20px;">
+        <!-- Header Section -->
+        <div class="page-header" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 24px;">
+            <div class="row align-items-center">
+                <div class="col-sm-6">
+                    <h3 class="page-title" style="margin: 0; color: #2c3e50; font-weight: 600;">Welcome Admin!</h3>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb" style="margin: 8px 0 0; padding: 0; background: none;">
+                            <li class="breadcrumb-item active" style="color: #7f8c8d;">Dashboard</li>
+                        </ol>
+                    </nav>
                 </div>
-            </div>
-        </div>
-        
-        
-            <div class="col-xl-6 col-sm-12 col-12 d-flex">
-                <div class="card w-100">
-                    <div class="card-body">
-                        <h4 class="card-title">Sales Trends</h4>
-                        <div id="sales-chart"></div>
+                <div class="col-sm-6">
+                    <div class="float-end">
+                        <div id="datetime" style="color: #7f8c8d; font-size: 14px;"></div>
                     </div>
                 </div>
             </div>
         </div>
-        
+
+        <!-- Stats Cards -->
+        <div class="row" style="margin-bottom: 24px;">
+            <div class="col-xl-3 col-sm-6">
+                <div class="card" style="border: none; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div class="card-body" style="padding: 20px;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h3 id="totalSales" style="margin: 0; color: #2c3e50; font-weight: 600;">{{ total_sales }}</h3>
+                                <p style="margin: 5px 0 0; color: #7f8c8d;">Total Sales</p>
+                            </div>
+                            <div style="background: #e3f2fd; padding: 10px; border-radius: 50%;">
+                                <i class="fas fa-chart-bar" style="color: #1976d2; font-size: 20px;"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Add more stat cards as needed -->
+        </div>
+
+        <!-- Sales Chart -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card" style="border: none; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 24px;">
+                    <div class="card-header" style="background: white; border-bottom: 1px solid #eee; padding: 20px;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4 class="card-title" style="margin: 0; color: #2c3e50; font-weight: 600;">Sales Overview</h4>
+                            <div class="d-flex gap-3">
+                                <select id="chartType" class="form-select" style="width: 150px; border-radius: 5px; border: 1px solid #ddd;">
+                                    <option value="bar">Bar Chart</option>
+                                    <option value="line">Line Chart</option>
+                                </select>
+                                <select id="salesFilter" class="form-select" style="width: 150px; border-radius: 5px; border: 1px solid #ddd;">
+                                    <option value="daily">Daily</option>
+                                    <option value="weekly">Weekly</option>
+                                    <option value="monthly">Monthly</option>
+                                    <option value="yearly">Yearly</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body" style="padding: 20px;">
+                        <div id="salesChart" style="height: 400px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Selling Items -->
+        <div class="row">
+            <!-- Top Products -->
+            <div class="col-md-4">
+                <div class="card" style="border: none; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 24px;">
+                    <div class="card-header" style="background: white; border-bottom: 1px solid #eee; padding: 20px;">
+                        <h4 class="card-title" style="margin: 0; color: #2c3e50; font-weight: 600;">Top Products</h4>
+                    </div>
+                    <div class="card-body" style="padding: 20px;">
+                        <div class="table-responsive">
+                            {% for product in top_products %}
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span style="color: #2c3e50;">{{ product.product__name }}</span>
+                                    <span style="color: #7f8c8d;">{{ product.total_sold }}</span>
+                                </div>
+                                <div class="progress" style="height: 6px; border-radius: 3px;">
+                                    <div class="progress-bar bg-primary" role="progressbar" 
+                                         style="width: {% widthratio product.total_sold top_products.0.total_sold 100 %}%;"
+                                         aria-valuenow="{% widthratio product.total_sold top_products.0.total_sold 100 %}"
+                                         aria-valuemin="0" aria-valuemax="100">
+                                    </div>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <p class="text-muted">No products available</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Categories -->
+            <div class="col-md-4">
+                <div class="card" style="border: none; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 24px;">
+                    <div class="card-header" style="background: white; border-bottom: 1px solid #eee; padding: 20px;">
+                        <h4 class="card-title" style="margin: 0; color: #2c3e50; font-weight: 600;">Top Categories</h4>
+                    </div>
+                    <div class="card-body" style="padding: 20px;">
+                        <div class="table-responsive">
+                            {% for category in top_categories %}
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span style="color: #2c3e50;">{{ category.product__category__name }}</span>
+                                    <span style="color: #7f8c8d;">{{ category.total_sold }}</span>
+                                </div>
+                                <div class="progress" style="height: 6px; border-radius: 3px;">
+                                    <div class="progress-bar bg-success" role="progressbar" 
+                                         style="width: {% widthratio category.total_sold top_categories.0.total_sold 100 %}%;"
+                                         aria-valuenow="{% widthratio category.total_sold top_categories.0.total_sold 100 %}"
+                                         aria-valuemin="0" aria-valuemax="100">
+                                    </div>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <p class="text-muted">No categories available</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Brands -->
+            <div class="col-md-4">
+                <div class="card" style="border: none; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 24px;">
+                    <div class="card-header" style="background: white; border-bottom: 1px solid #eee; padding: 20px;">
+                        <h4 class="card-title" style="margin: 0; color: #2c3e50; font-weight: 600;">Top Brands</h4>
+                    </div>
+                    <div class="card-body" style="padding: 20px;">
+                        <div class="table-responsive">
+                            {% for brand in top_brands %}
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span style="color: #2c3e50;">{{ brand.product__brand__name }}</span>
+                                    <span style="color: #7f8c8d;">{{ brand.total_sold }}</span>
+                                </div>
+                                <div class="progress" style="height: 6px; border-radius: 3px;">
+                                    <div class="progress-bar bg-warning" role="progressbar" 
+                                         style="width: {% widthratio brand.total_sold top_brands.0.total_sold 100 %}%;"
+                                         aria-valuenow="{% widthratio brand.total_sold top_brands.0.total_sold 100 %}"
+                                         aria-valuemin="0" aria-valuemax="100">
+                                    </div>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <p class="text-muted">No brands available</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
-<script src="{% static 'assets/js/jquery-3.6.0.min.js' %}"></script>
-<script src="{% static 'assets/js/popper.min.js' %}"></script>
-<script src="{% static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
-<script src="{% static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
-<script src="{% static 'assets/plugins/apexchart/apexcharts.min.js' %}"></script>
+<!-- Required Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<!-- Previous template code remains same until the script section -->
+
 <script>
-    // ApexCharts Configuration for Sales Trends
-    var options = {
-        chart: {
-            type: 'line',
-            height: 350
-        },
-        series: [{
-            name: 'Sales',
-            data: [500, 400, 450, 600, 700, 800, 750]  // Example sales data, replace it with actual aggregated sales data from your model
-        }],
-        xaxis: {
-            categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul']  // Example months, replace with your actual time range
-        },
-        title: {
-            text: 'Sales Trends Over Time'
-        }
-    };
-    var chart = new ApexCharts(document.querySelector("#sales-chart"), options);
-    chart.render();
-</script>
-
-
-
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" />
-
+    document.addEventListener('DOMContentLoaded', function() {
+        // Previous datetime code remains same...
+    
+        // Get current filter from URL or default to 'daily'
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentFilter = urlParams.get('filter') || 'daily';
+        
+        // Set the select value based on current filter
+        document.getElementById('salesFilter').value = currentFilter;
+    
+        // Chart configuration
+        let chartOptions = {
+            chart: {
+                type: 'bar',
+                height: 350,
+                toolbar: {
+                    show: true,
+                    tools: {
+                        download: true,
+                        selection: false,
+                        zoom: true,
+                        zoomin: true,
+                        zoomout: true,
+                        pan: true,
+                    }
+                },
+                animations: {
+                    enabled: true,
+                    easing: 'easeinout',
+                    speed: 800,
+                    animateGradually: {
+                        enabled: true,
+                        delay: 150
+                    },
+                    dynamicAnimation: {
+                        enabled: true,
+                        speed: 350
+                    }
+                }
+            },
+            series: [{
+                name: 'Sales',
+                data: {{ sales_data|safe }}
+            }],
+            xaxis: {
+                categories: {{ sales_labels|safe }},
+                labels: {
+                    rotate: -45,
+                    style: {
+                        fontSize: '12px'
+                    },
+                    formatter: function(value) {
+                        // Format the date based on filter type
+                        const filter = document.getElementById('salesFilter').value;
+                        if (filter === 'daily') {
+                            // For daily view, show as DD-MM-YYYY
+                            const [day, month, year] = value.split('-');
+                            return `${day}/${month}/${year}`;
+                        } else if (filter === 'monthly') {
+                            // For monthly view, show as MM-YYYY
+                            return value;
+                        } else if (filter === 'yearly') {
+                            // For yearly view, show year only
+                            return value;
+                        } else if (filter === 'weekly') {
+                            // For weekly view, show as Week X-YYYY
+                            return value;
+                        }
+                        return value;
+                    }
+                }
+            },
+            yaxis: {
+                title: {
+                    text: 'Sales Count'
+                }
+            },
+            colors: ['#1976d2'],
+            dataLabels: {
+                enabled: false
+            },
+            stroke: {
+                curve: 'smooth',
+                width: 2
+            },
+            grid: {
+                borderColor: '#e7e7e7',
+                row: {
+                    colors: ['#f3f3f3', 'transparent']
+                }
+            },
+            markers: {
+                size: 1
+            },
+            tooltip: {
+                theme: 'light',
+                y: {
+                    formatter: function(value) {
+                        return value + ' units';
+                    }
+                },
+                x: {
+                    formatter: function(value) {
+                        const filter = document.getElementById('salesFilter').value;
+                        if (filter === 'daily') {
+                            return 'Date: ' + value;
+                        } else if (filter === 'monthly') {
+                            return 'Month: ' + value;
+                        } else if (filter === 'yearly') {
+                            return 'Year: ' + value;
+                        } else if (filter === 'weekly') {
+                            return value;
+                        }
+                        return value;
+                    }
+                }
+            }
+        };
+    
+        let chart = new ApexCharts(document.querySelector("#salesChart"), chartOptions);
+        chart.render();
+    
+        // Chart type toggle
+        document.getElementById('chartType').addEventListener('change', function() {
+            const newType = this.value;
+            chart.updateOptions({
+                chart: {
+                    type: newType
+                }
+            });
+        });
+    
+        // Sales filter with form submission
+        document.getElementById('salesFilter').addEventListener('change', function(e) {
+            e.preventDefault();
+            const filterValue = this.value;
+            
+            // Create a form and submit it
+            const form = document.createElement('form');
+            form.method = 'GET';
+            form.action = '/admin_home/';
+            
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'filter';
+            input.value = filterValue;
+            
+            form.appendChild(input);
+            document.body.appendChild(form);
+            form.submit();
+        });
+    });
+    </script>
+    
 <script src="{% static 'assets/js/jquery-3.6.0.min.js' %}"></script>
 <script src="{% static 'assets/js/popper.min.js' %}"></script>
 <script src="{% static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
 <script src="{% static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
 <script src="{% static 'assets/js/script.js' %}"></script>
 
-
-{% endblock %}
+    {% endblock %}

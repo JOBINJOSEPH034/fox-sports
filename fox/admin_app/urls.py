@@ -6,7 +6,7 @@ from . import views
 
 urlpatterns = [
     #url for admin home page
-    path('admin_home',views.admin_home,name='admin_home'),
+    path('admin_home/', views.admin_home, name='admin_home'),
 
     #url for admin product functions
     path('product',views.product_list,name='product'),
@@ -66,7 +66,6 @@ urlpatterns = [
     path('export-to-pdf/', views.export_to_pdf, name='export_to_pdf'),
 
     #admin search
-    path('search/', views.search_view, name='search_view'), # not finish
 ]
 
 urlpatterns += static(settings.MEDIA_URL,document_root=settings.MEDIA_ROOT)

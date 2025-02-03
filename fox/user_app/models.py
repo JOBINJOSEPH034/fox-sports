@@ -7,6 +7,8 @@ from django.utils.timezone import now
 from django.db.models import Q
 from decimal import Decimal
 from django.utils import timezone
+import datetime
+
 
 
 
@@ -101,6 +103,8 @@ class Order(models.Model):
         ('Return Pending', 'Return Pending'),
         ('Return Accepted', 'Return Accepted'),
         ('Paid', 'Paid'),
+        ('failed', 'Failed'),  
+
     ]
 
     PAYMENT_CHOICES = [
@@ -116,6 +120,7 @@ class Order(models.Model):
     quantity = models.IntegerField(default=1)
     total_price = models.FloatField()
     payment_method = models.CharField(max_length=20, choices=PAYMENT_CHOICES, default='cod')
+    order_date = models.DateTimeField(default=timezone.now)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
     created_at = models.DateTimeField(auto_now_add=True)
     return_requested_at = models.DateTimeField(null=True, blank=True)
@@ -126,6 +131,12 @@ class Order(models.Model):
     discount_percentage = models.FloatField(default=0)
     payment_id = models.CharField(max_length=255, null=True, blank=True)  
     is_refunded = models.BooleanField(default=False)  
+    delivery_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    payment_attempts = models.IntegerField(default=0)  # Track payment attempts
+    payment_failed_at = models.DateTimeField(null=True, blank=True)  # Track first failure timestamp
+
+
+
 
     def __str__(self):
         return f"Order {self.id} - {self.user.username}"
@@ -183,6 +194,18 @@ class Order(models.Model):
     def final_amount(self):
         discount_amount = (self.total_price * self.offer_discount / 100) + (self.total_price * self.coupon_discount / 100)
         return self.total_price - discount_amount
+
+    def is_retry_period_expired(self):
+        """Check if the 7-day retry period has expired."""
+        if self.payment_failed_at:
+            return (timezone.now() - self.payment_failed_at).days > 7
+        return False
+
+    def can_retry_payment(self):
+        """Check if the user can retry payment (within 7 days and less than 2 attempts)."""
+        return self.status == 'failed' and self.payment_attempts < 2 and not self.is_retry_period_expired()
+
+    
 
     def save(self, *args, **kwargs):
         

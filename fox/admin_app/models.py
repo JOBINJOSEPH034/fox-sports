@@ -34,11 +34,11 @@ class Brand(models.Model):
 
 #model for product
 class Product(models.Model):
-    category = models.ForeignKey('Category', on_delete=models.CASCADE, related_name='products')
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='products')
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     stock = models.PositiveIntegerField(default=0)  
-    brand = models.ForeignKey('Brand', on_delete=models.CASCADE, null=True, blank=True, related_name='brand')
+    brand = models.ForeignKey(Brand, on_delete=models.CASCADE, null=True, blank=True, related_name='brand')
     price = models.DecimalField(max_digits=10, decimal_places=2)
     image1 = models.ImageField(upload_to='product_images/', blank=True, null=True)
     image2 = models.ImageField(upload_to='product_images/', blank=True, null=True)
@@ -214,3 +214,6 @@ class SalesReport(models.Model):
 
     def __str__(self):
         return f"Sales Report: {self.start_date} to {self.end_date}"
+
+
+

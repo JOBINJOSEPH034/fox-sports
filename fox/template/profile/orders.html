@@ -3,188 +3,383 @@
 {% block title %}Order Management{% endblock %}
 
 {% block content %}
-<div class="bg-light p-4">
-    <h3 class="mb-4">Order Management</h3>
-    <table class="table table-hover">
-        <thead class="thead-dark">
-            <tr>
-                <th>Order ID</th>
-                <th>Date</th>
-                <th>Products</th>
-                <th>Status</th>
-                <th>Payment Method</th>  <!-- New Payment Method Column -->
-                <th>Total</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for order in page_obj.object_list %}
-            <tr>
-                <td class="p-3">{{ order.id }}</td>
-                <td class="p-3">{{ order.created_at|date:"d M Y, H:i" }}</td>
-                <td class="p-3">
-                    {% for item in order.items.all %}
-                        {{ item.product.name }} (x{{ item.quantity }})<br>
-                    {% endfor %}
-                </td>
-                <td class="p-3 {% if order.status == 'Delivered' %}text-success{% elif order.status == 'Cancelled' %}text-danger{% elif order.status == 'Return Pending' %}text-warning{% else %}text-dark{% endif %}">
-                    {{ order.status }}
-                </td>
-                <td class="p-3">
-                    {% if order.payment_method == 'cod' %}
-                        Cash on Delivery
-                    {% elif order.payment_method == 'wallet' %}
-                        Wallet Payment
-                    {% elif order.payment_method == 'razorpay' %}
-                        Razorpay
-                    {% else %}
-                        Not Available
-                    {% endif %}
-                </td>
-                <td class="p-3">₹{{ order.total_price|floatformat:2 }}</td>
-                <td class="p-3">
-                    {% if order.status in "Pending,Shipped,Processing,Out for Delivery" %}
-                    <form action="{% url 'cancel_order' order.id %}" method="POST" style="display:inline;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-sm btn-outline-danger">Cancel</button>
-                    </form>
-                    {% endif %}
-                
-                    <!-- Return Button shows only if status is 'Delivered' -->
-                    {% if order.status == 'Delivered' %}
-                    <button class="btn btn-warning btn-sm mt-2" onclick="openReturnModal({{ order.id }})">Return</button>
-                    {% endif %}
-                
-                    <!-- Display Credit Information when the Return is Accepted -->
-                    {% if order.status == 'Return Accepted' %}
-                        {% if order.payment_method == 'wallet' %}
-                            <span class="text-success">Amount credited to your wallet.</span>
-                        {% elif order.payment_method == 'cod' or order.payment_method == 'razorpay' %}
-                            <span class="text-success">Amount will be credited to your bank account within 1-2 days.</span>
-                        {% else %}
-                            <span class="text-danger">Payment method unavailable for this return.</span>
-                        {% endif %}
-                    {% endif %}
-                
-                    <!-- For Return Pending Status, Show Information About Return -->
-                    {% if order.status == 'Return Pending' %}
-                    <span class="text-warning">Return request is pending. Please wait for confirmation.</span>
-                    {% endif %}
-                
-                    <!-- For Cancelled Status, Show Information About Cancellation -->
-                    {% if order.status == 'Cancelled' %}
-                    <span class="text-danger">This order has been cancelled.</span>
-                    {% endif %}
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="8" class="text-center">No orders found</td>  <!-- Adjust colspan to 8 -->
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    
-    
-    
+<div class="container py-4">
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <h3 class="mb-0 h5">Order Management</h3>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="px-4">Order ID</th>
+                            <th class="px-4">Date</th>
+                            <th class="px-4">Products</th>
+                            <th class="px-4">Status</th>
+                            <th class="px-4">Payment</th>
+                            <th class="px-4">Total</th>
+                            <th class="px-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in page_obj.object_list %}
+                        <tr id="order-row-{{ order.id }}">
+                            <td class="px-4 align-middle">#{{ order.id }}</td>
+                            <td class="px-4 align-middle">{{ order.created_at|date:"d M Y" }}</td>
+                            <td class="px-4 align-middle">
+                                {% for item in order.items.all %}
+                                <div class="mb-1">
+                                    <span class="fw-medium">{{ item.product.name }}</span>
+                                    <small class="text-muted ms-2">x{{ item.quantity }}</small>
+                                </div>
+                                {% endfor %}
+                            </td>
+                            <td class="px-4 align-middle">
+                                <span class="badge {% if order.status == 'Delivered' %}bg-success
+          {% elif order.status == 'Cancelled' %}bg-danger
+          {% elif order.status == 'Return Pending' %}bg-warning text-dark
+          {% elif order.status == 'Payment Pending' %}bg-info text-dark
+          {% elif order.status == 'Pending' %}bg-primary text-white
+          {% elif order.status == 'Processing' %}bg-info text-white
+          {% elif order.status == 'Shipped' %}bg-purple text-white
+          {% elif order.status == 'Out for Delivery' %}bg-pink text-white
+          {% elif order.status == 'Return Accepted' %}bg-secondary text-white
+          {% elif order.status == 'Paid' %}bg-success text-white
+          {% elif order.status == 'Failed' %}bg-danger text-white
+          {% else %}bg-secondary text-white{% endif %}">
+    {{ order.status }}
+    </span>
+                            </td>
+                            <td class="px-4 align-middle">
+                                {% if order.payment_method == 'cod' %}
+                                    Cash on Delivery
+                                {% elif order.payment_method == 'wallet' %}
+                                    Wallet
+                                {% elif order.payment_method == 'razorpay' %}
+                                    Razorpay
+                                {% else %}
+                                    Not Available
+                                {% endif %}
+                            </td>
+                            <td class="px-4 align-middle fw-medium">₹{{ order.total_price|floatformat:2 }}</td>
+                            <td class="px-4 align-middle">
+                                <div class="d-flex gap-2">
+                                    {% if order.status == 'Payment Pending' %}
+                                    <button class="btn btn-sm btn-primary continue-payment-btn"
+                                            data-order-id="{{ order.id }}"
+                                            data-payment-method="{{ order.payment_method }}"
+                                            data-url="{% url 'continue_payment' order.id %}">
+                                        Pay Now
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger cancel-order-btn"
+                                            data-order-id="{{ order.id }}">
+                                        Cancel
+                                    </button>
+                                    {% endif %}
 
-    <!-- Pagination -->
-    <div class="col-12">
-        <nav>
-            <ul class="pagination justify-content-center">
-                {% if page_obj.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_categories %}&category={{ selected_categories|join:',' }}{% endif %}{% if selected_brands %}&brand={{ selected_brands|join:',' }}{% endif %}{% if sort_option %}&sort={{ sort_option }}{% endif %}" tabindex="-1">Previous</a>
-                    </li>
-                {% endif %}
-                {% for page_num in page_obj.paginator.page_range %}
-                    {% if page_obj.number == page_num %}
-                        <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
-                    {% else %}
-                        <li class="page-item"><a class="page-link" href="?page={{ page_num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_categories %}&category={{ selected_categories|join:',' }}{% endif %}{% if selected_brands %}&brand={{ selected_brands|join:',' }}{% endif %}{% if sort_option %}&sort={{ sort_option }}{% endif %}">{{ page_num }}</a></li>
-                    {% endif %}
-                {% endfor %}
-                {% if page_obj.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}{% if selected_categories %}&category={{ selected_categories|join:',' }}{% endif %}{% if selected_brands %}&brand={{ selected_brands|join:',' }}{% endif %}{% if sort_option %}&sort={{ sort_option }}{% endif %}">Next</a>
-                    </li>
-                {% endif %}
-            </ul>
-        </nav>
+                                    {% if order.status in 'Processing,Shipped,Out for Delivery,Pending,pending' %}
+                                    <form action="{% url 'cancel_order' order.id %}" method="POST" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Cancel</button>
+                                    </form>
+                                    {% endif %}
+
+                                    {% if order.status == 'Delivered' %}
+                                    <button class="btn btn-sm btn-warning" onclick="openReturnModal({{ order.id }})">
+                                        Return
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">No orders found</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination Links -->
+            <div class="pagination-container mt-4">
+                <nav aria-label="Page navigation">
+                    <ul class="pagination justify-content-center">
+                        <!-- First Page Link -->
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1" aria-label="First">
+                                <span aria-hidden="true">&laquo;&laquo;</span>
+                            </a>
+                        </li>
+                        {% endif %}
+
+                        <!-- Previous Page Link -->
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                        {% endif %}
+
+                        <!-- Current Page Number -->
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                                <span class="sr-only">(current)</span>
+                            </span>
+                        </li>
+
+                        <!-- Next Page Link -->
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                        {% endif %}
+
+                        <!-- Last Page Link -->
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Last">
+                                <span aria-hidden="true">&raquo;&raquo;</span>
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+        </div>
     </div>
 </div>
 
 <!-- Return Modal -->
-<div class="modal fade" id="returnModal" tabindex="-1" role="dialog" aria-labelledby="returnModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
+<div class="modal fade" id="returnModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <form action="{% url 'request_return' %}" method="POST" id="returnForm">
                 {% csrf_token %}
                 <input type="hidden" name="order_id" id="returnOrderId">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="returnModalLabel">Return Request</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
+                    <h5 class="modal-title">Request Return</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Why are you returning this order?</p>
-                    <select name="reason" class="form-control mb-3" required>
-                        <option value="Damaged Product">Damaged Product</option>
-                        <option value="Wrong Item">Wrong Item</option>
-                        <option value="Quality Issue">Quality Issue</option>
-                        <option value="Other">Other</option>
-                    </select>
-                    <textarea name="comment" class="form-control" rows="3" placeholder="Additional Comments (Optional)"></textarea>
+                    <div class="mb-3">
+                        <label class="form-label">Reason for Return</label>
+                        <select name="reason" class="form-select" required>
+                            <option value="">Select a reason</option>
+                            <option value="Damaged Product">Damaged Product</option>
+                            <option value="Wrong Item">Wrong Item</option>
+                            <option value="Quality Issue">Quality Issue</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Additional Comments</label>
+                        <textarea name="comment" class="form-control" rows="3" 
+                                placeholder="Please provide any additional details..."></textarea>
+                    </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-rounded" data-dismiss="modal">Close</button>
-                    <button type="submit" class="btn btn-primary btn-rounded">Submit Return</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Submit Request</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- JS CDN for Bootstrap, jQuery, and Popper.js -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.min.js"></script>
+<style>
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+.badge {
+    font-weight: 500;
+    padding: 0.5em 0.75em;
+}
+.table > :not(caption) > * > * {
+    padding: 1rem 0.75rem;
+}
+.pagination {
+    margin-bottom: 0;
+}
+.page-link {
+    padding: 0.375rem 0.75rem;
+}
+.modal-header {
+    padding: 1rem 1.5rem;
+}
+.modal-body {
+    padding: 1.5rem;
+}
+.modal-footer {
+    padding: 1rem 1.5rem;
+}
+</style>
+<style>
+    .badge {
+        font-weight: 500;
+        padding: 0.5em 0.75em;
+    }
+    
+    /* Custom badge background colors */
+    .bg-purple {
+        background-color: #6f42c1;
+    }
+    
+    .bg-pink {
+        background-color: #e83e8c;
+    }
+    
+    /* Making sure all badges have good contrast */
+    .badge.bg-warning {
+        background-color: #ffc107 !important;
+        color: #000 !important;
+    }
+    
+    .badge.bg-info {
+        background-color: #0dcaf0 !important;
+        color: #000 !important;
+    }
+    
+    .badge.bg-success {
+        background-color: #198754 !important;
+        color: #fff !important;
+    }
+    
+    .badge.bg-danger {
+        background-color: #dc3545 !important;
+        color: #fff !important;
+    }
+    
+    .badge.bg-primary {
+        background-color: #0d6efd !important;
+        color: #fff !important;
+    }
+    
+    .badge.bg-secondary {
+        background-color: #6c757d !important;
+        color: #fff !important;
+    }
+    </style>
+    
+    
 
 <script>
-    // Open return modal and set the order ID
-    function openReturnModal(orderId) {
-        document.getElementById('returnOrderId').value = orderId;
-        $('#returnModal').modal('show');
-    }
-
-    // Handle form submission
-    document.getElementById('returnForm').addEventListener('submit', function(event) {
-        event.preventDefault();
-
-        const formData = new FormData(this);
-        fetch("{% url 'request_return' %}", {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                alert('Return request submitted successfully. Your order status will be updated to "Request Pending".');
-                $('#returnModal').modal('hide');  // Hide modal
-                location.reload();  // Reload page to reflect status change
+document.addEventListener("DOMContentLoaded", function() {
+    // Continue Payment Button Handler
+    document.querySelectorAll(".continue-payment-btn").forEach(button => {
+        button.addEventListener("click", function() {
+            const paymentUrl = this.getAttribute("data-url");
+            const paymentMethod = this.getAttribute("data-payment-method");
+            if (paymentMethod === 'cod' || paymentMethod === 'wallet') {
+                // Handle COD or Wallet payment
+                fetch(paymentUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        payment_method: paymentMethod
+                    })
+                }).then(response => response.json())
+                  .then(data => {
+                      if (data.status === 'success') {
+                          location.reload();
+                      } else {
+                          alert('Payment failed. Please try again.');
+                      }
+                  }).catch(error => {
+                      console.error('Error:', error);
+                      alert('An error occurred while processing the payment.');
+                  });
             } else {
-                alert('Failed to submit return request. Please try again.');
+                // Redirect to Razorpay payment page
+                window.location.href = paymentUrl;
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('There was an error processing your request.');
         });
     });
-</script>
 
+    // Cancel Order Button Handler
+    document.querySelectorAll(".cancel-order-btn").forEach(button => {
+        button.addEventListener("click", async function() {
+            const orderId = this.getAttribute("data-order-id");
+            if (confirm("Are you sure you want to cancel this order?")) {
+                try {
+                    const response = await fetch(`{% url 'cancel_order' 0 %}`.replace('0', orderId), {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        alert('Failed to cancel order. Please try again.');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('An error occurred while canceling the order.');
+                }
+            }
+        });
+    });
+
+    // Return Form Handler
+    const returnForm = document.getElementById('returnForm');
+    if (returnForm) {
+        returnForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            try {
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    body: new FormData(this),
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('returnModal'));
+                    modal.hide();
+                    showAlert('Return request submitted successfully', 'success');
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    showAlert('Failed to submit return request', 'danger');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('An error occurred', 'danger');
+            }
+        });
+    }
+});
+
+function openReturnModal(orderId) {
+    document.getElementById('returnOrderId').value = orderId;
+    const modal = new bootstrap.Modal(document.getElementById('returnModal'));
+    modal.show();
+}
+
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(alertDiv);
+    setTimeout(() => alertDiv.remove(), 3000);
+}
+</script>
 {% endblock %}

@@ -574,41 +574,99 @@ def delete_address(request, address_id):
     return redirect('manage_addresses')
 
 
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.utils import timezone
+from decimal import Decimal
+import razorpay
+from django.conf import settings
+
 @login_required
 def checkout(request):
+    # Retrieve the order_id from the session
+    order_id = request.session.get('current_order_id')
+    existing_order = None
+
+    # Fetch the existing order if order_id is present
+    if order_id:
+        existing_order = get_object_or_404(Order, id=order_id, user=request.user)
+
+    # Fetch the user's cart and cart items
     cart = Cart.objects.get(user=request.user)
     cart_items = CartItem.objects.filter(cart=cart)
     cart_total = sum(item.total_price for item in cart_items)
+
+    # Fetch the user's addresses
     addresses = Address.objects.filter(user=request.user)
 
+    # Calculate discount if a coupon is applied
     coupon_code = cart.applied_coupon.code if cart.applied_coupon else None
     discount_amount = 0
     if cart.applied_coupon:
         discount_amount = (cart_total * cart.applied_coupon.discount_percentage) / 100
 
-    final_total = cart_total - discount_amount
+    # Calculate delivery charge based on the selected address
+    delivery_charge = 0  # Default delivery charge
+    selected_address = None
 
-    razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
-    razorpay_order = razorpay_client.order.create({
-        'amount': int(final_total * 100),  
-        'currency': 'INR',
-        'payment_capture': '1'
-    })
+    if addresses.exists():
+        selected_address = addresses.first()  # Use the first saved address by default
+        if selected_address.state == 'Kerala':
+            delivery_charge = 50
+        elif selected_address.state == 'Tamil Nadu':
+            delivery_charge = 120
+        elif selected_address.state == 'Karnataka':
+            delivery_charge = 150
+        else:
+            delivery_charge = 180
 
-    wallet_balance = request.user.wallet.balance if hasattr(request.user, 'wallet') else 0
-    wallet_disabled = wallet_balance < final_total  
-
+    # Handle POST request (when the user submits the checkout form)
     if request.method == 'POST':
-        payment_method = request.POST.get('payment_method')
         address_id = request.POST.get('selected_address')
+        payment_method = request.POST.get('payment_method')
 
+        # Validate address selection
         if not address_id:
             messages.error(request, "Please select an address.")
             return redirect('checkout')
 
+        # Validate payment method for Cash on Delivery (COD)
+        if payment_method == 'cod' and cart_total > 1000:
+            messages.error(request, "Cash on Delivery is not available for orders above ₹1000. Please use Wallet or Online Payment.")
+            return redirect('checkout')
+
+        # Validate wallet balance for Wallet payment
+        if payment_method == 'wallet':
+            wallet_balance = request.user.wallet.balance
+            if wallet_balance < (cart_total - discount_amount + delivery_charge):
+                messages.error(request, "Insufficient wallet balance. Please use another payment method.")
+                return redirect('checkout')
+
+        # Fetch the selected address
         selected_address = get_object_or_404(Address, id=address_id, user=request.user)
 
-        if payment_method in ['razorpay', 'cod', 'wallet']:
+        # Recalculate delivery charge based on the selected address
+        if selected_address.state == 'Kerala':
+            delivery_charge = 50
+        elif selected_address.state == 'Tamil Nadu':
+            delivery_charge = 120
+        elif selected_address.state == 'Karnataka':
+            delivery_charge = 150
+        else:
+            delivery_charge = 180
+
+        # Calculate the final total (including delivery charge and discount)
+        final_total = cart_total - discount_amount + delivery_charge
+
+        # Create or update the order
+        if existing_order:
+            order = existing_order
+            order.total_price = final_total
+            order.payment_method = payment_method
+            order.status = 'Pending'
+            order.save()
+        else:
             order = Order.objects.create(
                 user=request.user,
                 address=selected_address,
@@ -616,37 +674,66 @@ def checkout(request):
                 subtotal=cart_total,
                 discount_percentage=cart.applied_coupon.discount_percentage if cart.applied_coupon else 0,
                 coupon_discount=discount_amount,
-                payment_method=payment_method
+                delivery_charge=delivery_charge,
+                payment_method=payment_method,
+                status='Pending'
             )
 
-            for item in cart_items:
-                OrderItem.objects.create(
-                    order=order,
-                    product=item.variant.product,
-                    variant=item.variant,
-                    quantity=item.quantity,
-                    total_price=item.total_price
-                )
-                item.variant.stock -= item.quantity
-                item.variant.save()
+        # Add cart items to the order
+        for item in cart_items:
+            OrderItem.objects.create(
+                order=order,
+                product=item.variant.product,
+                variant=item.variant,
+                quantity=item.quantity,
+                total_price=item.total_price
+            )
+            # Update product stock
+            item.variant.stock -= item.quantity
+            item.variant.save()
 
-            if cart.applied_coupon:
-                cart.applied_coupon.used = True
-                cart.applied_coupon.save()
+        # Mark the coupon as used if applicable
+        if cart.applied_coupon:
+            cart.applied_coupon.used = True
+            cart.applied_coupon.save()
 
-            
-            if payment_method == 'wallet':
-                wallet = request.user.wallet
-                wallet.balance -= Decimal(final_total)
-                wallet.save()    
+        # Deduct from wallet balance if payment method is 'wallet'
+        if payment_method == 'wallet':
+            wallet = request.user.wallet
+            wallet.balance -= Decimal(final_total)
+            wallet.save()
 
-            cart_items.delete()
-            cart.applied_coupon = None
-            cart.save()
+        # Clear the cart after successful order creation
+        cart_items.delete()
+        cart.applied_coupon = None
+        cart.save()
 
-            messages.success(request, f"Order placed successfully using {payment_method}!")
-            return redirect('order_success', order_id=order.id)
+        # Clear the session order ID
+        if 'current_order_id' in request.session:
+            del request.session['current_order_id']
 
+        # Redirect to the Order Success page
+        messages.success(request, f"Order placed successfully using {payment_method}!")
+        return redirect('order_success', order_id=order.id)
+
+    # Calculate the final total for display (including delivery charge and discount)
+    final_total = cart_total - discount_amount + delivery_charge
+
+    # Convert the final total to paise for Razorpay
+    final_total_in_paise = int(final_total * 100)
+
+    # Initialize Razorpay order
+    razorpay_order = razorpay_client.order.create({
+        'amount': final_total_in_paise,  # Amount in paise
+        'currency': 'INR',
+        'payment_capture': '1'
+    })
+
+    # Fetch wallet balance (if applicable)
+    wallet_balance = request.user.wallet.balance if hasattr(request.user, 'wallet') else 0
+    wallet_disabled = wallet_balance < final_total
+
+    # Render the checkout template with context data
     return render(request, 'checkout.html', {
         'cart_items': cart_items,
         'cart_total': cart_total,
@@ -654,18 +741,26 @@ def checkout(request):
         'discount_amount': discount_amount,
         'coupon_code': coupon_code,
         'addresses': addresses,
+        'selected_address': selected_address,
         'razorpay_order_id': razorpay_order['id'],
         'razorpay_key_id': settings.RAZORPAY_KEY_ID,
-        'final_total_in_paise': final_total * 100,
+        'final_total_in_paise': final_total_in_paise,
         'wallet_balance': wallet_balance,
         'wallet_disabled': wallet_disabled,
+        'delivery_charge': delivery_charge,
     })
-
-
-
 
 razorpay_client = razorpay.Client(auth=("your_razorpay_key_id", "your_razorpay_key_secret"))
 
+
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import razorpay
+from django.conf import settings
+import json
+from django.utils import timezone
+
+razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
 @csrf_exempt
 def verify_payment(request):
     data = json.loads(request.body)
@@ -690,7 +785,8 @@ def verify_payment(request):
                 address=selected_address,
                 total_price=data['final_total'],
                 payment_method='razorpay',
-                payment_id=razorpay_payment_id
+                payment_id=razorpay_payment_id,
+                status='Pending'
             )
 
             cart = Cart.objects.get(user=request.user)
@@ -706,19 +802,29 @@ def verify_payment(request):
                 item.variant.stock -= item.quantity
                 item.variant.save()
 
-            cart_items.delete()  
+            cart_items.delete()
 
             return JsonResponse({'success': True, 'order_id': order.id})
 
         except razorpay.errors.SignatureVerificationError:
-            return JsonResponse({'success': False, 'message': 'Signature verification failed.'})
+            # Payment failed
+            order = Order.objects.create(
+                user=request.user,
+                address=selected_address,
+                total_price=data['final_total'],
+                payment_method='razorpay',
+                status='Payment Pending',
+                payment_failed_at=timezone.now()
+            )
+            return JsonResponse({'success': False, 'message': 'Payment failed. Please try again.'})
 
     else:
         order = Order.objects.create(
             user=request.user,
             address=selected_address,
             total_price=data['final_total'],
-            payment_method=payment_method
+            payment_method=payment_method,
+            status='Pending'
         )
 
         cart = Cart.objects.get(user=request.user)
@@ -734,12 +840,92 @@ def verify_payment(request):
             item.variant.stock -= item.quantity
             item.variant.save()
 
-        cart_items.delete() 
+        cart_items.delete()
 
         return JsonResponse({'success': True, 'order_id': order.id})
-
-   
+    
 razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+
+@csrf_exempt
+def payment_failed(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            error_code = data.get('error_code')
+            error_description = data.get('error_description')
+            address_id = data.get('address_id')
+            payment_method = data.get('payment_method')
+            final_total = data.get('final_total')
+
+            # Validate required fields
+            if not all([address_id, payment_method, final_total]):
+                return JsonResponse({'success': False, 'error': 'Missing required fields'}, status=400)
+
+            # Fetch the selected address
+            selected_address = get_object_or_404(Address, id=address_id, user=request.user)
+
+            # Create the order with failed status
+            order = Order.objects.create(
+                user=request.user,
+                address=selected_address,
+                total_price=final_total,
+                payment_method=payment_method,
+                status='Payment Pending',  # Set status to 'Payment Pending'
+                payment_failed_at=timezone.now()
+            )
+
+            # Associate cart items with the order
+            cart = Cart.objects.get(user=request.user)
+            cart_items = CartItem.objects.filter(cart=cart)
+            for item in cart_items:
+                OrderItem.objects.create(
+                    order=order,
+                    product=item.variant.product,
+                    variant=item.variant,
+                    quantity=item.quantity,
+                    total_price=item.total_price
+                )
+                # Update product stock
+                item.variant.stock -= item.quantity
+                item.variant.save()
+
+            # Clear the cart after creating the order
+            cart_items.delete()
+
+            return JsonResponse({'success': True, 'order_id': order.id})
+
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+
+def check_payment_status(request, order_id):
+    try:
+        order = Order.objects.get(id=order_id)
+
+        # Prepare response data based on order status
+        response_data = {
+            "status": order.status,
+            "order_id": order.id,
+            "date": order.created_at.strftime("%d %b %Y, %H:%M"),
+            "products": ", ".join([f"{item.product.name} (x{item.quantity})" for item in order.items.all()]),
+            "total_price": float(order.total_price)
+        }
+
+        # Add payment method if available
+        if hasattr(order, 'get_payment_method_display'):
+            response_data["payment_method"] = order.get_payment_method_display()
+        else:
+            response_data["payment_method"] = order.payment_method
+
+        return JsonResponse(response_data)
+
+    except Order.DoesNotExist:
+        return JsonResponse({"status": "Error", "message": "Order not found"}, status=404)
+    except Exception as e:
+        return JsonResponse({"status": "Error", "message": str(e)}, status=500)
+
 
 
 
@@ -803,31 +989,54 @@ def generate_invoice(request, order):
 
 
 
-#user order 
+
 def order_management(request):
-    orders = Order.objects.all().order_by('-created_at')
-    
+    orders = Order.objects.filter(user=request.user).order_by('-created_at')
     paginator = Paginator(orders, 10) 
     page_number = request.GET.get('page')  
     page_obj = paginator.get_page(page_number)
     
     return render(request, 'profile/orders.html', {'page_obj': page_obj})
 
-
-
 @login_required
 def cancel_order(request, order_id):
     order = get_object_or_404(Order, id=order_id, user=request.user)
-    if order.status in ['Pending', 'Processing', 'Shipped','Out for Delivery']:
+    
+    if order.status in ['Payment Pending', 'Pending', 'Shipped', 'Processing', 'Out for Delivery']:
         order.status = 'Cancelled'
         order.save()
-        messages.success(request, f"Order {order.id} has been successfully canceled and stock has been updated.")
+        messages.success(request, "Order has been cancelled.")
     else:
-        messages.error(request, f"Order {order.id} cannot be canceled.")
+        messages.error(request, "You cannot cancel this order.")
 
     return redirect('order_management')
 
+from django.shortcuts import redirect, get_object_or_404
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.utils import timezone
+from .models import Order
+from django.shortcuts import redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
 
+@login_required
+def continue_payment(request, order_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+
+    if order.status == "Failed":
+        # Move order items back to the cart
+        order_items = order.orderitem_set.all()
+        for item in order_items:
+            CartItem.objects.create(user=request.user, product=item.product, quantity=item.quantity)
+        
+        messages.info(request, "Your failed order items have been added back to your cart.")
+
+    # Store order_id in session for continued payment
+    request.session['current_order_id'] = order_id
+    return redirect('checkout')
+
+
+    
 @login_required
 def request_return(request):
     if request.method == 'POST':
