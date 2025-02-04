@@ -24,6 +24,10 @@ from django.shortcuts import get_object_or_404, render
 
 
 
+
+
+
+
 #USER HOME PAGE
 @never_cache
 def home_page(request):
@@ -387,26 +391,33 @@ def cart_page(request):
     })
 
 
+
 @login_required
 def add_to_cart(request, product_id):
     product = get_object_or_404(Product, id=product_id)
-    variant_id = request.POST.get('variant') 
-    quantity = int(request.POST.get('quantity', 1))
+    variant_id = request.POST.get("variant")  
+    quantity = int(request.POST.get("quantity", 1))
+
+    # Ensure variant_id is valid
+    variant = None
+    if variant_id and variant_id.isdigit():  # Check if it's a valid number
+        variant = ProductVariant.objects.filter(id=int(variant_id)).first()
+
     cart, _ = Cart.objects.get_or_create(user=request.user)
-    variant = ProductVariant.objects.filter(id=variant_id).first() if variant_id else None
+
     cart_item, created = CartItem.objects.get_or_create(
         cart=cart,
         product=product,
         variant=variant,
-        defaults={'quantity': quantity}
+        defaults={"quantity": quantity}
     )
+
     if not created:
         cart_item.quantity += quantity
         cart_item.save()
 
     messages.success(request, f"{product.name} added to cart!")
-    return redirect('cart_page')
-
+    return redirect("cart_page")
 
 #coupon in cart page
 @login_required
@@ -574,13 +585,8 @@ def delete_address(request, address_id):
     return redirect('manage_addresses')
 
 
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.utils import timezone
-from decimal import Decimal
-import razorpay
-from django.conf import settings
+
+
 
 @login_required
 def checkout(request):
@@ -659,7 +665,7 @@ def checkout(request):
         # Calculate the final total (including delivery charge and discount)
         final_total = cart_total - discount_amount + delivery_charge
 
-        # Create or update the order
+        # Create or update the order only if payment is successful
         if existing_order:
             order = existing_order
             order.total_price = final_total
@@ -680,17 +686,18 @@ def checkout(request):
             )
 
         # Add cart items to the order
-        for item in cart_items:
-            OrderItem.objects.create(
-                order=order,
-                product=item.variant.product,
-                variant=item.variant,
-                quantity=item.quantity,
-                total_price=item.total_price
-            )
-            # Update product stock
-            item.variant.stock -= item.quantity
-            item.variant.save()
+        if not existing_order:
+            for item in cart_items:
+                OrderItem.objects.create(
+                    order=order,
+                    product=item.variant.product,
+                    variant=item.variant,
+                    quantity=item.quantity,
+                    total_price=item.total_price
+                )
+                # Update product stock
+                item.variant.stock -= item.quantity
+                item.variant.save()
 
         # Mark the coupon as used if applicable
         if cart.applied_coupon:
@@ -712,9 +719,42 @@ def checkout(request):
         if 'current_order_id' in request.session:
             del request.session['current_order_id']
 
-        # Redirect to the Order Success page
-        messages.success(request, f"Order placed successfully using {payment_method}!")
-        return redirect('order_success', order_id=order.id)
+        # Process payment (if payment method is 'online')
+        if payment_method != 'cod':  # Skip if COD is selected
+            try:
+                # Use Razorpay for online payment
+                razorpay_order = razorpay_client.order.create({
+                    'amount': int(final_total * 100),  # Amount in paise
+                    'currency': 'INR',
+                    'payment_capture': '1'
+                })
+                razorpay_order_id = razorpay_order['id']
+
+                # Payment success
+                messages.success(request, f"Order placed successfully using {payment_method}!")
+                return redirect('order_success', order_id=order.id)
+
+            except Exception as e:
+                # Handle payment failure
+                messages.error(request, "Payment failed. Please try again.")
+                order.status = 'Payment Failed'
+                order.save()
+
+                # Keep items in cart if payment fails
+                for item in cart_items:
+                    item.save()
+
+                # Clear the session order ID
+                if 'current_order_id' in request.session:
+                    del request.session['current_order_id']
+
+                # Return the user to the order management page
+                return redirect('order_management')
+
+        else:
+            # If Cash on Delivery (COD), simply proceed to success page
+            messages.success(request, f"Order placed successfully using {payment_method}!")
+            return redirect('order_success', order_id=order.id)
 
     # Calculate the final total for display (including delivery charge and discount)
     final_total = cart_total - discount_amount + delivery_charge
@@ -750,17 +790,9 @@ def checkout(request):
         'delivery_charge': delivery_charge,
     })
 
-razorpay_client = razorpay.Client(auth=("your_razorpay_key_id", "your_razorpay_key_secret"))
-
-
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-import razorpay
-from django.conf import settings
-import json
-from django.utils import timezone
 
 razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+
 @csrf_exempt
 def verify_payment(request):
     data = json.loads(request.body)
@@ -900,31 +932,6 @@ def payment_failed(request):
     return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
 
 
-def check_payment_status(request, order_id):
-    try:
-        order = Order.objects.get(id=order_id)
-
-        # Prepare response data based on order status
-        response_data = {
-            "status": order.status,
-            "order_id": order.id,
-            "date": order.created_at.strftime("%d %b %Y, %H:%M"),
-            "products": ", ".join([f"{item.product.name} (x{item.quantity})" for item in order.items.all()]),
-            "total_price": float(order.total_price)
-        }
-
-        # Add payment method if available
-        if hasattr(order, 'get_payment_method_display'):
-            response_data["payment_method"] = order.get_payment_method_display()
-        else:
-            response_data["payment_method"] = order.payment_method
-
-        return JsonResponse(response_data)
-
-    except Order.DoesNotExist:
-        return JsonResponse({"status": "Error", "message": "Order not found"}, status=404)
-    except Exception as e:
-        return JsonResponse({"status": "Error", "message": str(e)}, status=500)
 
 
 
@@ -1021,13 +1028,26 @@ from django.contrib.auth.decorators import login_required
 
 @login_required
 def continue_payment(request, order_id):
+    print("order_id",order_id)
     order = get_object_or_404(Order, id=order_id, user=request.user)
-
-    if order.status == "Failed":
+    print(order.id)
+    print("hello")
+    if order.status == "Payment Pending":
         # Move order items back to the cart
-        order_items = order.orderitem_set.all()
+        #order_items = order.orderitem_set.all()
+        order_items = OrderItem.objects.filter(order= order)
+        cart = Cart.objects.get(user = request.user)
         for item in order_items:
-            CartItem.objects.create(user=request.user, product=item.product, quantity=item.quantity)
+            CartItem.objects.create(
+                user=request.user,
+                cart=cart,
+                product=item.variant.product,
+                quantity=item.quantity)
+            
+
+            
+            
+          
         
         messages.info(request, "Your failed order items have been added back to your cart.")
 
@@ -1036,7 +1056,6 @@ def continue_payment(request, order_id):
     return redirect('checkout')
 
 
-    
 @login_required
 def request_return(request):
     if request.method == 'POST':

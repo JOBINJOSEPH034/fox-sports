@@ -1,385 +1,203 @@
-{% extends 'profile/base1.html' %}
 
-{% block title %}Order Management{% endblock %}
 
-{% block content %}
-<div class="container py-4">
-    <div class="card shadow-sm">
-        <div class="card-header bg-white">
-            <h3 class="mb-0 h5">Order Management</h3>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                    <thead class="bg-light">
-                        <tr>
-                            <th class="px-4">Order ID</th>
-                            <th class="px-4">Date</th>
-                            <th class="px-4">Products</th>
-                            <th class="px-4">Status</th>
-                            <th class="px-4">Payment</th>
-                            <th class="px-4">Total</th>
-                            <th class="px-4">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for order in page_obj.object_list %}
-                        <tr id="order-row-{{ order.id }}">
-                            <td class="px-4 align-middle">#{{ order.id }}</td>
-                            <td class="px-4 align-middle">{{ order.created_at|date:"d M Y" }}</td>
-                            <td class="px-4 align-middle">
-                                {% for item in order.items.all %}
-                                <div class="mb-1">
-                                    <span class="fw-medium">{{ item.product.name }}</span>
-                                    <small class="text-muted ms-2">x{{ item.quantity }}</small>
-                                </div>
-                                {% endfor %}
-                            </td>
-                            <td class="px-4 align-middle">
-                                <span class="badge {% if order.status == 'Delivered' %}bg-success
-          {% elif order.status == 'Cancelled' %}bg-danger
-          {% elif order.status == 'Return Pending' %}bg-warning text-dark
-          {% elif order.status == 'Payment Pending' %}bg-info text-dark
-          {% elif order.status == 'Pending' %}bg-primary text-white
-          {% elif order.status == 'Processing' %}bg-info text-white
-          {% elif order.status == 'Shipped' %}bg-purple text-white
-          {% elif order.status == 'Out for Delivery' %}bg-pink text-white
-          {% elif order.status == 'Return Accepted' %}bg-secondary text-white
-          {% elif order.status == 'Paid' %}bg-success text-white
-          {% elif order.status == 'Failed' %}bg-danger text-white
-          {% else %}bg-secondary text-white{% endif %}">
-    {{ order.status }}
-    </span>
-                            </td>
-                            <td class="px-4 align-middle">
-                                {% if order.payment_method == 'cod' %}
-                                    Cash on Delivery
-                                {% elif order.payment_method == 'wallet' %}
-                                    Wallet
-                                {% elif order.payment_method == 'razorpay' %}
-                                    Razorpay
-                                {% else %}
-                                    Not Available
-                                {% endif %}
-                            </td>
-                            <td class="px-4 align-middle fw-medium">₹{{ order.total_price|floatformat:2 }}</td>
-                            <td class="px-4 align-middle">
-                                <div class="d-flex gap-2">
-                                    {% if order.status == 'Payment Pending' %}
-                                    <button class="btn btn-sm btn-primary continue-payment-btn"
-                                            data-order-id="{{ order.id }}"
-                                            data-payment-method="{{ order.payment_method }}"
-                                            data-url="{% url 'continue_payment' order.id %}">
-                                        Pay Now
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger cancel-order-btn"
-                                            data-order-id="{{ order.id }}">
-                                        Cancel
-                                    </button>
-                                    {% endif %}
+@login_required
+def checkout(request):
+    # Retrieve the order_id from the session
+    order_id = request.session.get('current_order_id')
+    existing_order = None
 
-                                    {% if order.status in 'Processing,Shipped,Out for Delivery,Pending,pending' %}
-                                    <form action="{% url 'cancel_order' order.id %}" method="POST" class="d-inline">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">Cancel</button>
-                                    </form>
-                                    {% endif %}
+    # Fetch the existing order if order_id is present
+    if order_id:
+        existing_order = get_object_or_404(Order, id=order_id, user=request.user)
 
-                                    {% if order.status == 'Delivered' %}
-                                    <button class="btn btn-sm btn-warning" onclick="openReturnModal({{ order.id }})">
-                                        Return
-                                    </button>
-                                    {% endif %}
-                                </div>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="7" class="text-center py-4 text-muted">No orders found</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+    # Fetch the user's cart and cart items
+    cart = Cart.objects.get(user=request.user)
+    cart_items = CartItem.objects.filter(cart=cart)
+    cart_total = sum(item.total_price for item in cart_items)
 
-            <!-- Pagination Links -->
-            <div class="pagination-container mt-4">
-                <nav aria-label="Page navigation">
-                    <ul class="pagination justify-content-center">
-                        <!-- First Page Link -->
-                        {% if page_obj.has_previous %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page=1" aria-label="First">
-                                <span aria-hidden="true">&laquo;&laquo;</span>
-                            </a>
-                        </li>
-                        {% endif %}
+    # Fetch the user's addresses
+    addresses = Address.objects.filter(user=request.user)
 
-                        <!-- Previous Page Link -->
-                        {% if page_obj.has_previous %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
-                                <span aria-hidden="true">&laquo;</span>
-                            </a>
-                        </li>
-                        {% endif %}
+    # Calculate discount if a coupon is applied
+    coupon_code = cart.applied_coupon.code if cart.applied_coupon else None
+    discount_amount = 0
+    if cart.applied_coupon:
+        discount_amount = (cart_total * cart.applied_coupon.discount_percentage) / 100
 
-                        <!-- Current Page Number -->
-                        <li class="page-item active">
-                            <span class="page-link">
-                                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-                                <span class="sr-only">(current)</span>
-                            </span>
-                        </li>
+    # Calculate delivery charge based on the selected address
+    delivery_charge = 0  # Default delivery charge
+    selected_address = None
 
-                        <!-- Next Page Link -->
-                        {% if page_obj.has_next %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
-                                <span aria-hidden="true">&raquo;</span>
-                            </a>
-                        </li>
-                        {% endif %}
+    if addresses.exists():
+        selected_address = addresses.first()  # Use the first saved address by default
+        if selected_address.state == 'Kerala':
+            delivery_charge = 50
+        elif selected_address.state == 'Tamil Nadu':
+            delivery_charge = 120
+        elif selected_address.state == 'Karnataka':
+            delivery_charge = 150
+        else:
+            delivery_charge = 180
 
-                        <!-- Last Page Link -->
-                        {% if page_obj.has_next %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Last">
-                                <span aria-hidden="true">&raquo;&raquo;</span>
-                            </a>
-                        </li>
-                        {% endif %}
-                    </ul>
-                </nav>
-            </div>
-        </div>
-    </div>
-</div>
+    # Handle POST request (when the user submits the checkout form)
+    if request.method == 'POST':
+        address_id = request.POST.get('selected_address')
+        payment_method = request.POST.get('payment_method')
 
-<!-- Return Modal -->
-<div class="modal fade" id="returnModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <form action="{% url 'request_return' %}" method="POST" id="returnForm">
-                {% csrf_token %}
-                <input type="hidden" name="order_id" id="returnOrderId">
-                <div class="modal-header">
-                    <h5 class="modal-title">Request Return</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Reason for Return</label>
-                        <select name="reason" class="form-select" required>
-                            <option value="">Select a reason</option>
-                            <option value="Damaged Product">Damaged Product</option>
-                            <option value="Wrong Item">Wrong Item</option>
-                            <option value="Quality Issue">Quality Issue</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Additional Comments</label>
-                        <textarea name="comment" class="form-control" rows="3" 
-                                placeholder="Please provide any additional details..."></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Submit Request</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+        # Validate address selection
+        if not address_id:
+            messages.error(request, "Please select an address.")
+            return redirect('checkout')
 
-<style>
-.btn-sm {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.875rem;
-}
-.badge {
-    font-weight: 500;
-    padding: 0.5em 0.75em;
-}
-.table > :not(caption) > * > * {
-    padding: 1rem 0.75rem;
-}
-.pagination {
-    margin-bottom: 0;
-}
-.page-link {
-    padding: 0.375rem 0.75rem;
-}
-.modal-header {
-    padding: 1rem 1.5rem;
-}
-.modal-body {
-    padding: 1.5rem;
-}
-.modal-footer {
-    padding: 1rem 1.5rem;
-}
-</style>
-<style>
-    .badge {
-        font-weight: 500;
-        padding: 0.5em 0.75em;
-    }
-    
-    /* Custom badge background colors */
-    .bg-purple {
-        background-color: #6f42c1;
-    }
-    
-    .bg-pink {
-        background-color: #e83e8c;
-    }
-    
-    /* Making sure all badges have good contrast */
-    .badge.bg-warning {
-        background-color: #ffc107 !important;
-        color: #000 !important;
-    }
-    
-    .badge.bg-info {
-        background-color: #0dcaf0 !important;
-        color: #000 !important;
-    }
-    
-    .badge.bg-success {
-        background-color: #198754 !important;
-        color: #fff !important;
-    }
-    
-    .badge.bg-danger {
-        background-color: #dc3545 !important;
-        color: #fff !important;
-    }
-    
-    .badge.bg-primary {
-        background-color: #0d6efd !important;
-        color: #fff !important;
-    }
-    
-    .badge.bg-secondary {
-        background-color: #6c757d !important;
-        color: #fff !important;
-    }
-    </style>
-    
-    
+        # Validate payment method for Cash on Delivery (COD)
+        if payment_method == 'cod' and cart_total > 1000:
+            messages.error(request, "Cash on Delivery is not available for orders above ₹1000. Please use Wallet or Online Payment.")
+            return redirect('checkout')
 
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    // Continue Payment Button Handler
-    document.querySelectorAll(".continue-payment-btn").forEach(button => {
-        button.addEventListener("click", function() {
-            const paymentUrl = this.getAttribute("data-url");
-            const paymentMethod = this.getAttribute("data-payment-method");
-            if (paymentMethod === 'cod' || paymentMethod === 'wallet') {
-                // Handle COD or Wallet payment
-                fetch(paymentUrl, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': '{{ csrf_token }}',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        payment_method: paymentMethod
-                    })
-                }).then(response => response.json())
-                  .then(data => {
-                      if (data.status === 'success') {
-                          location.reload();
-                      } else {
-                          alert('Payment failed. Please try again.');
-                      }
-                  }).catch(error => {
-                      console.error('Error:', error);
-                      alert('An error occurred while processing the payment.');
-                  });
-            } else {
-                // Redirect to Razorpay payment page
-                window.location.href = paymentUrl;
-            }
-        });
-    });
+        # Validate wallet balance for Wallet payment
+        if payment_method == 'wallet':
+            wallet_balance = request.user.wallet.balance
+            if wallet_balance < (cart_total - discount_amount + delivery_charge):
+                messages.error(request, "Insufficient wallet balance. Please use another payment method.")
+                return redirect('checkout')
 
-    // Cancel Order Button Handler
-    document.querySelectorAll(".cancel-order-btn").forEach(button => {
-        button.addEventListener("click", async function() {
-            const orderId = this.getAttribute("data-order-id");
-            if (confirm("Are you sure you want to cancel this order?")) {
-                try {
-                    const response = await fetch(`{% url 'cancel_order' 0 %}`.replace('0', orderId), {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRFToken': '{{ csrf_token }}'
-                        }
-                    });
-                    
-                    if (response.ok) {
-                        location.reload();
-                    } else {
-                        alert('Failed to cancel order. Please try again.');
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert('An error occurred while canceling the order.');
-                }
-            }
-        });
-    });
+        # Fetch the selected address
+        selected_address = get_object_or_404(Address, id=address_id, user=request.user)
 
-    // Return Form Handler
-    const returnForm = document.getElementById('returnForm');
-    if (returnForm) {
-        returnForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            try {
-                const response = await fetch(this.action, {
-                    method: 'POST',
-                    body: new FormData(this),
-                    headers: {
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    }
-                });
+        # Recalculate delivery charge based on the selected address
+        if selected_address.state == 'Kerala':
+            delivery_charge = 50
+        elif selected_address.state == 'Tamil Nadu':
+            delivery_charge = 120
+        elif selected_address.state == 'Karnataka':
+            delivery_charge = 150
+        else:
+            delivery_charge = 180
 
-                const data = await response.json();
-                
-                if (data.status === 'success') {
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('returnModal'));
-                    modal.hide();
-                    showAlert('Return request submitted successfully', 'success');
-                    setTimeout(() => location.reload(), 1500);
-                } else {
-                    showAlert('Failed to submit return request', 'danger');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showAlert('An error occurred', 'danger');
-            }
-        });
-    }
-});
+        # Calculate the final total (including delivery charge and discount)
+        final_total = cart_total - discount_amount + delivery_charge
 
-function openReturnModal(orderId) {
-    document.getElementById('returnOrderId').value = orderId;
-    const modal = new bootstrap.Modal(document.getElementById('returnModal'));
-    modal.show();
-}
+        # Create or update the order only if payment is successful
+        if existing_order:
+            order = existing_order
+            order.total_price = final_total
+            order.payment_method = payment_method
+            order.status = 'Pending'
+            order.save()
+        else:
+            order = Order.objects.create(
+                user=request.user,
+                address=selected_address,
+                total_price=final_total,
+                subtotal=cart_total,
+                discount_percentage=cart.applied_coupon.discount_percentage if cart.applied_coupon else 0,
+                coupon_discount=discount_amount,
+                delivery_charge=delivery_charge,
+                payment_method=payment_method,
+                status='Pending'
+            )
 
-function showAlert(message, type) {
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    document.body.appendChild(alertDiv);
-    setTimeout(() => alertDiv.remove(), 3000);
-}
-</script>
-{% endblock %}
+        # Add cart items to the order
+        if not existing_order:
+            for item in cart_items:
+                OrderItem.objects.create(
+                    order=order,
+                    product=item.variant.product,
+                    variant=item.variant,
+                    quantity=item.quantity,
+                    total_price=item.total_price
+                )
+                # Update product stock
+                item.variant.stock -= item.quantity
+                item.variant.save()
+
+        # Mark the coupon as used if applicable
+        if cart.applied_coupon:
+            cart.applied_coupon.used = True
+            cart.applied_coupon.save()
+
+        # Deduct from wallet balance if payment method is 'wallet'
+        if payment_method == 'wallet':
+            wallet = request.user.wallet
+            wallet.balance -= Decimal(final_total)
+            wallet.save()
+
+        # Clear the cart after successful order creation
+        cart_items.delete()
+        cart.applied_coupon = None
+        cart.save()
+
+        # Clear the session order ID
+        if 'current_order_id' in request.session:
+            del request.session['current_order_id']
+
+        # Process payment (if payment method is 'online')
+        if payment_method != 'cod':  # Skip if COD is selected
+            try:
+                # Use Razorpay for online payment
+                razorpay_order = razorpay_client.order.create({
+                    'amount': int(final_total * 100),  # Amount in paise
+                    'currency': 'INR',
+                    'payment_capture': '1'
+                })
+                razorpay_order_id = razorpay_order['id']
+
+                # Payment success
+                messages.success(request, f"Order placed successfully using {payment_method}!")
+                return redirect('order_success', order_id=order.id)
+
+            except Exception as e:
+                # Handle payment failure
+                messages.error(request, "Payment failed. Please try again.")
+                order.status = 'Payment Failed'
+                order.save()
+
+                # Keep items in cart if payment fails
+                for item in cart_items:
+                    item.save()
+
+                # Clear the session order ID
+                if 'current_order_id' in request.session:
+                    del request.session['current_order_id']
+
+                # Return the user to the order management page
+                return redirect('order_management')
+
+        else:
+            # If Cash on Delivery (COD), simply proceed to success page
+            messages.success(request, f"Order placed successfully using {payment_method}!")
+            return redirect('order_success', order_id=order.id)
+
+    # Calculate the final total for display (including delivery charge and discount)
+    final_total = cart_total - discount_amount + delivery_charge
+
+    # Convert the final total to paise for Razorpay
+    final_total_in_paise = int(final_total * 100)
+
+    # Initialize Razorpay order
+    razorpay_order = razorpay_client.order.create({
+        'amount': final_total_in_paise,  # Amount in paise
+        'currency': 'INR',
+        'payment_capture': '1'
+    })
+
+    # Fetch wallet balance (if applicable)
+    wallet_balance = request.user.wallet.balance if hasattr(request.user, 'wallet') else 0
+    wallet_disabled = wallet_balance < final_total
+
+    # Render the checkout template with context data
+    return render(request, 'checkout.html', {
+        'cart_items': cart_items,
+        'cart_total': cart_total,
+        'final_total': final_total,
+        'discount_amount': discount_amount,
+        'coupon_code': coupon_code,
+        'addresses': addresses,
+        'selected_address': selected_address,
+        'razorpay_order_id': razorpay_order['id'],
+        'razorpay_key_id': settings.RAZORPAY_KEY_ID,
+        'final_total_in_paise': final_total_in_paise,
+        'wallet_balance': wallet_balance,
+        'wallet_disabled': wallet_disabled,
+        'delivery_charge': delivery_charge,
+    })

@@ -38,26 +38,22 @@ class Cart(models.Model):
 
     def __str__(self):
         return f"Cart of {self.user.username}"
+    
 
-#for user cartitems 
 class CartItem(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     cart = models.ForeignKey(Cart, related_name='items', on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    variant = models.ForeignKey(ProductVariant, null=True, blank=True, on_delete=models.SET_NULL)
+    variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, null=True, blank=True)
     quantity = models.PositiveIntegerField(default=1)
- 
- 
-    @property
-    def total_price(self):            #Calculate total price considering product/variant price and quantity.
 
-       
+    @property
+    def total_price(self):
         base_price = self.product.price + (self.variant.additional_price if self.variant else 0)
         discounted_price = self.get_discounted_price()
         return discounted_price * self.quantity
-    
-    def get_discounted_price(self):    # Return the discounted price if an offer exists.
-       
+
+    def get_discounted_price(self):
         base_price = self.product.price + (self.variant.additional_price if self.variant else 0)
         applicable_offer = Offer.objects.filter(
             (Q(products=self.product) | Q(categories=self.product.category)),
@@ -70,9 +66,6 @@ class CartItem(models.Model):
             return base_price - discount
         return base_price
 
-
-    def __str__(self):
-        return f"{self.product.name} ({self.quantity})"
     
 
 #address for user
@@ -255,7 +248,7 @@ class OrderItem(models.Model):
 
     def __str__(self):
         if self.variant:
-            return f"{self.variant.name} (x{self.quantity})"
+            return f"{self.variant.product.name} (x{self.quantity})"
         return f"{self.product.name} (x{self.quantity})"
 
 
@@ -308,3 +301,5 @@ class Transaction(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
     description = models.TextField(null=True, blank=True)
+
+

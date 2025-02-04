@@ -1,213 +1,497 @@
-<div class="container-fluid">
-    <div class="row px-xl-5">
-        <form method="POST" action="{% url 'checkout' %}" class="row w-100">
-            {% csrf_token %}
-
-            <!-- Address Section -->
-            <div class="col-lg-8">
-                <h5 class="section-title position-relative text-uppercase mb-3">
-                    <span class="bg-secondary pr-3">Select Address</span>
-                </h5>
-                <div class="bg-light p-3 mb-5">
-                    {% for address in addresses %}
-                    <div class="border-bottom pb-3 mb-3" id="address-{{ address.id }}">
-                        <p><strong>Name:</strong> {{ address.name }}</p>
-                        <p><strong>Phone:</strong> {{ address.phone }}</p>
-                        <p><strong>Address:</strong> {{ address.address_line }}, {{ address.city }}, {{ address.state }} - {{ address.postal_code }}</p>
-                        <div class="form-check">
-                            <input 
-                                type="radio" 
-                                name="selected_address" 
-                                value="{{ address.id }}" 
-                                id="address-radio-{{ address.id }}" 
-                                class="form-check-input"
-                                {% if address.is_default %}checked{% endif %}
-                                onchange="updateDeliveryCharge('{{ address.state }}')"> <!-- Add onchange event -->
-                            <label for="address-radio-{{ address.id }}" class="form-check-label">Select this address</label>
-                        </div>
-                        <button type="button" class="btn btn-primary btn-sm" onclick="editAddress('{{ address.id }}')">Edit</button>
-                    </div>
-                    {% empty %}
-                    <p>No addresses found. <a href="{% url 'manage_addresses' %}">Add Address</a></p>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <!-- Order Summary Section -->
-            <div class="col-lg-4">
-                <div class="bg-light p-30 mb-5">
-                    <h5 class="section-title position-relative text-uppercase mb-3">
-                        <span class="bg-secondary pr-3">Order Summary</span>
-                    </h5>
-                    <div class="border-bottom pb-2">
-                        <!-- Subtotal -->
-                        <div class="d-flex justify-content-between mb-3">
-                            <h6>Subtotal</h6>
-                            <h6>₹{{ cart_total|floatformat:2 }}</h6>
-                        </div>
-                    
-                        <!-- Applied Coupon -->
-                        {% if coupon_code %}
-                        <div class="d-flex justify-content-between mb-3">
-                            <h6>Coupon Applied (<strong>{{ coupon_code }}</strong>)</h6>
-                            <h6>- ₹{{ discount_amount|floatformat:2 }}</h6>
-                        </div>
-                        {% endif %}
-
-                        <!-- Platform Fee -->
-                        <div class="d-flex justify-content-between mb-3">
-                            <h6>Platform Fee</h6>
-                            <h6>₹ 0</h6>
-                        </div>
-
-                        <!-- Delivery Charge -->
-                        <div class="d-flex justify-content-between mb-3">
-                            <h6>Delivery Charge</h6>
-                            <h6 id="delivery-charge-display">₹ Free</h6> <!-- Dynamic delivery charge -->
-                        </div>
-                    
-                        <!-- Final Total -->
-                        <div class="d-flex justify-content-between mb-3">
-                            <h5>Total</h5>
-                            <h5 id="final-total-display">₹{{ final_total|floatformat:2 }}</h5> <!-- Dynamic final total -->
-                        </div>
-                    </div>
-                    
-                    <div class="pt-2">
-                        <h5 class="section-title position-relative text-uppercase mb-3">
-                            <span class="bg-secondary pr-3">Payment Options</span>
-                        </h5>
-                        
-                        <!-- Cash on Delivery Option -->
-                        <div class="form-check">
-                            <input type="radio" name="payment_method" value="cod" id="cod" class="form-check-input" checked>
-                            <label for="cod" class="form-check-label">Cash on Delivery</label>
-                        </div>
-                        
-                        <!-- Wallet Payment Option -->
-                        <div class="form-check">
-                            <input type="radio" name="payment_method" value="wallet" id="wallet" class="form-check-input" 
-                                   {% if wallet_disabled %}disabled{% endif %}>
-                            <label for="wallet" class="form-check-label">
-                                Wallet Payment (Balance: ₹{{ wallet_balance }})
-                            </label>
-                            {% if wallet_disabled %}
-                            <small class="text-danger d-block">Insufficient balance</small>
-                            {% endif %}
-                        </div>
-                        
-                        <!-- Razorpay Payment Option -->
-                        <div class="form-check">
-                            <input type="radio" name="payment_method" value="razorpay" id="razorpay" class="form-check-input">
-                            <label for="razorpay" class="form-check-label">Online Payment (Razorpay)</label>
-                        </div>
-                        
-                        <!-- Checkout Button -->
-                        <div class="pt-2">
-                            <button type="submit" class="btn btn-block btn-primary font-weight-bold my-3 py-3" id="checkout-button">
-                                Checkout
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- JavaScript to Update Delivery Charge Dynamically -->
-<script>
-    // Define delivery charges based on state
-    const deliveryCharges = {
-        'Kerala': 50,
-        'Tamil Nadu': 70,
-        'Karnataka': 80,
-        'Default': 100  // Default charge for other states
-    };
-
-    // Function to update delivery charge and final total
-    function updateDeliveryCharge(state) {
-        const deliveryCharge = deliveryCharges[state] || deliveryCharges['Default'];
-        const discountAmount = parseFloat("{{ discount_amount }}") || 0;
-        const cartTotal = parseFloat("{{ cart_total }}") || 0;
-
-        // Update delivery charge display
-        document.getElementById('delivery-charge-display').innerText = `₹${deliveryCharge.toFixed(2)}`;
-
-        // Calculate and update final total
-        const finalTotal = cartTotal - discountAmount + deliveryCharge;
-        document.getElementById('final-total-display').innerText = `₹${finalTotal.toFixed(2)}`;
-
-        // Update Razorpay amount (if needed)
-        const razorpayAmount = finalTotal * 100;
-        console.log('Razorpay Amount:', razorpayAmount);  // For debugging
-    }
-
-    // Initialize delivery charge based on the default selected address
-    document.addEventListener('DOMContentLoaded', function() {
-        const defaultAddressState = "{{ addresses.first.state }}";  // Get the state of the default address
-        updateDeliveryCharge(defaultAddressState);
-    });
-</script>
 
 
+@login_required
+def checkout(request):
+    # Retrieve the order_id from the session
+    order_id = request.session.get('current_order_id')
+    existing_order = None
+
+    # Fetch the existing order if order_id is present
+    if order_id:
+        existing_order = get_object_or_404(Order, id=order_id, user=request.user)
+
+    # Fetch the user's cart and cart items
+    cart = Cart.objects.get(user=request.user)
+    cart_items = CartItem.objects.filter(cart=cart)
+    cart_total = sum(item.total_price for item in cart_items)
+
+    # Fetch the user's addresses
+    addresses = Address.objects.filter(user=request.user)
+
+    # Calculate discount if a coupon is applied
+    coupon_code = cart.applied_coupon.code if cart.applied_coupon else None
+    discount_amount = 0
+    if cart.applied_coupon:
+        discount_amount = (cart_total * cart.applied_coupon.discount_percentage) / 100
+
+    # Calculate delivery charge based on the selected address
+    delivery_charge = 0  # Default delivery charge
+    selected_address = None
+
+    if addresses.exists():
+        selected_address = addresses.first()  # Use the first saved address by default
+        if selected_address.state == 'Kerala':
+            delivery_charge = 50
+        elif selected_address.state == 'Tamil Nadu':
+            delivery_charge = 120
+        elif selected_address.state == 'Karnataka':
+            delivery_charge = 150
+        else:
+            delivery_charge = 180
+
+    # Handle POST request (when the user submits the checkout form)
+    if request.method == 'POST':
+        address_id = request.POST.get('selected_address')
+        payment_method = request.POST.get('payment_method')
+
+        # Validate address selection
+        if not address_id:
+            messages.error(request, "Please select an address.")
+            return redirect('checkout')
+
+        # Validate payment method for Cash on Delivery (COD)
+        if payment_method == 'cod' and cart_total > 1000:
+            messages.error(request, "Cash on Delivery is not available for orders above ₹1000. Please use Wallet or Online Payment.")
+            return redirect('checkout')
+
+        # Validate wallet balance for Wallet payment
+        if payment_method == 'wallet':
+            wallet_balance = request.user.wallet.balance
+            if wallet_balance < (cart_total - discount_amount + delivery_charge):
+                messages.error(request, "Insufficient wallet balance. Please use another payment method.")
+                return redirect('checkout')
+
+        # Fetch the selected address
+        selected_address = get_object_or_404(Address, id=address_id, user=request.user)
+
+        # Recalculate delivery charge based on the selected address
+        if selected_address.state == 'Kerala':
+            delivery_charge = 50
+        elif selected_address.state == 'Tamil Nadu':
+            delivery_charge = 120
+        elif selected_address.state == 'Karnataka':
+            delivery_charge = 150
+        else:
+            delivery_charge = 180
+
+        # Calculate the final total (including delivery charge and discount)
+        final_total = cart_total - discount_amount + delivery_charge
+
+        # Create or update the order only if payment is successful
+        if existing_order:
+            order = existing_order
+            order.total_price = final_total
+            order.payment_method = payment_method
+            order.status = 'Pending'
+            order.save()
+        else:
+            order = Order.objects.create(
+                user=request.user,
+                address=selected_address,
+                total_price=final_total,
+                subtotal=cart_total,
+                discount_percentage=cart.applied_coupon.discount_percentage if cart.applied_coupon else 0,
+                coupon_discount=discount_amount,
+                delivery_charge=delivery_charge,
+                payment_method=payment_method,
+                status='Pending'
+            )
+
+        # Add cart items to the order
+        for item in cart_items:
+            OrderItem.objects.create(
+                order=order,
+                product=item.variant.product,
+                variant=item.variant,
+                quantity=item.quantity,
+                total_price=item.total_price
+            )
+            # Update product stock
+            item.variant.stock -= item.quantity
+            item.variant.save()
+
+        # Mark the coupon as used if applicable
+        if cart.applied_coupon:
+            cart.applied_coupon.used = True
+            cart.applied_coupon.save()
+
+        # Deduct from wallet balance if payment method is 'wallet'
+        if payment_method == 'wallet':
+            wallet = request.user.wallet
+            wallet.balance -= Decimal(final_total)
+            wallet.save()
+
+        # Clear the cart after successful order creation
+        cart_items.delete()
+        cart.applied_coupon = None
+        cart.save()
+
+        # Clear the session order ID
+        if 'current_order_id' in request.session:
+            del request.session['current_order_id']
+
+        # Process payment (if payment method is 'online')
+        if payment_method != 'cod':  # Skip if COD is selected
+            try:
+                # Use Razorpay for online payment
+                razorpay_order = razorpay_client.order.create({
+                    'amount': int(final_total * 100),  # Amount in paise
+                    'currency': 'INR',
+                    'payment_capture': '1'
+                })
+                razorpay_order_id = razorpay_order['id']
+
+                # Payment success
+                messages.success(request, f"Order placed successfully using {payment_method}!")
+                return redirect('order_success', order_id=order.id)
+
+            except Exception as e:
+                # Handle payment failure
+                messages.error(request, "Payment failed. Please try again.")
+                order.status = 'Payment Failed'
+                order.save()
+
+                # Keep items in cart if payment fails
+                for item in cart_items:
+                    item.save()
+
+                # Clear the session order ID
+                if 'current_order_id' in request.session:
+                    del request.session['current_order_id']
+
+                # Return the user to the order management page
+                return redirect('order_management')
+
+        else:
+            # If Cash on Delivery (COD), simply proceed to success page
+            messages.success(request, f"Order placed successfully using {payment_method}!")
+            return redirect('order_success', order_id=order.id)
+
+    # Calculate the final total for display (including delivery charge and discount)
+    final_total = cart_total - discount_amount + delivery_charge
+
+    # Convert the final total to paise for Razorpay
+    final_total_in_paise = int(final_total * 100)
+
+    # Initialize Razorpay order
+    razorpay_order = razorpay_client.order.create({
+        'amount': final_total_in_paise,  # Amount in paise
+        'currency': 'INR',
+        'payment_capture': '1'
+    })
+
+    # Fetch wallet balance (if applicable)
+    wallet_balance = request.user.wallet.balance if hasattr(request.user, 'wallet') else 0
+    wallet_disabled = wallet_balance < final_total
+
+    # Render the checkout template with context data
+    return render(request, 'checkout.html', {
+        'cart_items': cart_items,
+        'cart_total': cart_total,
+        'final_total': final_total,
+        'discount_amount': discount_amount,
+        'coupon_code': coupon_code,
+        'addresses': addresses,
+        'selected_address': selected_address,
+        'razorpay_order_id': razorpay_order['id'],
+        'razorpay_key_id': settings.RAZORPAY_KEY_ID,
+        'final_total_in_paise': final_total_in_paise,
+        'wallet_balance': wallet_balance,
+        'wallet_disabled': wallet_disabled,
+        'delivery_charge': delivery_charge,
+    })
 
 
-<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
-<script>
-    const checkoutButton = document.getElementById('checkout-button');
+razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
 
-    checkoutButton.addEventListener('click', function(event) {
-        const paymentMethod = document.querySelector('input[name="payment_method"]:checked').value;
+@csrf_exempt
+def verify_payment(request):
+    data = json.loads(request.body)
+    payment_method = data['payment_method']
+    address_id = data['address_id']
+    selected_address = Address.objects.get(id=address_id)
 
-        if (paymentMethod === 'razorpay') {
-            event.preventDefault();  // Prevent form submission to allow Razorpay payment modal
+    if payment_method == 'razorpay':
+        razorpay_payment_id = data['razorpay_payment_id']
+        razorpay_order_id = data['razorpay_order_id']
+        razorpay_signature = data['razorpay_signature']
 
-            const options = {
-                key: "{{ razorpay_key_id }}",  // Razorpay Key ID
-                amount: "{{ final_total_in_paise }}",  // Final Total in paise
-                currency: "INR",
-                name: "Your Store Name",
-                description: "Order Payment",
-                order_id: "{{ razorpay_order_id }}",  // Order ID from backend
-                handler: function (response) {
-                    // Handle successful payment
-                    fetch('/payment/verify/', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': '{{ csrf_token }}',
-                        },
-                        body: JSON.stringify({
-                            razorpay_payment_id: response.razorpay_payment_id,
-                            razorpay_order_id: response.razorpay_order_id,
-                            razorpay_signature: response.razorpay_signature,
-                            address_id: document.querySelector('input[name="selected_address"]:checked').value,
-                            payment_method: 'razorpay',
-                            final_total: "{{ final_total }}"  // Add the final total to the request
-                        }),
-                    }).then(res => res.json()).then(data => {
-                        if (data.success) {
-                            alert('Payment successful!');
-                            window.location.href = '/order-success/' + data.order_id + '/';  // Redirect to order success page
-                        } else {
-                            alert('Payment verification failed!');
-                        }
-                    });
-                },
-                prefill: {
-                    name: "{{ request.user.first_name }} {{ request.user.last_name }}",
-                    email: "{{ request.user.email }}",
-                    contact: "{{ request.user.profile.phone_number }}",
-                },
-                theme: {
-                    color: "#3399cc",
-                },
-            };
-            const rzp = new Razorpay(options);
-            rzp.open();  // Open Razorpay payment modal
-        } else {
-            // Handle COD or Wallet payment, if selected
+        try:
+            razorpay_client.utility.verify_payment_signature({
+                'razorpay_order_id': razorpay_order_id,
+                'razorpay_payment_id': razorpay_payment_id,
+                'razorpay_signature': razorpay_signature
+            })
+
+            order = Order.objects.create(
+                user=request.user,
+                address=selected_address,
+                total_price=data['final_total'],
+                payment_method='razorpay',
+                payment_id=razorpay_payment_id,
+                status='Pending'
+            )
+
+            cart = Cart.objects.get(user=request.user)
+            cart_items = CartItem.objects.filter(cart=cart)
+            for item in cart_items:
+                OrderItem.objects.create(
+                    order=order,
+                    product=item.variant.product,
+                    variant=item.variant,
+                    quantity=item.quantity,
+                    total_price=item.total_price
+                )
+                item.variant.stock -= item.quantity
+                item.variant.save()
+
+            cart_items.delete()
+
+            return JsonResponse({'success': True, 'order_id': order.id})
+
+        except razorpay.errors.SignatureVerificationError:
+            # Payment failed
+            order = Order.objects.create(
+                user=request.user,
+                address=selected_address,
+                total_price=data['final_total'],
+                payment_method='razorpay',
+                status='Payment Pending',
+                payment_failed_at=timezone.now()
+            )
+            return JsonResponse({'success': False, 'message': 'Payment failed. Please try again.'})
+
+    else:
+        order = Order.objects.create(
+            user=request.user,
+            address=selected_address,
+            total_price=data['final_total'],
+            payment_method=payment_method,
+            status='Pending'
+        )
+
+        cart = Cart.objects.get(user=request.user)
+        cart_items = CartItem.objects.filter(cart=cart)
+        for item in cart_items:
+            OrderItem.objects.create(
+                order=order,
+                product=item.variant.product,
+                variant=item.variant,
+                quantity=item.quantity,
+                total_price=item.total_price
+            )
+            item.variant.stock -= item.quantity
+            item.variant.save()
+
+        cart_items.delete()
+
+        return JsonResponse({'success': True, 'order_id': order.id})
+    
+razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+
+@csrf_exempt
+def payment_failed(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            error_code = data.get('error_code')
+            error_description = data.get('error_description')
+            address_id = data.get('address_id')
+            payment_method = data.get('payment_method')
+            final_total = data.get('final_total')
+
+            # Validate required fields
+            if not all([address_id, payment_method, final_total]):
+                return JsonResponse({'success': False, 'error': 'Missing required fields'}, status=400)
+
+            # Fetch the selected address
+            selected_address = get_object_or_404(Address, id=address_id, user=request.user)
+
+            # Create the order with failed status
+            order = Order.objects.create(
+                user=request.user,
+                address=selected_address,
+                total_price=final_total,
+                payment_method=payment_method,
+                status='Payment Pending',  # Set status to 'Payment Pending'
+                payment_failed_at=timezone.now()
+            )
+
+            # Associate cart items with the order
+            cart = Cart.objects.get(user=request.user)
+            cart_items = CartItem.objects.filter(cart=cart)
+            for item in cart_items:
+                OrderItem.objects.create(
+                    order=order,
+                    product=item.variant.product,
+                    variant=item.variant,
+                    quantity=item.quantity,
+                    total_price=item.total_price
+                )
+                # Update product stock
+                item.variant.stock -= item.quantity
+                item.variant.save()
+
+            # Clear the cart after creating the order
+            cart_items.delete()
+
+            return JsonResponse({'success': True, 'order_id': order.id})
+
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+    return JsonResponse({'success': False, 'error': 'Invalid request method'}, status=405)
+
+
+def check_payment_status(request, order_id):
+    try:
+        order = Order.objects.get(id=order_id)
+
+        # Prepare response data based on order status
+        response_data = {
+            "status": order.status,
+            "order_id": order.id,
+            "date": order.created_at.strftime("%d %b %Y, %H:%M"),
+            "products": ", ".join([f"{item.product.name} (x{item.quantity})" for item in order.items.all()]),
+            "total_price": float(order.total_price)
         }
-    });
-</script>
+
+        # Add payment method if available
+        if hasattr(order, 'get_payment_method_display'):
+            response_data["payment_method"] = order.get_payment_method_display()
+        else:
+            response_data["payment_method"] = order.payment_method
+
+        return JsonResponse(response_data)
+
+    except Order.DoesNotExist:
+        return JsonResponse({"status": "Error", "message": "Order not found"}, status=404)
+    except Exception as e:
+        return JsonResponse({"status": "Error", "message": str(e)}, status=500)
+
+
+
+
+
+
+@login_required
+def order_success(request, order_id):
+    order = get_object_or_404(Order, id=order_id)
+    
+    if request.method == 'POST' and 'download_invoice' in request.POST:
+        return generate_invoice(request, order)
+
+    return render(request, 'order_success.html', {'order': order})
+
+def generate_invoice(request, order):
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename=invoice_{order.id}.pdf'
+
+    doc = SimpleDocTemplate(response, pagesize=letter)
+
+    styles = getSampleStyleSheet()
+
+    elements = []
+
+    title = f"Invoice - Order #{order.id}"
+    title_paragraph = Paragraph(title, styles['Title'])
+    elements.append(title_paragraph)
+
+    elements.append(Paragraph("<br/>", styles['Normal']))
+
+    order_info = f"""
+        <b>Order ID:</b> {order.id}<br/>
+        <b>Total Amount:</b> ₹{order.total_price}<br/>
+        <b>Date:</b> {order.created_at.strftime('%d/%m/%Y')}<br/>
+        <b>Shipping Address:</b> {order.address}<br/>
+        <b>Payment Method:</b> {order.payment_method}<br/><br/>
+    """
+    order_info_paragraph = Paragraph(order_info, styles['Normal'])
+    elements.append(order_info_paragraph)
+
+    items_list = "<b>Ordered Items:</b><br/>"
+    
+    for item in order.items.all():
+        items_list += f"{item.product.name} - Quantity: {item.quantity} - Total: ₹{item.total_price}<br/>"
+    
+    items_paragraph = Paragraph(items_list, styles['Normal'])
+    elements.append(items_paragraph)
+
+    total_info = f"""
+        <b>Total Amount:</b> ₹{order.total_price}<br/>
+        <b>Tax (10%):</b> ₹{order.total_price * 0.1}<br/>
+        <b>Grand Total:</b> ₹{order.total_price + (order.total_price * 0.1)}<br/><br/>
+    """
+    total_info_paragraph = Paragraph(total_info, styles['Normal'])
+    elements.append(total_info_paragraph)
+
+    continue_shopping_paragraph = Paragraph('<a href="/shop/">Continue Shopping</a>', styles['Normal'])
+    elements.append(continue_shopping_paragraph)
+
+    doc.build(elements)
+
+    return response
+
+
+
+
+def order_management(request):
+    orders = Order.objects.filter(user=request.user).order_by('-created_at')
+    paginator = Paginator(orders, 10) 
+    page_number = request.GET.get('page')  
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'profile/orders.html', {'page_obj': page_obj})
+
+@login_required
+def cancel_order(request, order_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    
+    if order.status in ['Payment Pending', 'Pending', 'Shipped', 'Processing', 'Out for Delivery']:
+        order.status = 'Cancelled'
+        order.save()
+        messages.success(request, "Order has been cancelled.")
+    else:
+        messages.error(request, "You cannot cancel this order.")
+
+    return redirect('order_management')
+
+from django.shortcuts import redirect, get_object_or_404
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.utils import timezone
+from .models import Order
+from django.shortcuts import redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+
+@login_required
+def continue_payment(request, order_id):
+    print("order_id",order_id)
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    print(order.id)
+    print("hello")
+    if order.status == "Payment Pending":
+        # Move order items back to the cart
+        #order_items = order.orderitem_set.all()
+        order_items = OrderItem.objects.filter(order= order)
+        print("order_item:",order_items[0])
+        cart = Cart.objects.get(user = request.user)
+        print("hello")
+        for item in order_items:
+            CartItem.objects.create(
+                user=request.user,
+                cart=cart,
+                product=item.variant.product,
+                quantity=item.quantity)
+            
+
+            
+            
+           # print(cart_id)
+        
+        messages.info(request, "Your failed order items have been added back to your cart.")
+
+    # Store order_id in session for continued payment
+    request.session['current_order_id'] = order_id
+    return redirect('checkout')
+

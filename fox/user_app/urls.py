@@ -26,7 +26,7 @@ urlpatterns = [
     #checkout
     path('checkout/', views.checkout, name='checkout'),
    path('payment/verify/', views.verify_payment, name='verify_payment'),
-       path('payment/failed/', views.payment_failed, name='payment_failed'),  # Add this line
+      path('payment/failed/', views.payment_failed, name='payment_failed'),  # Add this line
 
 
 
@@ -43,7 +43,6 @@ urlpatterns = [
     path('cancel-order/<int:order_id>/', views.cancel_order, name='cancel_order'),
     path('request-return/', views.request_return, name='request_return'), 
     path('orders/continue/<int:order_id>/', views.continue_payment, name='continue_payment'),
-      path('check-payment-status/<int:order_id>/', views.check_payment_status, name='check_payment_status'),
 
     #change passwod (default)
     path(
