@@ -1,8 +1,8 @@
 
 from django.shortcuts import render,redirect
 from . models import *
-from admin_app.models import Offer
-from user_app.models import UserProfile
+from admin_app.models import Offer,Referral
+from user_app.models import UserProfile,Transaction,Wallet
 from django.contrib.auth import authenticate,login,logout
 from django.contrib.auth import login as auth_login
 from django.contrib.auth.models import User
@@ -17,6 +17,7 @@ from django.urls import reverse
 from django.conf import settings
 import random
 import re
+import uuid
 
 
 def login_page(request):
@@ -115,6 +116,17 @@ def verify_otp_login(request):
 
     return render(request, 'accounts/verify_otp_login.html', {'email': user.email})
 
+from django.shortcuts import render, redirect
+from django.contrib.auth.models import User
+from django.contrib import messages
+from django.views.decorators.cache import never_cache
+import re
+import uuid
+
+
+
+from django.utils import timezone
+
 @never_cache
 def signup(request):
     if request.method == 'POST':
@@ -124,10 +136,10 @@ def signup(request):
         email = request.POST.get('email')
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
-        referral_code = request.POST.get('referral_code')  # Get referral code from form
+        referral_code = request.POST.get('referral_code', '').strip()  # Get referral code
 
-        # Validation checks
-        if not first_name or not last_name or not user_name or not email or not password or not confirm_password:
+        # 🔹 Step 1: Basic Validations
+        if not all([first_name, last_name, user_name, email, password, confirm_password]):
             messages.error(request, 'All fields are required!')
             return redirect('signup')
 
@@ -135,24 +147,9 @@ def signup(request):
             messages.error(request, 'Passwords do not match!')
             return redirect('signup')
 
-        if len(password) < 8:
-            messages.error(request, 'Password must be at least 8 characters long!')
-            return redirect('signup')
-
-        if not re.search(r'[A-Z]', password):
-            messages.error(request, 'Password must contain at least one uppercase letter!')
-            return redirect('signup')
-
-        if not re.search(r'[a-z]', password):
-            messages.error(request, 'Password must contain at least one lowercase letter!')
-            return redirect('signup')
-
-        if not re.search(r'\d', password):
-            messages.error(request, 'Password must contain at least one number!')
-            return redirect('signup')
-
-        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
-            messages.error(request, 'Password must contain at least one special character!')
+        if len(password) < 8 or not re.search(r'[A-Z]', password) or not re.search(r'[a-z]', password) \
+                or not re.search(r'\d', password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            messages.error(request, 'Password must contain at least 8 characters, an uppercase, lowercase, number, and special character!')
             return redirect('signup')
 
         if User.objects.filter(username=user_name).exists():
@@ -163,17 +160,22 @@ def signup(request):
             messages.error(request, 'Email is already registered!')
             return redirect('signup')
 
-        # Check if referral code exists and is valid
-        offer = None
+        # 🔹 Step 2: Check Referral Code Validity from Offer Model
+        referrer = None
         if referral_code:
-            print(f"Referral Code Submitted: {referral_code}")  # Debugging
-            offer = Offer.objects.filter(referral_code__iexact=referral_code).first()
-            if not offer:
-                print("Referral code does not match any offer.")  # Debugging
-                messages.error(request, 'Invalid referral code!')
+            current_time = timezone.now()
+            referrer = Offer.objects.filter(
+                referral_code=referral_code,
+                start_date__lte=current_time,  # Offer has started
+                end_date__gte=current_time     # Offer is still valid
+            ).first()
+            
+            if not referrer:
+                messages.error(request, 'Invalid or expired referral code!')
                 return redirect('signup')
 
         try:
+            # 🔹 Step 3: Create New User
             user = User.objects.create_user(
                 first_name=first_name,
                 last_name=last_name,
@@ -181,12 +183,22 @@ def signup(request):
                 email=email,
                 password=password
             )
-            user.save()
 
-            # If valid referral code, link offer to user profile (if applicable)
-            if offer:
-                user_profile = UserProfile.objects.create(user=user, referral_offer=offer)
-                user_profile.save()
+            # 🔹 Step 4: Create Wallet for the New User
+            wallet, created = Wallet.objects.get_or_create(user=user)
+
+            # 🔹 Step 5: Handle Referral Reward System
+            if referrer:
+                wallet.balance += 100  # Reward amount
+                wallet.save()
+
+                Transaction.objects.create(
+                    wallet=wallet,
+                    transaction_id=str(uuid.uuid4()),
+                    type='deposit',
+                    amount=100,
+                    description=f"Referral reward for using {referral_code}"
+                )
 
             messages.success(request, 'Account created successfully! Please log in.')
             return redirect('login')
@@ -196,6 +208,9 @@ def signup(request):
             return redirect('signup')
 
     return render(request, 'accounts/signup.html')
+
+
+
 
 
  # Forgot Password View           

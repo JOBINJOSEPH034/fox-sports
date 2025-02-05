@@ -1,6 +1,10 @@
 from django.db import models
+from django.contrib.auth.models import User
+import uuid
 from django.db import transaction
 from datetime import date
+from django.utils.timezone import now
+from datetime import timedelta
 
 
    
@@ -162,14 +166,16 @@ class Offer(models.Model):
     ]
 
     name = models.CharField(max_length=255)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     discount_percentage = models.DecimalField(max_digits=5, decimal_places=2)
-    start_date = models.DateField()
-    end_date = models.DateField()
+    start_date = models.DateField(default=now)
+    end_date = models.DateTimeField(default=now() + timedelta(days=30))  
     offer_type = models.CharField(max_length=20, choices=OFFER_TYPES)
     products = models.ManyToManyField(Product, blank=True)
     categories = models.ManyToManyField(Category, blank=True)
     referral_code = models.CharField(max_length=255, blank=True, null=True)
-    discount_percentage = models.DecimalField(max_digits=5, decimal_places=2)
+    discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)  # Allow NULL
+    is_used = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.name} - {self.discount_percentage}%"
@@ -217,3 +223,13 @@ class SalesReport(models.Model):
 
 
 
+   
+# Referral Model for managing referral codes and relationships
+class Referral(models.Model):
+    referrer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="referrals")
+    referred_user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
+    referral_code = models.CharField(max_length=10, unique=True, default=uuid.uuid4().hex[:10].upper())  
+    is_used = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.referrer.username} → {self.referral_code}"

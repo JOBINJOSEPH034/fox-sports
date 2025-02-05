@@ -150,30 +150,33 @@
                         </select>
                     </div>
 
-                    <!-- Products -->
-                    <div class="mb-3">
-                        <label for="products" class="form-label">Select Products</label>
-                        <select class="form-select" id="products" name="products" multiple required>
-                            {% for product in products %}
-                                <option value="{{ product.id }}">{{ product.name }}</option>
-                            {% endfor %}
-                        </select>
+                    <!-- Referral Code (Only visible for Referral offer type) -->
+                    <div class="mb-3" id="referral_code_div">
+                        <label for="referral_code" class="form-label">Referral Code</label>
+                        <input type="text" class="form-control" id="referral_code" name="referral_code" readonly>
                     </div>
 
-                    <!-- Categories -->
-                    <div class="mb-3">
+                    <!-- Product Selection (Only visible for Product offer type) -->
+                    <div class="mb-3" id="product_selection_div">
+                        <label for="products" class="form-label">Select Products</label>
+                        <div id="product_checkbox_container">
+                            {% for product in products %}
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="product_{{ product.id }}" name="products" value="{{ product.id }}">
+                                    <label class="form-check-label" for="product_{{ product.id }}">{{ product.name }}</label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Categories (Always visible) -->
+                    <div class="mb-3" id="category_selection_div">
                         <label for="categories" class="form-label">Select Categories</label>
                         <select class="form-select" id="categories" name="categories" multiple>
                             {% for category in categories %}
                                 <option value="{{ category.id }}">{{ category.name }}</option>
                             {% endfor %}
                         </select>
-                    </div>
-
-                    <!-- Referral Code -->
-                    <div class="mb-3">
-                        <label for="referral_code" class="form-label">Referral Code</label>
-                        <input type="text" class="form-control" id="referral_code" name="referral_code" disabled>
                     </div>
 
                 </div>
@@ -199,25 +202,38 @@
 <script>
     document.getElementById('offer_type').addEventListener('change', function () {
         const selectedType = this.value;
-        const productField = document.getElementById('products');
-        const categoryField = document.getElementById('categories');
+
+        // Elements for different sections
+        const referralCodeDiv = document.getElementById('referral_code_div');
+        const productSelectionDiv = document.getElementById('product_selection_div');
+        const categorySelectionDiv = document.getElementById('category_selection_div');
         const referralField = document.getElementById('referral_code');
 
-        if (selectedType === 'product') {
-            productField.disabled = false;
-            categoryField.disabled = true;
-            referralField.disabled = true;
+        // Hide or show sections based on selected offer type
+        if (selectedType === 'referral') {
+            referralCodeDiv.style.display = 'block';  // Show referral code section
+            productSelectionDiv.style.display = 'none';  // Hide product selection section
+            categorySelectionDiv.style.display = 'none';  // Hide category selection section
+
+            // Generate and set referral code automatically
+            referralField.value = generateReferralCode();
         } else if (selectedType === 'category') {
-            productField.disabled = true;
-            categoryField.disabled = false;
-            referralField.disabled = true;
-        } else if (selectedType === 'referral') {
-            productField.disabled = true;
-            categoryField.disabled = true;
-            referralField.disabled = false;
+            referralCodeDiv.style.display = 'none';  // Hide referral code section
+            productSelectionDiv.style.display = 'none';  // Hide product selection section
+            categorySelectionDiv.style.display = 'block';  // Show category selection section
+        } else {
+            referralCodeDiv.style.display = 'none';  // Hide referral code section
+            productSelectionDiv.style.display = 'block';  // Show product selection section
+            categorySelectionDiv.style.display = 'block';  // Show category selection section
         }
     });
 
+    function generateReferralCode() {
+        // Example: Generate a random 10-character referral code
+        return Math.random().toString(36).substring(2, 12).toUpperCase();
+    }
+
+    // Populate Offer Data for Edit
     function populateOfferData(offerId, name, discountPercentage, startDate, endDate, offerType, products, categories, referralCode) {
         document.getElementById('offerForm').reset();
         document.getElementById('offer-id-field').value = offerId;
@@ -227,11 +243,14 @@
         document.getElementById('end_date').value = endDate;
         document.getElementById('offer_type').value = offerType;
 
+        // Trigger change event to manage the offer type selection
         document.getElementById('offer_type').dispatchEvent(new Event('change'));
 
+        // Populate product and category selection
         setSelectedOptions('products', products);
         setSelectedOptions('categories', categories);
 
+        // Set referral code if available
         document.getElementById('referral_code').value = referralCode || '';
     }
 
@@ -239,27 +258,20 @@
         const selectElement = document.getElementById(selectId);
         const selectedValuesArray = selectedValues ? selectedValues.split(', ') : [];
 
-        for (let option of selectElement.options) {
-            option.selected = selectedValuesArray.includes(option.value);
+        // For products, check the checkboxes
+        if (selectId === 'products') {
+            for (let productId of selectedValuesArray) {
+                const checkbox = document.getElementById('product_' + productId);
+                if (checkbox) checkbox.checked = true;
+            }
+        } else {
+            // For categories, select the options
+            for (let option of selectElement.options) {
+                option.selected = selectedValuesArray.includes(option.value);
+            }
         }
     }
-
-    document.querySelectorAll('.btn-warning').forEach(button => {
-        button.addEventListener('click', function () {
-            const offerId = this.dataset.offerId;
-            const name = this.dataset.offerName;
-            const discount = this.dataset.discount;
-            const start = this.dataset.start;
-            const end = this.dataset.end;
-            const type = this.dataset.type;
-            const products = this.dataset.products;
-            const categories = this.dataset.categories;
-
-            populateOfferData(offerId, name, discount, start, end, type, products, categories);
-        });
-    });
 </script>
-
 
     
 <!-- Add Bootstrap JS for Modal -->

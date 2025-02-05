@@ -262,7 +262,7 @@ def customer_list(request):
     if query:
         users = users.filter(username__icontains=query) | users.filter(email__icontains=query)
 
-    paginator = Paginator(users,3)  
+    paginator = Paginator(users,5)  
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 

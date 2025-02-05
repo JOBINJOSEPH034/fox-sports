@@ -288,6 +288,8 @@ class Wallet(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='wallet')
     balance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
+    def __str__(self):
+        return f"Wallet of {self.user.username}"
 
 #user transaction(store data for add and withdrow amount to wallet , not store product purchace using wallet)
 class Transaction(models.Model):
@@ -302,4 +304,6 @@ class Transaction(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     description = models.TextField(null=True, blank=True)
 
-
+    def __str__(self):
+        return f"Transaction {self.transaction_id} ({self.type}) - {self.amount}"
+ 
