@@ -1,30 +1,23 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block body %}
-{% if messages %}
-<div class="messages">
-    {% for message in messages %}
-        <div class="alert {% if message.tags %}alert-{{ message.tags }}{% endif %}">
-            {{ message }}
-        </div>
-    {% endfor %}
-</div>
-{% endif %}
-<div class="page-wrapper">
-    <div class="content container-fluid">
-        <div class="page-header">
+<div class="page-wrapper bg-light">
+    <div class="content container-fluid py-4">
+        <div class="page-header mb-4">
             <div class="row align-items-center">
                 <div class="col">
-                    <h3 class="page-title">Order Management</h3>
-                    <ul class="breadcrumb">
-                        <li class="breadcrumb-item"><a href="#">Dashboard</a></li>
-                        <li class="breadcrumb-item active">Orders</li>
-                    </ul>
+                    <h3 class="page-title text-primary fw-bold">Order Management</h3>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb m-0">
+                            <li class="breadcrumb-item"><a href="#" class="text-decoration-none">Dashboard</a></li>
+                            <li class="breadcrumb-item active">Orders</li>
+                        </ol>
+                    </nav>
                 </div>
                 <div class="col-auto">
-                    <form method="get" class="form-inline d-flex justify-content-end">
-                        <input type="text" name="search" value="{{ search_query }}" class="form-control mr-2" placeholder="Search orders...">
-                        <button type="submit" class="btn btn-primary">
+                    <form method="get" class="d-flex gap-2">
+                        <input type="text" name="search" value="{{ search_query }}" class="form-control form-control-lg shadow-sm" placeholder="Search orders...">
+                        <button type="submit" class="btn btn-primary btn-lg">
                             <i class="fas fa-search"></i>
                         </button>
                     </form>
@@ -33,139 +26,114 @@
         </div>
 
         <div class="row">
-            <div class="col-lg-12">
-                <div class="card card-table">
+            <div class="col-12">
+                <div class="card shadow-sm border-0">
                     <div class="card-body">
                         <div class="table-responsive">
-                            
-                            <table class="table table-hover table-center table-striped">
-                                <thead>
-                                    <tr class="text-center">
-                                        <th>Order ID</th>
-                                        <th>User ID</th>
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="text-center">Order ID</th>
+                                        <th class="text-center">User ID</th>
                                         <th>User</th>
-                                        <th>Product Item Name</th>
-                                        <th>Status</th>
-                                        <th>Total Price</th>
-                                        <th>Created At</th>
-                                        <th>Actions</th>
+                                        <th>Product Items</th>
+                                        <th class="text-center">Status</th>
+                                        <th class="text-center">Total Price</th>
+                                        <th class="text-center">Created At</th>
+                                        <th class="text-center">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for order in orders %}
-                                    <tr class="text-center">
-                                        <td>{{ order.id }}</td>
-                                        <td>{{ order.user.id }}</td>
+                                    <tr>
+                                        <td class="text-center">#{{ order.id }}</td>
+                                        <td class="text-center">{{ order.user.id }}</td>
                                         <td>{{ order.user.username }}</td>
                                         <td>
                                             {% for item in order.items.all %}
-                                            {{ item.product.name }} (x{{ item.quantity }})<br>
+                                            <div class="d-flex align-items-center gap-2 mb-1">
+                                                <span class="badge bg-light text-dark">×{{ item.quantity }}</span>
+                                                {{ item.product.name }}
+                                            </div>
                                             {% endfor %}
                                         </td>
-                                        <td>
+                                        <td class="text-center">
                                             {% if order.status == "Cancelled" %}
-                                                <span class="badge badge-danger">{{ order.get_status_display }}</span>
+                                                <span class="badge bg-danger">{{ order.get_status_display }}</span>
                                             {% elif order.status == "Delivered" %}
-                                                <span class="badge badge-success">{{ order.status }}</span>
+                                                <span class="badge bg-success">{{ order.status }}</span>
                                             {% elif order.status == "Shipped" %}
-                                                <span class="badge badge-primary">{{ order.status }}</span>
+                                                <span class="badge bg-primary">{{ order.status }}</span>
                                             {% elif order.status == "Out for Delivery" %}
-                                                <span class="badge badge-info">{{ order.status }}</span>
+                                                <span class="badge bg-info">{{ order.status }}</span>
                                             {% elif order.status == "Processing" %}
-                                                <span class="badge badge-secondary">{{ order.status }}</span>
+                                                <span class="badge bg-secondary">{{ order.status }}</span>
                                             {% elif order.status == "Pending" %}
-                                                <span class="badge badge-warning">{{ order.status }}</span>
+                                                <span class="badge bg-warning">{{ order.status }}</span>
                                             {% else %}
-                                                <span class="badge badge-light">{{ order.status }}</span>
+                                                <span class="badge bg-light text-dark">{{ order.status }}</span>
                                             {% endif %}
                                         </td>
-                                        <td>₹{{ order.total_price }}</td>
-                                        <td>{{ order.created_at|date:"d M Y, H:i" }}</td>
-                                        <td>
-                                            {% if order.status not in "Cancelled,Delivered,Return Accepted" %}
-                                                <!-- Dropdown Button -->
-                                               <!-- Dropdown Button -->
-<div class="dropdown">
-    <button class="btn btn-sm btn-primary dropdown-toggle" type="button" id="orderActions{{ order.id }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-        Change Status
-    </button>
-    <div class="dropdown-menu" aria-labelledby="orderActions{{ order.id }}" style="max-height: 200px; overflow-y: auto;">
-        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Pending' %}">Pending</a>
-        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Processing' %}">Processing</a>
-        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Shipped' %}">Shipped</a>
-        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Out for Delivery' %}">Out for Delivery</a>
-        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Delivered' %}">Delivered</a>
-        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Cancelled' %}">Cancel</a>
-        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Return Pending' %}">Return Pending</a>
-        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Return Accepted' %}">Return Accepted</a>
-    </div>
-</div>
-
+                                        <td class="text-center">₹{{ order.total_price }}</td>
+                                        <td class="text-center">{{ order.created_at|date:"d M Y, H:i" }}</td>
+                                        <td class="text-center">
+                                            {% if order.status not in "Cancelled,Delivered,Return Accepted,Payment Failed" %}
+                                                <div class="dropdown">
+                                                    <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button" id="orderActions{{ order.id }}" data-toggle="dropdown" aria-expanded="false">
+                                                        Update Status
+                                                    </button>
+                                                    <div class="dropdown-menu shadow-sm" aria-labelledby="orderActions{{ order.id }}">
+                                                        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Pending' %}">Pending</a>
+                                                        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Processing' %}">Processing</a>
+                                                        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Shipped' %}">Shipped</a>
+                                                        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Out for Delivery' %}">Out for Delivery</a>
+                                                        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Delivered' %}">Delivered</a>
+                                                        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Cancelled' %}">Cancel</a>
+                                                        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Return Pending' %}">Return Pending</a>
+                                                        <a class="dropdown-item" href="{% url 'admin_update_order_status' order.id 'Return Accepted' %}">Return Accepted</a>
+                                                    </div>
+                                                </div>
                                             {% else %}
-                                                <span class="badge badge-light">Completed</span>
+                                                <span class="text-muted">No actions available</span>
                                             {% endif %}
                                         </td>
-                                        
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="8" class="text-center">No orders found</td>
+                                        <td colspan="8" class="text-center py-4 text-muted">No orders found</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
 
-                            <!-- Pagination Links -->
-                            <div class="pagination-container">
-                                <nav aria-label="Page navigation">
-                                    <ul class="pagination justify-content-center">
-                                        <!-- First Page Link -->
-                                        {% if orders.has_previous %}
-                                        <li class="page-item">
-                                            <a class="page-link" href="?page=1" aria-label="First">
-                                                <span aria-hidden="true">&laquo;&laquo;</span>
-                                            </a>
-                                        </li>
-                                        {% endif %}
+                            <!-- Pagination -->
+                            {% if orders.has_previous or orders.has_next %}
+                            <nav aria-label="Page navigation" class="mt-4">
+                                <ul class="pagination justify-content-center">
+                                    {% if orders.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page=1"><i class="fas fa-angle-double-left"></i></a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ orders.previous_page_number }}"><i class="fas fa-angle-left"></i></a>
+                                    </li>
+                                    {% endif %}
 
-                                        <!-- Previous Page Link -->
-                                        {% if orders.has_previous %}
-                                        <li class="page-item">
-                                            <a class="page-link" href="?page={{ orders.previous_page_number }}" aria-label="Previous">
-                                                <span aria-hidden="true">&laquo;</span>
-                                            </a>
-                                        </li>
-                                        {% endif %}
+                                    <li class="page-item active">
+                                        <span class="page-link">Page {{ orders.number }} of {{ orders.paginator.num_pages }}</span>
+                                    </li>
 
-                                        <!-- Current Page Number -->
-                                        <li class="page-item active">
-                                            <span class="page-link">
-                                                {{ orders.number }} of {{ orders.paginator.num_pages }}
-                                                <span class="sr-only">(current)</span>
-                                            </span>
-                                        </li>
-
-                                        <!-- Next Page Link -->
-                                        {% if orders.has_next %}
-                                        <li class="page-item">
-                                            <a class="page-link" href="?page={{ orders.next_page_number }}" aria-label="Next">
-                                                <span aria-hidden="true">&raquo;</span>
-                                            </a>
-                                        </li>
-                                        {% endif %}
-
-                                        <!-- Last Page Link -->
-                                        {% if orders.has_next %}
-                                        <li class="page-item">
-                                            <a class="page-link" href="?page={{ orders.paginator.num_pages }}" aria-label="Last">
-                                                <span aria-hidden="true">&raquo;&raquo;</span>
-                                            </a>
-                                        </li>
-                                        {% endif %}
-                                    </ul>
-                                </nav>
-                            </div>
-                            
+                                    {% if orders.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ orders.next_page_number }}"><i class="fas fa-angle-right"></i></a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ orders.paginator.num_pages }}"><i class="fas fa-angle-double-right"></i></a>
+                                    </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                            {% endif %}
                         </div>
                     </div>
                 </div>

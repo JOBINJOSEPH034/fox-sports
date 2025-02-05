@@ -22,7 +22,7 @@ urlpatterns = [
     path('customer/edit_customer',views.edit_customer,name='edit_customer'),
     path('customers/<int:user_id>/block/', views.block_user, name='block_user'),
     path('customers/<int:user_id>/unblock/', views.unblock_user, name='unblock_user'),
-     path('delete_user/<int:user_id>/', views.delete_user, name='delete_user'),
+    path('delete_user/<int:user_id>/', views.delete_user, name='delete_user'),
 
 
     #url for admin category functions
@@ -65,7 +65,7 @@ urlpatterns = [
     path('export-to-excel/', views.export_to_excel, name='export_to_excel'),
     path('export-to-pdf/', views.export_to_pdf, name='export_to_pdf'),
 
-    #admin search
+   
 ]
 
 urlpatterns += static(settings.MEDIA_URL,document_root=settings.MEDIA_ROOT)

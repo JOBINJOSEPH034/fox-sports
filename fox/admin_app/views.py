@@ -20,26 +20,9 @@ from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from io import BytesIO
-from django.db.models.functions import TruncMonth,TruncYear
-
-
-from django.shortcuts import render
-from django.db.models import Sum
-from django.db.models.functions import TruncMonth, TruncYear, TruncWeek, TruncDay
-from django.http import JsonResponse
-
-
-
-from django.db.models import Sum, F
-from django.http import JsonResponse
-from user_app.models import OrderItem
 from django.db.models.functions import ExtractWeek, ExtractYear, ExtractMonth, ExtractDay
-from django.db.models import Sum, F
-from django.http import JsonResponse
 
 
-from django.shortcuts import render
-from django.db.models import Sum
 # Create your views here.
 
 @login_required

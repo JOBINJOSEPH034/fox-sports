@@ -224,7 +224,7 @@ class SalesReport(models.Model):
 
 
    
-# Referral Model for managing referral codes and relationships
+#currently not using
 class Referral(models.Model):
     referrer = models.ForeignKey(User, on_delete=models.CASCADE, related_name="referrals")
     referred_user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)

@@ -136,9 +136,8 @@ def signup(request):
         email = request.POST.get('email')
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
-        referral_code = request.POST.get('referral_code', '').strip()  # Get referral code
+        referral_code = request.POST.get('referral_code', '').strip()
 
-        # 🔹 Step 1: Basic Validations
         if not all([first_name, last_name, user_name, email, password, confirm_password]):
             messages.error(request, 'All fields are required!')
             return redirect('signup')
@@ -160,14 +159,13 @@ def signup(request):
             messages.error(request, 'Email is already registered!')
             return redirect('signup')
 
-        # 🔹 Step 2: Check Referral Code Validity from Offer Model
         referrer = None
         if referral_code:
             current_time = timezone.now()
             referrer = Offer.objects.filter(
                 referral_code=referral_code,
-                start_date__lte=current_time,  # Offer has started
-                end_date__gte=current_time     # Offer is still valid
+                start_date__lte=current_time,
+                end_date__gte=current_time     
             ).first()
             
             if not referrer:
@@ -175,7 +173,6 @@ def signup(request):
                 return redirect('signup')
 
         try:
-            # 🔹 Step 3: Create New User
             user = User.objects.create_user(
                 first_name=first_name,
                 last_name=last_name,
@@ -184,12 +181,10 @@ def signup(request):
                 password=password
             )
 
-            # 🔹 Step 4: Create Wallet for the New User
             wallet, created = Wallet.objects.get_or_create(user=user)
 
-            # 🔹 Step 5: Handle Referral Reward System
             if referrer:
-                wallet.balance += 100  # Reward amount
+                wallet.balance += 100  
                 wallet.save()
 
                 Transaction.objects.create(

@@ -33,3 +33,9 @@ Thumbs.db
 *.bmp
 *.svg
 *.webp
+
+# Ignore environment files
+.env
+*.env
+config/settings.py
+config/razorpay_config.py
