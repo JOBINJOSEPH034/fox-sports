@@ -21,6 +21,8 @@ from django.http import HttpResponse
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph
 from reportlab.lib.styles import getSampleStyleSheet
+from json.decoder import JSONDecodeError
+
 
 
 
@@ -299,6 +301,8 @@ def product_details(request, product_id):
         'discounted_price': discounted_price,
         'variant_offers': variant_offers,  # Pass the dictionary
     })
+
+    
 @login_required
 def cart_page(request):
     cart, created = Cart.objects.get_or_create(user=request.user)
@@ -582,7 +586,6 @@ def delete_address(request, address_id):
     address.delete()
     return redirect('manage_addresses')
 
-
 @login_required
 def checkout(request):
     order_id = request.GET.get('order_id')
@@ -675,9 +678,10 @@ def checkout(request):
                 )
 
         if cart.applied_coupon:
-            cart.applied_coupon.used = True
+            order.coupons.add(cart.applied_coupon)
+            cart.applied_coupon.used = True  # Mark the coupon as used
             cart.applied_coupon.save()
-
+            
         if payment_method == "wallet":
             wallet = request.user.wallet
             wallet.balance -= Decimal(final_total)
@@ -764,6 +768,7 @@ def checkout(request):
         "wallet_disabled": wallet_disabled,
         "delivery_charge": delivery_charge
     })
+
 
 
      
@@ -855,11 +860,16 @@ def verify_payment(request):
     
 razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
 
+
 @csrf_exempt
 def payment_failed(request):
     if request.method == 'POST':
         try:
-            data = json.loads(request.body)
+            try:
+                data = json.loads(request.body)
+            except JSONDecodeError:
+                return JsonResponse({'success': False, 'error': 'Invalid JSON format'}, status=400)
+
             error_code = data.get('error_code')
             error_description = data.get('error_description')
             address_id = data.get('address_id')
@@ -880,9 +890,18 @@ def payment_failed(request):
                 payment_failed_at=timezone.now()
             )
 
-            cart = Cart.objects.get(user=request.user)
+            cart = Cart.objects.filter(user=request.user).first()
+            if not cart:
+                return JsonResponse({'success': False, 'error': 'Cart not found'}, status=404)
+
             cart_items = CartItem.objects.filter(cart=cart)
+            if not cart_items.exists():
+                return JsonResponse({'success': False, 'error': 'No items in cart'}, status=400)
+
             for item in cart_items:
+                if not item.variant:
+                    return JsonResponse({'success': False, 'error': 'Invalid product variant'}, status=400)
+
                 OrderItem.objects.create(
                     order=order,
                     product=item.variant.product,

@@ -354,7 +354,8 @@ button:hover {
         </div>
         
        <!-- JavaScript for Increment and Decrement -->
-       <script>
+      
+     <script>
         {% for item in cart_items %}
             // Increment button functionality
             document.getElementById('increment-btn-{{ item.id }}').addEventListener('click', function() {
@@ -394,7 +395,7 @@ button:hover {
                 }
             });
         {% endfor %}
-    </script>
+    </script>  
     
 
         
@@ -703,7 +704,182 @@ document.addEventListener("DOMContentLoaded", function() {
     });
 </script>
 
+<script>
+// Function to update cart item quantity
+function updateCartItem(itemId, quantity) {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    return fetch('/update_cart_item/' + itemId + '/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken
+        },
+        body: `quantity=${quantity}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update the item total price
+            document.querySelector(`#total-price-${itemId}`).textContent = 
+                '₹' + data.item_total.toFixed(2);
+            
+            // Update cart summary
+            document.querySelector('#cart-subtotal').textContent = 
+                '₹' + data.cart_total.toFixed(2);
+            document.querySelector('#final-total').textContent = 
+                '₹' + data.final_total.toFixed(2);
+            
+            if (data.discount_amount) {
+                document.querySelector('#discount-amount').textContent = 
+                    '₹-' + data.discount_amount.toFixed(2);
+            }
+            
+            // Hide any previous error messages
+            document.querySelector(`#stock-error-${itemId}`).style.display = 'none';
+        } else {
+            // Show error message
+            document.querySelector(`#stock-error-${itemId}`).textContent = data.error;
+            document.querySelector(`#stock-error-${itemId}`).style.display = 'block';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+}
 
+// Function to handle coupon application
+function applyCoupon(couponCode) {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    return fetch('/cart/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken
+        },
+        body: `coupon_code=${couponCode}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update discount amount
+            document.querySelector('#discount-amount').textContent = 
+                '₹-' + data.discount_amount.toFixed(2);
+            
+            // Update final total
+            document.querySelector('#final-total').textContent = 
+                '₹' + data.final_total.toFixed(2);
+            
+            // Update coupon display
+            document.querySelector('#coupon-section').innerHTML = `
+                <div class="input-group">
+                    <input type="text" class="form-control" value="${couponCode}" disabled>
+                    <button onclick="removeCoupon()" class="btn btn-danger">Remove Coupon</button>
+                </div>
+            `;
+            
+            // Show success message
+            showMessage('success', 'Coupon applied successfully!');
+        } else {
+            showMessage('error', data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('error', 'An error occurred while applying the coupon.');
+    });
+}
+
+// Function to remove coupon
+function removeCoupon() {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    return fetch('/cart/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': csrfToken
+        },
+        body: 'remove_coupon=true'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Reset discount amount
+            document.querySelector('#discount-amount').textContent = '₹0.00';
+            
+            // Update final total
+            document.querySelector('#final-total').textContent = 
+                '₹' + data.final_total.toFixed(2);
+            
+            // Reset coupon form
+            document.querySelector('#coupon-section').innerHTML = `
+                <div class="input-group">
+                    <input type="text" class="form-control" name="coupon_code" 
+                           placeholder="Enter Coupon Code" required>
+                    <button onclick="applyCoupon(this.previousElementSibling.value)" 
+                            class="btn btn-primary">Apply Coupon</button>
+                </div>
+            `;
+            
+            showMessage('success', 'Coupon removed successfully!');
+        } else {
+            showMessage('error', data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showMessage('error', 'An error occurred while removing the coupon.');
+    });
+}
+
+// Function to show messages
+function showMessage(type, message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    `;
+    
+    document.querySelector('.container-fluid').insertBefore(
+        alertDiv, 
+        document.querySelector('.container-fluid').firstChild
+    );
+    
+    // Auto-dismiss after 3 seconds
+    setTimeout(() => {
+        alertDiv.remove();
+    }, 3000);
+}
+
+// Event listeners for quantity buttons
+document.addEventListener('DOMContentLoaded', function() {
+    const quantityForms = document.querySelectorAll('[id^="update-cart-form-"]');
+    
+    quantityForms.forEach(form => {
+        const itemId = form.id.replace('update-cart-form-', '');
+        const incrementBtn = document.querySelector(`#increment-btn-${itemId}`);
+        const decrementBtn = document.querySelector(`#decrement-btn-${itemId}`);
+        const quantityInput = document.querySelector(`#quantity-input-${itemId}`);
+        
+        incrementBtn.addEventListener('click', function() {
+            const newQuantity = parseInt(quantityInput.value) + 1;
+            updateCartItem(itemId, newQuantity);
+        });
+        
+        decrementBtn.addEventListener('click', function() {
+            const newQuantity = parseInt(quantityInput.value) - 1;
+            if (newQuantity >= 1) {
+                updateCartItem(itemId, newQuantity);
+            }
+        });
+    });
+});
+</script>
 </body>
 
 </html>

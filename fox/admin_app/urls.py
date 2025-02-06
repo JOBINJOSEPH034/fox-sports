@@ -37,6 +37,8 @@ urlpatterns = [
     path('order/<int:order_id>/status/<str:status>/', views.admin_update_order_status, name='admin_update_order_status'),
     path('order/<int:order_id>/cancel/', views.admin_cancel_order, name='admin_cancel_order'),
 
+    path('order-details/<int:order_id>/', views.admin_order_details, name='admin_order_details'),
+
 
     #url for admin inventry management
     path('inventory/', views.inventory_management, name='inventory_management'),

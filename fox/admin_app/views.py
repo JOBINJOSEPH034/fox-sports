@@ -3,7 +3,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse
 from django.contrib import messages
 from . models import Category,Product,Brand,ProductVariant,Coupon,Offer
-from user_app.models import Order,OrderItem
+from user_app.models import Order,OrderItem,Address
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
@@ -325,6 +325,7 @@ def toggle_category_status(request, category_id):
     messages.success(request, f"Category '{category.name}' has been {status}.")
     return redirect('category')
 
+
 @login_required
 @never_cache
 def admin_order_management(request):
@@ -346,6 +347,76 @@ def admin_order_management(request):
     orders_page = paginator.get_page(page_number)
 
     return render(request, 'admin_order.html', {'orders': orders_page, 'search_query': search_query})
+
+
+
+from django.shortcuts import get_object_or_404
+from django.http import JsonResponse
+from django.utils.html import format_html
+from user_app.models import Order  # Ensure correct import
+from user_app.models import Address  # Import Address model
+
+
+
+def admin_order_details(request, order_id):
+    order = get_object_or_404(Order, id=order_id)
+    
+    # Fetch the default address for the order user
+    address = Address.objects.filter(user=order.user, is_default=True).first()
+
+    order_details_html = format_html(
+        """
+        <p><strong>Order ID:</strong> {order_id}</p>
+        <p><strong>User:</strong> {username}</p>
+        <p><strong>Status:</strong> {status}</p>
+        <p><strong>Total Price:</strong> ₹{total_price}</p>
+        <p><strong>Created At:</strong> {created_at}</p>
+
+        <h6>Items:</h6>
+        <ul class="list-unstyled">
+        {items}
+        </ul>
+
+        <h6>Delivery Address:</h6>
+        {address_details}
+        """,
+        order_id=order.id,
+        username=order.user.username,
+        status=order.status,
+        total_price=order.total_price,
+        created_at=order.created_at.strftime("%d %b %Y, %H:%M"),
+        items=format_html(
+            "".join(
+                f"""
+                <li class="d-flex align-items-center gap-3 mb-2">
+                    <img src="{item.product.image1.url}" alt="{item.product.name}" class="rounded" width="120" height="120">
+                    {item.product.name} (×{item.quantity}) - ₹{item.total_price}
+                </li>
+                """
+                for item in order.items.all()
+            )
+        ),
+        address_details=format_html(
+            """
+            <p><strong>Name:</strong> {name}</p>
+            <p><strong>Phone:</strong> {phone}</p>
+            <p><strong>Address:</strong> {address_line}, {city}, {state} - {postal_code}</p>
+            """ if address else "<p>No address found for this order.</p>",
+            name=address.name if address else "",
+            phone=address.phone if address else "",
+            address_line=address.address_line if address else "",
+            city=address.city if address else "",
+            state=address.state if address else "",
+            postal_code=address.postal_code if address else ""
+        )
+    )
+
+    return JsonResponse({"success": True, "html": order_details_html})
+
+
+
+
+
 
 @login_required
 def admin_update_order_status(request, order_id, status):
@@ -972,7 +1043,10 @@ def export_to_pdf(request):
     item_style = ParagraphStyle(name="ItemStyle", fontSize=10, leading=12, wordWrap='CJK')
 
     for order in orders:
-        items = Paragraph(", ".join([str(item.product.name) for item in order.items.all()]), item_style)
+        items = Paragraph(", ".join(
+            [str(item.product.name) if item.product else "Unknown Product" for item in order.items.all()]
+        ), item_style)
+
         offer_coupon = order.offer_or_coupon
         offer_discount = order.offer_discount + order.coupon_discount
         final_amount = order.discounted_price
