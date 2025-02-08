@@ -23,82 +23,72 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for order in page_obj.object_list %}
-                        <tr id="order-row-{{ order.id }}">
-                            <td class="px-4">#{{ order.id }}</td>
-                            <td class="px-4">{{ order.created_at|date:"d M Y" }}</td>
+                        {% for item in page_obj %}
+                        <tr id="order-item-row-{{ item.id }}">
+                            <td class="px-4">#{{ item.order.id }}</td>
+                            <td class="px-4">{{ item.order.created_at|date:"d M Y" }}</td>
                             <td class="px-4">
-                                {% for item in order.items.all %}
                                 <div class="mb-2">
-                                    <span class="fw-medium">{{ item.product.name }}</span>
+                                    <span class="fw-medium">{{ item.variant.product.name }}</span>
+                                    {% if item.variant.name %}
+                                        <small class="text-muted">({{ item.variant.name }})</small>
+                                    {% endif %}
                                     <span class="badge bg-light text-dark ms-2">×{{ item.quantity }}</span>
                                 </div>
-                                {% endfor %}
                             </td>
                             <td class="px-4">
-                                <span class="badge {% if order.status == 'Delivered' %}bg-success
-                                    {% elif order.status == 'Cancelled' %}bg-danger
-                                    {% elif order.status == 'Return Pending' %}bg-warning text-dark
-                                    {% elif order.status == 'Payment Pending' %}bg-info text-dark
-                                    {% elif order.status == 'Pending' %}bg-primary
-                                    {% elif order.status == 'Processing' %}bg-secondary
-                                    {% elif order.status == 'Shipped' %}bg-info
-                                    {% elif order.status == 'Out for Delivery' %}bg-dark
-                                    {% elif order.status == 'Return Accepted' %}bg-secondary
-                                    {% elif order.status == 'Paid' %}bg-success
-                                    {% elif order.status == 'Completed' %}bg-success
-                                    {% elif order.status == 'Payment Failed' %}bg-danger
-                                    {% else %}bg-secondary{% endif %} px-3 py-2">
-                                    {{ order.status }}
-                                </span>
+                                {% if item.orderreturn %}
+                                    <span class="badge {% if item.orderreturn.status == 'Return Pending' %}bg-warning text-dark
+                                        {% elif item.orderreturn.status == 'Return Accepted' %}bg-success
+                                        {% elif item.orderreturn.status == 'Return Rejected' %}bg-danger{% endif %} px-3 py-2">
+                                        {{ item.orderreturn.status }}
+                                    </span>
+                                {% else %}
+                                    <span class="badge {% if item.status == 'Delivered' %}bg-success
+                                        {% elif item.status == 'Cancelled' %}bg-danger
+                                        {% elif item.status == 'Payment Pending' %}bg-info text-dark
+                                        {% elif item.status == 'Pending' %}bg-primary
+                                        {% elif item.status == 'Processing' %}bg-info
+                                        {% elif item.status == 'Shipped' %}bg-info
+                                        {% elif item.status == 'Out for Delivery' %}bg-dark
+                                        {% else %}bg-dark{% endif %} px-3 py-2">
+                                        {{ item.status }}
+                                    </span>
+                                {% endif %}
                             </td>
                             <td class="px-4">
                                 <span class="badge bg-light text-dark px-3 py-2">
-                                    {% if order.payment_method == 'cod' %}Cash on Delivery
-                                    {% elif order.payment_method == 'wallet' %}Wallet
-                                    {% elif order.payment_method == 'razorpay' %}Razorpay
+                                    {% if item.order.payment_method == 'cod' %}Cash on Delivery
+                                    {% elif item.order.payment_method == 'wallet' %}Wallet
+                                    {% elif item.order.payment_method == 'razorpay' %}Razorpay
                                     {% else %}Not Available{% endif %}
                                 </span>
                             </td>
-                            <td class="px-4 fw-medium">₹{{ order.total_price|floatformat:2 }}</td>
+                            <td class="px-4 fw-medium">₹{{ item.total_price|floatformat:2 }}</td>
                             <td class="px-4">
-                                <div class="d-flex gap-2">
-                                    {% if order.status == 'Payment Pending' %}
-                                    <button class="btn btn-sm btn-primary continue-payment-btn"
-                                            data-order-id="{{ order.id }}"
-                                            data-payment-method="{{ order.payment_method }}"
-                                            data-url="{% url 'continue_payment' order.id %}">
-                                        Pay Now
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger cancel-order-btn"
-                                            data-order-id="{{ order.id }}">
-                                        Cancel
-                                    </button>
+                                <div class="d-flex gap-2 flex-column">
+                                    {% if item.status == 'Delivered' and not item.orderreturn %}
+                                        {% if item.order.return_allowed %}
+                                            <button class="btn btn-sm btn-warning" 
+                                                    onclick="openReturnModal('{{ item.id }}')">
+                                                Return Item
+                                            </button>
+                                            <small class="text-muted">
+                                                Return available until {{ item.order.delivered_at|add:7|date:"d M Y" }}
+                                            </small>
+                                        {% else %}
+                                            <small class="text-muted">Return period has expired</small>
+                                        {% endif %}
                                     {% endif %}
-
-                                    {% if order.status in 'Processing,Shipped,Out for Delivery,Pending,pending' %}
-                                    <form action="{% url 'cancel_order' order.id %}" method="POST" class="d-inline">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">Cancel</button>
-                                    </form>
-                                    {% endif %}
-
-                                    {% if order.status == 'Delivered' %}
-                                    <button class="btn btn-sm btn-warning" onclick="openReturnModal({{ order.id }})">
-                                        Return
-                                    </button>
-                                    {% endif %}
-
-                                    {% if order.status == 'Cancelled' %}
-                                    <span class="text-muted small">Order is cancelled. Amount will be credited to wallet.</span>
-                                    {% endif %}
-
-                                    {% if order.status == 'Payment Failed' %}
-                                    <span class="text-danger small">Payment failed. Please try again.</span>
-                                    {% endif %}
-
-                                    {% if order.status == 'Return Pending' %}
-                                    <span class="text-warning small">Product will be picked up within 3 days.</span>
+                                    
+                                    {% if item.status in 'Payment Pending,Pending,Processing,Shipped,Out for Delivery' %}
+                                        <form action="{% url 'cancel_order_item' item.id %}" method="POST" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-danger"
+                                                    onclick="return confirm('Are you sure you want to cancel this item?')">
+                                                Cancel Item
+                                            </button>
+                                        </form>
                                     {% endif %}
                                 </div>
                             </td>
@@ -143,13 +133,13 @@
     </div>
 </div>
 
-<!-- Return Modal -->
+
 <div class="modal fade" id="returnModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <form action="{% url 'request_return' %}" method="POST" id="returnForm">
+            <form action="{% url 'request_return' %}" method="POST" id="returnForm" enctype="multipart/form-data">
                 {% csrf_token %}
-                <input type="hidden" name="order_id" id="returnOrderId">
+                <input type="hidden" name="order_item_id" id="returnOrderItemId">
                 <div class="modal-header">
                     <h5 class="modal-title">Request Return</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -167,8 +157,11 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Additional Comments</label>
-                        <textarea name="comment" class="form-control" rows="3" 
-                                placeholder="Please provide any additional details..."></textarea>
+                        <textarea name="additional_comments" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Upload Image (Optional)</label>
+                        <input type="file" name="image" class="form-control" accept="image/*">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -180,9 +173,11 @@
     </div>
 </div>
 
+
+
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-         // Continue Payment Button Handler
+    // Continue Payment Button Handler
     document.querySelectorAll(".continue-payment-btn").forEach(button => {
         button.addEventListener("click", function() {
             const paymentUrl = this.getAttribute("data-url");
@@ -206,11 +201,11 @@
                           updateOrderStatus(orderId, 'Paid');
                           updateOrderButtonVisibility(orderId);
                       } else {
-                          alert('Payment failed. Please try again.');
+                          showAlert('Payment failed. Please try again.', 'danger');
                       }
                   }).catch(error => {
                       console.error('Error:', error);
-                      alert('An error occurred while processing the payment.');
+                      showAlert('An error occurred while processing the payment.', 'danger');
                   });
             } else {
                 // Redirect to Razorpay payment page
@@ -219,106 +214,185 @@
         });
     });
     
-        // Cancel Order Button Handler
-        document.querySelectorAll(".cancel-order-btn").forEach(button => {
-            button.addEventListener("click", async function() {
-                const orderId = this.getAttribute("data-order-id");
-                if (confirm("Are you sure you want to cancel this order?")) {
-                    try {
-                        const response = await fetch(`{% url 'cancel_order' 0 %}`.replace('0', orderId), {
-                            method: 'POST',
-                            headers: {
-                                'X-CSRFToken': '{{ csrf_token }}'
-                            }
-                        });
-                        
-                        if (response.ok) {
-                            location.reload();
-                        } else {
-                            alert('Failed to cancel order. Please try again.');
-                        }
-                    } catch (error) {
-                        console.error('Error:', error);
-                        alert('An error occurred while canceling the order.');
-                    }
-                }
-            });
-        });
-    
-        // Return Form Handler
-        const returnForm = document.getElementById('returnForm');
-        if (returnForm) {
-            returnForm.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                
+    // Cancel Order Button Handler
+    document.querySelectorAll(".cancel-order-btn").forEach(button => {
+        button.addEventListener("click", async function() {
+            const orderId = this.getAttribute("data-order-id");
+            if (confirm("Are you sure you want to cancel this order?")) {
                 try {
-                    const response = await fetch(this.action, {
+                    const response = await fetch(`/cancel-order/${orderId}/`, {
                         method: 'POST',
-                        body: new FormData(this),
                         headers: {
                             'X-CSRFToken': '{{ csrf_token }}'
                         }
                     });
-    
-                    const data = await response.json();
                     
-                    if (data.status === 'success') {
-                        const modal = bootstrap.Modal.getInstance(document.getElementById('returnModal'));
-                        modal.hide();
-                        alert('Return request submitted successfully.');
+                    if (response.ok) {
                         location.reload();
                     } else {
-                        alert('Failed to submit return request. Please try again.');
+                        showAlert('Failed to cancel order. Please try again.', 'danger');
                     }
                 } catch (error) {
                     console.error('Error:', error);
-                    alert('An error occurred while submitting the return request.');
+                    showAlert('An error occurred while canceling the order.', 'danger');
                 }
-            });
-        }
+            }
+        });
     });
-    function openReturnModal(orderId) {
-    document.getElementById('returnOrderId').value = orderId;
+
+    // Handle Return Form Submission
+    const returnForm = document.getElementById('returnForm');
+    const returnModal = document.getElementById('returnModal');
+    
+    if (returnForm) {
+        returnForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitButton = this.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            
+            try {
+                const formData = new FormData(this);
+                const response = await fetch(this.action, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    // Close modal
+                    const bsModal = bootstrap.Modal.getInstance(returnModal);
+                    bsModal.hide();
+                    
+                    // Update UI
+                    const itemId = formData.get('order_item_id');
+                    updateItemReturnStatus(itemId);
+                    
+                    showAlert('Return request submitted successfully', 'success');
+                    
+                    // Reset form
+                    this.reset();
+                } else {
+                    showAlert(data.message || 'Failed to submit return request', 'danger');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showAlert('An error occurred while submitting the return request', 'danger');
+            } finally {
+                submitButton.disabled = false;
+            }
+        });
+    }
+});
+
+// Function to update item return status
+function updateItemReturnStatus(itemId) {
+    const itemRow = document.getElementById(`order-item-row-${itemId}`);
+    if (itemRow) {
+        // Update status badge
+        const statusCell = itemRow.querySelector('td:nth-child(4)');
+        if (statusCell) {
+            statusCell.innerHTML = `
+                <span class="badge bg-warning text-dark px-3 py-2">
+                    Return Pending
+                </span>
+            `;
+        }
+        
+        // Update action buttons
+        const actionCell = itemRow.querySelector('td:last-child');
+        if (actionCell) {
+            actionCell.innerHTML = `
+                <div class="text-warning small">
+                    Return request is being processed
+                </div>
+            `;
+        }
+    }
+}
+
+// Function to open return modal
+function openReturnModal(itemId) {
+    document.getElementById('returnOrderItemId').value = itemId;
     const modal = new bootstrap.Modal(document.getElementById('returnModal'));
     modal.show();
 }
 
+// Function to show alert messages
 function showAlert(message, type) {
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    const alertPlaceholder = document.getElementById('alertPlaceholder') || document.body;
+    const wrapper = document.createElement('div');
+    wrapper.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
+    wrapper.style.zIndex = '9999';
+    
+    wrapper.innerHTML = `
+        <div>${message}</div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     `;
-    document.body.appendChild(alertDiv);
-    setTimeout(() => alertDiv.remove(), 3000);
+    
+    alertPlaceholder.appendChild(wrapper);
+    setTimeout(() => {
+        const alert = bootstrap.Alert.getOrCreateInstance(wrapper);
+        alert.close();
+    }, 3000);
 }
-    
-    // Update Order Status
-    function updateOrderStatus(orderId, status) {
-        const orderRow = document.getElementById(`order-row-${orderId}`);
-        if (orderRow) {
-            const statusBadge = orderRow.querySelector('.badge');
+
+// Update Order Status
+function updateOrderStatus(orderId, status) {
+    const orderRows = document.querySelectorAll(`[id^="order-item-row-"][data-order-id="${orderId}"]`);
+    orderRows.forEach(row => {
+        const statusBadge = row.querySelector('.order-status-badge');
+        if (statusBadge && !statusBadge.classList.contains('return-status')) {
             statusBadge.textContent = status;
-            statusBadge.classList.remove(...statusBadge.classList);
-            statusBadge.classList.add('badge', 'bg-success');
-            statusBadge.classList.add('text-white');
-            statusBadge.textContent = status;
+            statusBadge.className = `badge px-3 py-2 order-status-badge ${getStatusClass(status)}`;
         }
-    }
-    
-      // Hide "Continue Payment" Button for a Paid Order
-      function updateOrderButtonVisibility(orderId) {
-        const orderRow = document.getElementById(`order-row-${orderId}`);
-        if (orderRow) {
-            const continuePaymentButton = orderRow.querySelector('.continue-payment-btn');
-            if (continuePaymentButton) {
-                continuePaymentButton.style.display = 'none'; // Hide the button after payment
-            }
+    });
+}
+
+// Get appropriate class for status badge
+function getStatusClass(status) {
+    const statusClasses = {
+        'Delivered': 'bg-success',
+        'Cancelled': 'bg-danger',
+        'Return Pending': 'bg-warning text-dark',
+        'Payment Pending': 'bg-info text-dark',
+        'Pending': 'bg-primary',
+        'Processing': 'bg-info',
+        'Shipped': 'bg-info',
+        'Out for Delivery': 'bg-dark',
+        'Return Accepted': 'bg-success',
+        'Paid': 'bg-success',
+        'Payment Failed': 'bg-danger'
+    };
+    return statusClasses[status] || 'bg-dark';
+}
+
+// Update Order Button Visibility
+function updateOrderButtonVisibility(orderId) {
+    const orderRows = document.querySelectorAll(`[id^="order-item-row-"][data-order-id="${orderId}"]`);
+    orderRows.forEach(row => {
+        const paymentButton = row.querySelector('.continue-payment-btn');
+        if (paymentButton) {
+            paymentButton.style.display = 'none';
         }
+    });
+}
+
+// Check if all items in an order are returned
+async function checkAllItemsReturned(orderId) {
+    try {
+        const response = await fetch(`/check-order-status/${orderId}/`);
+        const data = await response.json();
+        return data.all_items_returned;
+    } catch (error) {
+        console.error("Error checking order status:", error);
+        return false;
     }
-    
-    
+}
     </script>
     
 {% endblock %}

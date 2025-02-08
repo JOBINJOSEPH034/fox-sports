@@ -96,7 +96,7 @@ class Order(models.Model):
         ('Return Pending', 'Return Pending'),
         ('Return Accepted', 'Return Accepted'),
         ('Paid', 'Paid'),
-        ('failed', 'Failed'),  
+        ('Payment Failed', 'Failed'),  
 
     ]
 
@@ -127,6 +127,7 @@ class Order(models.Model):
     delivery_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     payment_attempts = models.IntegerField(default=0)  # Track payment attempts
     payment_failed_at = models.DateTimeField(null=True, blank=True)  # Track first failure timestamp
+    delivered_at = models.DateTimeField(null=True, blank=True)  # Track when the order was delivered
 
 
 
@@ -138,11 +139,27 @@ class Order(models.Model):
         for item in self.items.all():
             item.reduce_stock()
 
+
+
+
+    @property
+    def has_returns(self):
+        """Check if any items in the order have returns"""
+        return self.items.filter(orderreturn__isnull=False).exists()
+
+    @property
+    def all_items_returned(self):
+        """Check if all items in the order are returned"""
+        return all(item.orderreturn is not None for item in self.items.all())
+        
+
     @property
     def return_allowed(self):
-        if self.status == 'Delivered':
-            return now() <= self.created_at + timedelta(days=14)
-        return False
+        if not self.delivered_at:
+            return False
+        return_period_days = 7  # Adjust as needed
+        return_deadline = self.delivered_at + timedelta(days=return_period_days)
+        return now() <= return_deadline
 
     def refund_wallet(self):
 
@@ -219,25 +236,30 @@ class Order(models.Model):
 
 
 
-#for use orderreturn
-class OrderReturn(models.Model):
-    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='return_request')
-    reason = models.TextField()
-    additional_comments = models.TextField(blank=True, null=True)
-    requested_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Return Request for Order {self.order.id}"
-
 
 
 # OrderItem Model(reduce the order count)
 class OrderItem(models.Model):
+    STATUS_CHOICES = [
+        ('Pending', 'Pending'),
+        ('Processing', 'Processing'),
+        ('Shipped', 'Shipped'),
+        ('Out for Delivery', 'Out for Delivery'),
+        ('Delivered', 'Delivered'),
+        ('Cancelled', 'Cancelled'),
+        ('Return Pending', 'Return Pending'),
+        ('Return Accepted', 'Return Accepted'),
+        ('Paid', 'Paid'),
+        ('Payment Failed', 'Failed'),
+    ]
     order = models.ForeignKey(Order, related_name="items", on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, null=True, blank=True)
     variant = models.ForeignKey(ProductVariant, on_delete=models.CASCADE, null=True, blank=True)
     quantity = models.PositiveIntegerField()
     total_price = models.DecimalField(max_digits=10, decimal_places=2,default=0)
+    returned_quantity = models.PositiveIntegerField(default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+
 
     def reduce_stock(self):
         
@@ -246,10 +268,102 @@ class OrderItem(models.Model):
         elif self.product:
             self.product.reduce_stock(self.quantity)
 
+    def increase_stock_for_return(self, return_quantity):
+        """Increase stock when items are returned"""
+        if return_quantity > self.quantity - self.returned_quantity:
+            raise ValueError("Return quantity cannot exceed available quantity")
+            
+        if self.variant:
+            self.variant.increase_stock(return_quantity)
+        elif self.product:
+            self.product.increase_stock(return_quantity)
+            
+        self.returned_quantity += return_quantity
+        self.save()
+    
+    property
+    def return_status(self):
+        """Get the return status for this specific item"""
+        try:
+            return_request = self.orderreturn
+            return return_request.status if return_request else None
+        except OrderReturn.DoesNotExist:
+            return None
+
+    @property
+    def can_be_returned(self):
+        """Check if this item can be returned"""
+        if self.order.status == 'Delivered':
+            if not self.orderreturn:  # No return request exists
+                return timezone.now() <= self.order.delivered_at + timedelta(days=14)
+        return False
+
+
+
+    @property
+    def available_quantity_for_return(self):
+        """Get quantity available for return"""
+        return self.quantity - self.returned_quantity        
+
     def __str__(self):
         if self.variant:
             return f"{self.variant.product.name} (x{self.quantity})"
         return f"{self.product.name} (x{self.quantity})"
+
+
+
+
+#for use orderreturn
+class OrderReturn(models.Model):
+
+    RETURN_STATUS_CHOICES = (
+        ('Return Pending', 'Return Pending'),
+        ('Return Accepted', 'Return Accepted'),
+        ('Return Rejected', 'Return Rejected'),
+    )
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, null=True, blank=True)
+    reason = models.TextField()
+    additional_comments = models.TextField(blank=True, null=True)
+    requested_at = models.DateTimeField(auto_now_add=True)
+    order_item = models.OneToOneField(OrderItem, on_delete=models.CASCADE, related_name='orderreturn',blank=True, null=True)
+    image = models.ImageField(upload_to='return_proofs/', blank=True, null=True)
+    status = models.CharField(max_length=20, choices=RETURN_STATUS_CHOICES, default='Return Pending')
+    return_requested_at = models.DateTimeField(default=now) 
+    return_quantity = models.PositiveIntegerField(default=1)
+    processed = models.BooleanField(default=False)
+
+    def save(self, *args, **kwargs):
+        if not self.pk:  # New return request
+            self.order = self.order_item.order
+        super().save(*args, **kwargs)
+
+    def process_return(self):
+        """Process the return and update stock"""
+        if not self.processed and self.status == 'Return Accepted':
+            try:
+                # Check if return quantity is valid
+                if self.return_quantity > self.order_item.quantity - self.order_item.returned_quantity:
+                    raise ValueError("Return quantity exceeds available quantity")
+
+                # Update the stock
+                if self.order_item.variant:
+                    self.order_item.variant.increase_stock(self.return_quantity)
+                elif self.order_item.product:
+                    self.order_item.product.increase_stock(self.return_quantity)
+
+                # Update the returned quantity on the order item
+                self.order_item.returned_quantity += self.return_quantity
+                self.order_item.save()
+
+                # Mark as processed
+                self.processed = True
+                self.save()
+                return True
+            except Exception as e:
+                print(f"Error processing return: {str(e)}")
+                return False
+        return False
+
 
 
 #for user profile

@@ -36,8 +36,20 @@ urlpatterns = [
     path('admin_order-management/', views.admin_order_management, name='admin_order_management'),
     path('order/<int:order_id>/status/<str:status>/', views.admin_update_order_status, name='admin_update_order_status'),
     path('order/<int:order_id>/cancel/', views.admin_cancel_order, name='admin_cancel_order'),
+    path('admin/process-return/<int:return_id>/', views.process_return_request, name='process_return_request'),
 
     path('order-details/<int:order_id>/', views.admin_order_details, name='admin_order_details'),
+# urls.py
+path('order/item/<int:item_id>/status/<str:status>/', 
+     views.admin_update_item_status, 
+     name='admin_update_item_status'),
+
+path('update-return-status/<int:return_id>/<str:status>/', views.admin_update_return_status, name='admin_update_return_status'),
+
+path('order/<int:order_id>/status/<str:status>/', 
+     views.admin_update_order_status, 
+     name='admin_update_order_status'),
+
 
 
     #url for admin inventry management

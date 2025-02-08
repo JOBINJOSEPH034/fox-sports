@@ -66,6 +66,10 @@ class Product(models.Model):
         else:
             raise ValueError("Insufficient stock!")
         
+    def increase_stock(self, quantity):
+        self.stock += quantity
+        self.save()    
+        
     def save(self, *args, **kwargs):  
         max_discount = max(self.discount_percentage, self.category.discount_percentage)
                                                                                  
@@ -125,6 +129,11 @@ class ProductVariant(models.Model):
                 self.save()  
             else:
                 raise ValueError("Insufficient stock!")
+    
+
+    def increase_stock(self, quantity):
+        self.stock += quantity
+        self.save()
 
     
     @property

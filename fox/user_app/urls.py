@@ -40,9 +40,12 @@ urlpatterns = [
     
     #profile order management
     path('order-management/', views.order_management, name='order_management'),
-    path('cancel-order/<int:order_id>/', views.cancel_order, name='cancel_order'),
+   path('cancel-item/<int:order_item_id>/', views.cancel_order_item, name='cancel_order_item'),
     path('request-return/', views.request_return, name='request_return'), 
     path('orders/continue/<int:order_id>/', views.continue_payment, name='continue_payment'),
+
+
+
 
     #change passwod (default)
     path(

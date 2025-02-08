@@ -3,7 +3,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse
 from django.contrib import messages
 from . models import Category,Product,Brand,ProductVariant,Coupon,Offer
-from user_app.models import Order,OrderItem,Address
+from user_app.models import Order,OrderItem,Address,OrderReturn
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.cache import never_cache
@@ -325,28 +325,84 @@ def toggle_category_status(request, category_id):
     messages.success(request, f"Category '{category.name}' has been {status}.")
     return redirect('category')
 
-
+# views.py
 @login_required
 @never_cache
 def admin_order_management(request):
     orders = Order.objects.select_related('user', 'address') \
-        .prefetch_related('items__product', 'items__variant') \
+        .prefetch_related(
+            'items__product',
+            'items__variant',
+            'items__orderreturn'
+        ) \
         .order_by('-created_at')
-
+    
     search_query = request.GET.get('search', '').strip()
     
     if search_query:
         orders = orders.filter(
-            Q(user__username__icontains=search_query) |  
-            Q(items__product__name__icontains=search_query) |  
-            Q(status__icontains=search_query)  
+            Q(user__username__icontains=search_query) |
+            Q(items__product__name__icontains=search_query) |
+            Q(status__icontains=search_query) |
+            Q(items__return_status__icontains=search_query)
         ).distinct()
-
+    
     paginator = Paginator(orders, 10)
     page_number = request.GET.get('page')
     orders_page = paginator.get_page(page_number)
+    
+    return render(request, 'admin_order.html', {
+        'orders': orders_page,
+        'search_query': search_query
+    })
 
-    return render(request, 'admin_order.html', {'orders': orders_page, 'search_query': search_query})
+@login_required
+def admin_update_item_status(request, item_id, status):
+    order_item = get_object_or_404(OrderItem, id=item_id)
+    
+    if status == 'Cancelled':
+        if order_item.status in ['Pending', 'Processing', 'Shipped', 'Out for Delivery']:
+            # Update stock for this specific item
+            if order_item.variant:
+                order_item.variant.stock += order_item.quantity
+                order_item.variant.save()
+            elif order_item.product:
+                order_item.product.stock += order_item.quantity
+                order_item.product.save()
+            
+            order_item.status = 'Cancelled'
+            order_item.save()
+            
+            # Check if all items are cancelled
+            all_items_cancelled = all(
+                item.status == 'Cancelled' 
+                for item in order_item.order.items.all()
+            )
+            
+            if all_items_cancelled:
+                order_item.order.status = 'Cancelled'
+                order_item.order.save()
+            
+            messages.success(request, f"Item from Order {order_item.order.id} has been successfully canceled and stock updated.")
+        else:
+            messages.error(request, f"Item cannot be canceled at this stage.")
+    else:
+        order_item.status = status
+        order_item.save()
+        
+        # If all items have the same status, update the order status
+        all_items_same_status = all(
+            item.status == status 
+            for item in order_item.order.items.all()
+        )
+        
+        if all_items_same_status:
+            order_item.order.status = status
+            order_item.order.save()
+        
+        messages.success(request, f"Item status updated to {status}.")
+    
+    return redirect('admin_order_management')
 
 
 
@@ -356,10 +412,8 @@ from django.utils.html import format_html
 from user_app.models import Order  # Ensure correct import
 from user_app.models import Address  # Import Address model
 
-
-
 def admin_order_details(request, order_id):
-    order = get_object_or_404(Order, id=order_id)
+    order = get_object_or_404(Order.objects.prefetch_related('items__product', 'items__variant', 'items__orderreturn'), id=order_id)
     
     # Fetch the default address for the order user
     address = Address.objects.filter(user=order.user, is_default=True).first()
@@ -368,7 +422,7 @@ def admin_order_details(request, order_id):
         """
         <p><strong>Order ID:</strong> {order_id}</p>
         <p><strong>User:</strong> {username}</p>
-        <p><strong>Status:</strong> {status}</p>
+        <p><strong>Overall Status:</strong> {status}</p>
         <p><strong>Total Price:</strong> ₹{total_price}</p>
         <p><strong>Created At:</strong> {created_at}</p>
 
@@ -389,8 +443,14 @@ def admin_order_details(request, order_id):
             "".join(
                 f"""
                 <li class="d-flex align-items-center gap-3 mb-2">
-                    <img src="{item.product.image1.url}" alt="{item.product.name}" class="rounded" width="120" height="120">
-                    {item.product.name} (×{item.quantity}) - ₹{item.total_price}
+                    <img src="{item.product.image1.url if item.product else item.variant.product.image1.url}" 
+                         alt="{item.product.name if item.product else item.variant.product.name}" 
+                         class="rounded" width="120" height="120">
+                    <div>
+                        <div>{item.product.name if item.product else f"{item.variant.product.name} ({item.variant.name})"} (×{item.quantity})</div>
+                        <div>Price: ₹{item.total_price}</div>
+                        {f'<div class="badge bg-warning text-dark">Return Status: {item.orderreturn.status}</div>' if hasattr(item, 'orderreturn') else ''}
+                    </div>
                 </li>
                 """
                 for item in order.items.all()
@@ -414,19 +474,14 @@ def admin_order_details(request, order_id):
     return JsonResponse({"success": True, "html": order_details_html})
 
 
-
-
-
-
 @login_required
 def admin_update_order_status(request, order_id, status):
     order = get_object_or_404(Order, id=order_id)
     order.status = status
     order.save()
-
+    
     messages.success(request, f"Order {order.id} status updated to {status}.")
-    return redirect('admin_order_management') 
-
+    return redirect('admin_order_management')
 
 @login_required
 def admin_cancel_order(request, order_id):
@@ -451,8 +506,100 @@ def admin_cancel_order(request, order_id):
     return redirect('admin_order_management')
 
 
+@login_required
+def admin_update_return_status(request, return_id, status):
+    order_return = get_object_or_404(OrderReturn, id=return_id)
+    original_status = order_return.status
+    order_return.status = status
+    order_return.save()
+    
+    if status == 'Return Accepted' and original_status != 'Return Accepted':
+        if order_return.process_return():
+            messages.success(request, f"Return accepted and stock updated successfully.")
+        else:
+            messages.error(request, f"Error processing return. Please check the return quantity.")
+    else:
+        messages.success(request, f"Return status updated to {status}.")
+    
+    return redirect('admin_order_management')
 
 
+
+
+from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from django.utils.timezone import now
+from django.db import transaction
+from django.shortcuts import get_object_or_404
+from django.core.files.storage import default_storage
+import os
+
+
+@login_required
+def process_return_request(request, return_id):
+    """Admin view to process return requests"""
+    if not request.user.is_staff:
+        return JsonResponse({'status': 'error', 'message': 'Unauthorized'})
+        
+    try:
+        with transaction.atomic():
+            return_request = get_object_or_404(OrderReturn, id=return_id)
+            action = request.POST.get('action')
+            
+            if action == 'approve':
+                # Process the return
+                if return_request.process_return():
+                    return_request.status = 'Return Accepted'
+                    return_request.save()
+                    
+                    # Update order status
+                    order = return_request.order
+                    all_returns_accepted = all(
+                        return_req.status == 'Return Accepted'
+                        for return_req in order.orderreturn_set.all()
+                    )
+                    
+                    if all_returns_accepted:
+                        order.status = 'Return Accepted'
+                        order.save()
+                        
+                        # Process refund
+                        order.refund_wallet()
+                        
+                    return JsonResponse({
+                        'status': 'success',
+                        'message': 'Return approved and processed successfully'
+                    })
+                else:
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': 'Failed to process return'
+                    })
+                    
+            elif action == 'reject':
+                return_request.status = 'Return Rejected'
+                return_request.save()
+                
+                # Update order item status
+                order_item = return_request.order_item
+                order_item.return_status = 'Return Rejected'
+                order_item.save()
+                
+                return JsonResponse({
+                    'status': 'success',
+                    'message': 'Return request rejected'
+                })
+                
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        })
+
+    return JsonResponse({
+        'status': 'error',
+        'message': 'Invalid action'
+    })
 
 # For admin inventory management 
 @login_required
