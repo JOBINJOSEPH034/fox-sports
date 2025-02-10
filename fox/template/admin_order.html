@@ -171,7 +171,9 @@
                                                         <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                                             Update Status
                                                         </button>
+                                                        
                                                         <div class="dropdown-menu shadow-sm">
+                                                            
                                                             {% if item.status in 'Pending,Processing,Shipped,Out for Delivery' %}
                                                                 <a class="dropdown-item" href="{% url 'admin_update_item_status' item.id 'Pending' %}">Pending</a>
                                                                 <a class="dropdown-item" href="{% url 'admin_update_item_status' item.id 'Processing' %}">Processing</a>
@@ -180,6 +182,10 @@
                                                                 <a class="dropdown-item" href="{% url 'admin_update_item_status' item.id 'Delivered' %}">Delivered</a>
                                                                 <div class="dropdown-divider"></div>
                                                                 <a class="dropdown-item text-danger" href="{% url 'admin_update_item_status' item.id 'Cancelled' %}">Cancel This Item</a>
+                                                            {% endif %}
+                                                            {% if item.status in 'Delivered' %}
+                                                            <span class="text-muted">No action allowed</span>
+
                                                             {% endif %}
                                                         </div>
                                                     </div>

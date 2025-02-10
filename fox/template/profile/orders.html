@@ -24,7 +24,7 @@
                     </thead>
                     <tbody>
                         {% for item in page_obj %}
-                        <tr id="order-item-row-{{ item.id }}">
+                        <tr id="order-item-row-{{ item.id }}" data-order-id="{{ item.order.id }}">
                             <td class="px-4">#{{ item.order.id }}</td>
                             <td class="px-4">{{ item.order.created_at|date:"d M Y" }}</td>
                             <td class="px-4">
@@ -38,13 +38,13 @@
                             </td>
                             <td class="px-4">
                                 {% if item.orderreturn %}
-                                    <span class="badge {% if item.orderreturn.status == 'Return Pending' %}bg-warning text-dark
+                                    <span class="badge return-status {% if item.orderreturn.status == 'Return Pending' %}bg-warning text-dark
                                         {% elif item.orderreturn.status == 'Return Accepted' %}bg-success
                                         {% elif item.orderreturn.status == 'Return Rejected' %}bg-danger{% endif %} px-3 py-2">
                                         {{ item.orderreturn.status }}
                                     </span>
                                 {% else %}
-                                    <span class="badge {% if item.status == 'Delivered' %}bg-success
+                                    <span class="badge order-status-badge {% if item.status == 'Delivered' %}bg-success
                                         {% elif item.status == 'Cancelled' %}bg-danger
                                         {% elif item.status == 'Payment Pending' %}bg-info text-dark
                                         {% elif item.status == 'Pending' %}bg-primary
@@ -67,17 +67,14 @@
                             <td class="px-4 fw-medium">₹{{ item.total_price|floatformat:2 }}</td>
                             <td class="px-4">
                                 <div class="d-flex gap-2 flex-column">
-                                    {% if item.status == 'Delivered' and not item.orderreturn %}
-                                        {% if item.order.return_allowed %}
+                                    {% if item.status == 'Delivered' %}
+                                        {% if not item.orderreturn %}
                                             <button class="btn btn-sm btn-warning" 
                                                     onclick="openReturnModal('{{ item.id }}')">
                                                 Return Item
                                             </button>
-                                            <small class="text-muted">
-                                                Return available until {{ item.order.delivered_at|add:7|date:"d M Y" }}
-                                            </small>
                                         {% else %}
-                                            <small class="text-muted">Return period has expired</small>
+                                            <small class="text-warning">Return request in process</small>
                                         {% endif %}
                                     {% endif %}
                                     
@@ -87,6 +84,19 @@
                                             <button type="submit" class="btn btn-sm btn-danger"
                                                     onclick="return confirm('Are you sure you want to cancel this item?')">
                                                 Cancel Item
+                                            </button>
+                                        </form>
+                                    {% elif item.status == 'Cancelled' %}
+                                        <span class="text-danger">Order Canceled</span>
+                                    {% endif %}
+                
+                                    {% if item.status == 'Payment Failed' %}
+                                        <span class="text-danger">Payment Failed</span>
+                                    {% elif item.status == 'Payment Pending' %}
+                                        <form action="{% url 'continue_payment' item.order.id %}" method="POST" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-sm btn-primary">
+                                                Continue Payment
                                             </button>
                                         </form>
                                     {% endif %}
@@ -100,6 +110,8 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                
+                
             </div>
 
             {% if page_obj.has_previous or page_obj.has_next %}
@@ -189,7 +201,7 @@
                 fetch(paymentUrl, {
                     method: 'POST',
                     headers: {
-                        'X-CSRFToken': '{{ csrf_token }}',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
@@ -223,7 +235,7 @@
                     const response = await fetch(`/cancel-order/${orderId}/`, {
                         method: 'POST',
                         headers: {
-                            'X-CSRFToken': '{{ csrf_token }}'
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                         }
                     });
                     
@@ -256,7 +268,7 @@
                 const response = await fetch(this.action, {
                     method: 'POST',
                     headers: {
-                        'X-CSRFToken': '{{ csrf_token }}'
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                     },
                     body: formData
                 });
@@ -287,7 +299,40 @@
             }
         });
     }
+
+    // Handle image preview in return form
+    const returnImageInput = document.getElementById('returnImage');
+    const imagePreview = document.getElementById('imagePreview');
+    
+    if (returnImageInput && imagePreview) {
+        returnImageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    imagePreview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                imagePreview.src = '';
+                imagePreview.style.display = 'none';
+            }
+        });
+    }
 });
+
+// Function to check return eligibility
+function checkReturnEligibility(itemId) {
+    const itemRow = document.getElementById(`order-item-row-${itemId}`);
+    if (!itemRow) return false;
+
+    const statusBadge = itemRow.querySelector('.order-status-badge');
+    if (!statusBadge) return false;
+
+    // Check if the item is delivered and within return period
+    return statusBadge.textContent.trim() === 'Delivered';
+}
 
 // Function to update item return status
 function updateItemReturnStatus(itemId) {
@@ -297,19 +342,17 @@ function updateItemReturnStatus(itemId) {
         const statusCell = itemRow.querySelector('td:nth-child(4)');
         if (statusCell) {
             statusCell.innerHTML = `
-                <span class="badge bg-warning text-dark px-3 py-2">
+                <span class="badge return-status bg-warning text-dark px-3 py-2">
                     Return Pending
                 </span>
             `;
         }
         
         // Update action buttons
-        const actionCell = itemRow.querySelector('td:last-child');
+        const actionCell = itemRow.querySelector('td:last-child div');
         if (actionCell) {
             actionCell.innerHTML = `
-                <div class="text-warning small">
-                    Return request is being processed
-                </div>
+                <small class="text-warning">Return request in process</small>
             `;
         }
     }
@@ -317,9 +360,16 @@ function updateItemReturnStatus(itemId) {
 
 // Function to open return modal
 function openReturnModal(itemId) {
-    document.getElementById('returnOrderItemId').value = itemId;
-    const modal = new bootstrap.Modal(document.getElementById('returnModal'));
-    modal.show();
+    if (checkReturnEligibility(itemId)) {
+        const returnOrderItemId = document.getElementById('returnOrderItemId');
+        if (returnOrderItemId) {
+            returnOrderItemId.value = itemId;
+        }
+        const modal = new bootstrap.Modal(document.getElementById('returnModal'));
+        modal.show();
+    } else {
+        showAlert('This item is not eligible for return', 'warning');
+    }
 }
 
 // Function to show alert messages
@@ -365,6 +415,7 @@ function getStatusClass(status) {
         'Shipped': 'bg-info',
         'Out for Delivery': 'bg-dark',
         'Return Accepted': 'bg-success',
+        'Return Rejected': 'bg-danger',
         'Paid': 'bg-success',
         'Payment Failed': 'bg-danger'
     };

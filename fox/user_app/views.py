@@ -1,4 +1,5 @@
 
+from datetime import timedelta
 from time import timezone
 import razorpay 
 import json
@@ -980,57 +981,103 @@ def generate_invoice(request, order):
 
     return response
 
-
+from django.utils import timezone
+from datetime import timedelta
 
 @login_required
 def order_management(request):
-    # Get all order items for the user, ordered by creation date
+    # Get order items with their related objects
     order_items = OrderItem.objects.filter(
         order__user=request.user
     ).select_related(
         'order', 'variant', 'variant__product'
     ).order_by('-order__created_at')
     
+    # Calculate return eligibility for each item
+    for item in order_items:
+        delivered_timestamp = item.order.delivered_at
+        has_return = OrderReturn.objects.filter(order_item=item).exists()
+        
+        if delivered_timestamp and not has_return:
+            return_deadline = delivered_timestamp + timedelta(days=7)
+            item.can_return = (
+                item.status == 'Delivered' and 
+                timezone.now() <= return_deadline
+            )
+        else:
+            item.can_return = False
+            
+        # Add payment retry eligibility
+        if item.order.status == 'Payment Failed':
+            payment_failed_at = item.order.payment_failed_at
+            if payment_failed_at:
+                retry_deadline = payment_failed_at + timedelta(days=7)
+                item.can_retry_payment = timezone.now() <= retry_deadline
+            else:
+                item.can_retry_payment = False
+        else:
+            item.can_retry_payment = False
+    
     paginator = Paginator(order_items, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
-    return render(request, 'profile/orders.html', {'page_obj': page_obj})
+    return render(request, 'profile/orders.html', {
+        'page_obj': page_obj, })
 
 @login_required
 def cancel_order_item(request, order_item_id):
-    order_item = get_object_or_404(OrderItem, 
-                                  id=order_item_id, 
-                                  order__user=request.user)
+    order_item = get_object_or_404(
+        OrderItem, 
+        id=order_item_id, 
+        order__user=request.user
+    )
     
-    cancellable_statuses = ['Payment Pending', 'Pending', 'Shipped', 
-                           'Processing', 'Out for Delivery']
+    cancellable_statuses = [
+        'Payment Failed', 'Pending', 'Processing', 
+        'Shipped', 'Out for Delivery', 'Payment Pending'
+    ]
     
     try:
         with transaction.atomic():
-            if order_item.order.status in cancellable_statuses:
-                # Cancel individual order item
-                order_item.status = 'Cancelled'
-                order_item.save()
+            if order_item.status in cancellable_statuses:
+                # Update inventory
+                if order_item.variant:
+                    order_item.variant.stock += order_item.quantity
+                    order_item.variant.save()
                 
-                # Check if all items in order are cancelled
-                remaining_active_items = OrderItem.objects.filter(
+                # Cancel the order item
+                OrderItem.objects.filter(id=order_item.id).update(status='Cancelled')
+                
+                # Check remaining active items
+                remaining_active = OrderItem.objects.filter(
                     order=order_item.order
-                ).exclude(status='Cancelled').count()
+                ).exclude(
+                    status__in=['Cancelled', 'Return Accepted']
+                ).exists()
                 
-                if remaining_active_items == 0:
-                    # If all items cancelled, update order status
-                    order_item.order.status = 'Cancelled'
-                    order_item.order.save()
+                if not remaining_active:
+                    # Cancel entire order if no active items remain
+                    order = order_item.order
+                    order.status = 'Cancelled'
+                    order.save()
+                    
+                    # Process refund if payment was made
+                    if order.payment_method in ['online', 'wallet']:
+                        order.refund_wallet()
                 
-                messages.success(request, "Order item has been cancelled successfully.")
+                messages.success(request, "Order cancelled successfully.")
             else:
-                messages.error(request, "This item cannot be cancelled.")
+                messages.error(request, 
+                    "This order cannot be cancelled in its current status."
+                )
                 
-    except Exception as e:
-        messages.error(request, f"Error cancelling order item: {str(e)}")
+    except Exception:
+        messages.error(request, "Error cancelling order.")
     
     return redirect('order_management')
+
+
 
 
 @login_required
@@ -1056,6 +1103,7 @@ def continue_payment(request, order_id):
         messages.info(request, "Your failed order items have been added back to your cart. Please complete the payment to proceed.")
 
     return redirect('checkout')
+
 
 
 
@@ -1087,21 +1135,11 @@ def request_return(request):
                     order__user=request.user
                 )
 
-                # Calculate return period (e.g., 7 days from delivery)
-                return_period_days = 7  # You can adjust this value
-                return_deadline = order_item.order.delivered_at + timedelta(days=return_period_days)
-                
-                # Check if return period is still valid
-                if not order_item.order.delivered_at:
+                # Only check if delivered and not already returned
+                if order_item.status != 'Delivered':
                     return JsonResponse({
                         'status': 'error',
-                        'message': 'Order has not been delivered yet'
-                    })
-                
-                if now() > return_deadline:
-                    return JsonResponse({
-                        'status': 'error',
-                        'message': f'Return period of {return_period_days} days has expired'
+                        'message': 'This item has not been delivered yet'
                     })
 
                 # Check if return already exists
@@ -1111,7 +1149,7 @@ def request_return(request):
                         'message': 'Return already requested for this item'
                     })
 
-                # Create return request for individual item
+                # Create return request
                 OrderReturn.objects.create(
                     order=order_item.order,
                     order_item=order_item,
@@ -1119,7 +1157,7 @@ def request_return(request):
                     additional_comments=additional_comments,
                     image=image,
                     status='Return Pending',
-                    return_requested_at=now(),
+                    return_requested_at=timezone.now(),
                     return_quantity=1
                 )
 
@@ -1147,6 +1185,34 @@ def request_return(request):
         'status': 'error',
         'message': 'Invalid request'
     })
+   
+@login_required
+def mark_as_delivered(request, order_id):
+    try:
+        with transaction.atomic():
+            order = Order.objects.get(id=order_id)
+            order_items = OrderItem.objects.filter(order=order)
+            
+            # Only mark non-cancelled items as delivered
+            for item in order_items:
+                if item.status != 'Cancelled':
+                    item.status = 'Delivered'
+                    item.save()
+            
+            # Update order status and delivery timestamp
+            order.status = 'Delivered'
+            order.delivered_at = now()
+            order.save()
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Order marked as delivered'
+            })
+    except Order.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Order not found'
+        })
     
 # User Profile View (Displays user details)
 @login_required

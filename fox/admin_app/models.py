@@ -144,6 +144,26 @@ class ProductVariant(models.Model):
             return price_with_discount - (price_with_discount * max_discount / 100)
         return price_with_discount
 
+
+# Updated stock handling function
+    def update_stock(order_item, increase=False):
+        """ Updates stock based on whether the order is placed or canceled/returned. """
+        try:
+            if order_item.variant:  # If order item has a variant
+                variant = order_item.variant
+                if increase:
+                    variant.increase_stock(order_item.quantity)
+                else:
+                    variant.reduce_stock(order_item.quantity)
+            else:  # If no variant, reduce stock from main product
+                product = order_item.product
+                if increase:
+                    product.increase_stock(order_item.quantity)
+                else:
+                    product.reduce_stock(order_item.quantity)
+        except ValueError:
+             pass
+
 #model for coupon
 class Coupon(models.Model):
     code = models.CharField(max_length=50, unique=True)

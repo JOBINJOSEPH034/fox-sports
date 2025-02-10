@@ -355,55 +355,78 @@ def admin_order_management(request):
         'orders': orders_page,
         'search_query': search_query
     })
-
 @login_required
 def admin_update_item_status(request, item_id, status):
-    order_item = get_object_or_404(OrderItem, id=item_id)
-    
-    if status == 'Cancelled':
-        if order_item.status in ['Pending', 'Processing', 'Shipped', 'Out for Delivery']:
-            # Update stock for this specific item
-            if order_item.variant:
-                order_item.variant.stock += order_item.quantity
-                order_item.variant.save()
-            elif order_item.product:
-                order_item.product.stock += order_item.quantity
-                order_item.product.save()
+    try:
+        with transaction.atomic():
+            # Get the order item
+            order_item = get_object_or_404(OrderItem, id=item_id)
             
-            order_item.status = 'Cancelled'
-            order_item.save()
+            # Add debug print statements
+            print(f"Updating item {item_id} status from {order_item.status} to {status}")
             
-            # Check if all items are cancelled
-            all_items_cancelled = all(
-                item.status == 'Cancelled' 
-                for item in order_item.order.items.all()
-            )
+            if status == 'Cancelled':
+                if order_item.status in ['Pending', 'Processing', 'Shipped', 'Out for Delivery']:
+                    # Update stock
+                    if order_item.variant:
+                        order_item.variant.stock += order_item.quantity
+                        order_item.variant.save()
+                    elif order_item.product:
+                        order_item.product.stock += order_item.quantity
+                        order_item.product.save()
+                    
+                    # Directly update the status field
+                    OrderItem.objects.filter(id=item_id).update(status=status)
+                    
+                    # Refresh from database
+                    order_item.refresh_from_db()
+                    
+                    # Check all items
+                    all_cancelled = all(
+                        item.status == 'Cancelled' 
+                        for item in order_item.order.items.all()
+                    )
+                    
+                    if all_cancelled:
+                        order_item.order.status = 'Cancelled'
+                        order_item.order.save()
+                    
+                    messages.success(request, f"Item from Order #{order_item.order.id} has been cancelled")
+                else:
+                    messages.error(request, "Item cannot be cancelled at this stage.")
+            else:
+                # Directly update the status using update() method
+                OrderItem.objects.filter(id=item_id).update(status=status)
+                
+                # Refresh the order item from database
+                order_item.refresh_from_db()
+                
+                print(f"Updated status in database to: {order_item.status}")
+                
+                # Check if all items have same status
+                all_same_status = all(
+                    item.status == status 
+                    for item in OrderItem.objects.filter(order=order_item.order)
+                )
+                
+                if all_same_status:
+                    if status == 'Delivered':
+                        Order.objects.filter(id=order_item.order.id).update(
+                            status=status,
+                            delivered_at=timezone.now()
+                        )
+                    else:
+                        Order.objects.filter(id=order_item.order.id).update(status=status)
+                
+                messages.success(request, f"Item status updated to {status}")
+                
+            print(f"Final item status: {OrderItem.objects.get(id=item_id).status}")
             
-            if all_items_cancelled:
-                order_item.order.status = 'Cancelled'
-                order_item.order.save()
-            
-            messages.success(request, f"Item from Order {order_item.order.id} has been successfully canceled and stock updated.")
-        else:
-            messages.error(request, f"Item cannot be canceled at this stage.")
-    else:
-        order_item.status = status
-        order_item.save()
-        
-        # If all items have the same status, update the order status
-        all_items_same_status = all(
-            item.status == status 
-            for item in order_item.order.items.all()
-        )
-        
-        if all_items_same_status:
-            order_item.order.status = status
-            order_item.order.save()
-        
-        messages.success(request, f"Item status updated to {status}.")
+    except Exception as e:
+        print(f"Error in status update: {str(e)}")
+        messages.error(request, f"Error updating status: {str(e)}")
     
     return redirect('admin_order_management')
-
 
 
 from django.shortcuts import get_object_or_404
@@ -473,10 +496,14 @@ def admin_order_details(request, order_id):
 
     return JsonResponse({"success": True, "html": order_details_html})
 
-
 @login_required
 def admin_update_order_status(request, order_id, status):
     order = get_object_or_404(Order, id=order_id)
+    
+    # Add this block to set delivered_at when status changes to Delivered
+    if status == 'Delivered':
+        order.delivered_at = timezone.now()
+    
     order.status = status
     order.save()
     
@@ -505,24 +532,48 @@ def admin_cancel_order(request, order_id):
 
     return redirect('admin_order_management')
 
-
 @login_required
 def admin_update_return_status(request, return_id, status):
-    order_return = get_object_or_404(OrderReturn, id=return_id)
-    original_status = order_return.status
-    order_return.status = status
-    order_return.save()
+    try:
+        with transaction.atomic():
+            order_return = get_object_or_404(OrderReturn, id=return_id)
+            original_status = order_return.status
+            
+            # Update return status
+            order_return.status = status
+            order_return.save()
+            
+            # Handle return acceptance
+            if status == 'Return Accepted' and original_status != 'Return Accepted':
+                if order_return.process_return():
+                    # Update the order item status
+                    order_item = order_return.order_item
+                    order_item.status = 'Return Accepted'
+                    order_item.save()
+                    
+                    # Check if all items are returned
+                    all_returns_accepted = all(
+                        item.status == 'Return Accepted'
+                        for item in order_return.order.items.all()
+                    )
+                    
+                    # Update order status if all items are returned
+                    if all_returns_accepted:
+                        order = order_return.order
+                        order.status = 'Return Accepted'
+                        order.save()
+                    
+                    messages.success(request, "Return accepted and stock updated successfully.")
+                else:
+                    messages.error(request, "Error processing return. Please check the return quantity.")
+            else:
+                messages.success(request, f"Return status updated to {status}.")
+        
+        return redirect('admin_order_management')
     
-    if status == 'Return Accepted' and original_status != 'Return Accepted':
-        if order_return.process_return():
-            messages.success(request, f"Return accepted and stock updated successfully.")
-        else:
-            messages.error(request, f"Error processing return. Please check the return quantity.")
-    else:
-        messages.success(request, f"Return status updated to {status}.")
-    
-    return redirect('admin_order_management')
-
+    except Exception as e:
+        messages.error(request, f"Error updating return status: {str(e)}")
+        return redirect('admin_order_management')
 
 
 

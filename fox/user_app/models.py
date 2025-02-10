@@ -1,13 +1,13 @@
 
 from django.db import models
-from admin_app.models import Product, ProductVariant,Coupon,Offer
+from admin_app.models import Product, ProductVariant,Coupon,Offer,transaction
 from django.contrib.auth.models import User
 from datetime import timedelta
 from django.utils.timezone import now
 from django.db.models import Q
 from decimal import Decimal
 from django.utils import timezone
-import datetime
+import uuid
 
 
 
@@ -84,7 +84,6 @@ class Address(models.Model):
             Address.objects.filter(user=self.user).update(is_default=False)
         super().save(*args, **kwargs)
 
-
 class Order(models.Model):
     STATUS_CHOICES = [
         ('Pending', 'Pending'),
@@ -97,7 +96,6 @@ class Order(models.Model):
         ('Return Accepted', 'Return Accepted'),
         ('Paid', 'Paid'),
         ('Payment Failed', 'Failed'),  
-
     ]
 
     PAYMENT_CHOICES = [
@@ -125,68 +123,117 @@ class Order(models.Model):
     payment_id = models.CharField(max_length=255, null=True, blank=True)  
     is_refunded = models.BooleanField(default=False)  
     delivery_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    payment_attempts = models.IntegerField(default=0)  # Track payment attempts
-    payment_failed_at = models.DateTimeField(null=True, blank=True)  # Track first failure timestamp
-    delivered_at = models.DateTimeField(null=True, blank=True)  # Track when the order was delivered
+    payment_attempts = models.IntegerField(default=0)
+    payment_failed_at = models.DateTimeField(null=True, blank=True)
+    delivered_at = models.DateTimeField(null=True, blank=True)
 
-
-
-
-    def __str__(self):
-        return f"Order {self.id} - {self.user.username}"
+    
 
     def reduce_inventory(self):
-        for item in self.items.all():
-            item.reduce_stock()
+        """Reduce inventory when order is created"""
+        print("Starting inventory reduction")
+        try:
+            with transaction.atomic():
+                for item in self.items.select_related('variant', 'product').all():
+                    if item.variant:
+                        print(f"Checking stock for variant {item.variant.id}: Available={item.variant.stock}, Required={item.quantity}")
+                        if item.variant.stock < item.quantity:
+                            raise ValueError(f"Insufficient stock for variant {item.variant.id}. Required: {item.quantity}, Available: {item.variant.stock}")
+                        
+                        item.variant.stock -= item.quantity
+                        item.variant.save(update_fields=['stock'])
+                        print(f"Updated variant {item.variant.id} stock to {item.variant.stock}")
+                    
+                    elif item.product:
+                        print(f"Checking stock for product {item.product.id}: Available={item.product.stock}, Required={item.quantity}")
+                        if item.product.stock < item.quantity:
+                            raise ValueError(f"Insufficient stock for product {item.product.id}. Required: {item.quantity}, Available: {item.product.stock}")
+                        
+                        item.product.stock -= item.quantity
+                        item.product.save(update_fields=['stock'])
+                        print(f"Updated product {item.product.id} stock to {item.product.stock}")
+        except Exception as e:
+            print(f"Error in reduce_inventory: {str(e)}")
+            raise
 
 
+    def restore_inventory(self):
+        """Restore inventory for cancelled or returned orders"""
+        try:
+            with transaction.atomic():
+                for item in self.items.select_related('variant', 'product').all():
+                    if item.status in ['Cancelled', 'Return Accepted']:
+                        if item.variant:
+                            print(f"Restoring variant {item.variant.id} stock by {item.quantity}")
+                            item.variant.stock += item.quantity
+                            item.variant.save(update_fields=['stock'])
+                        elif item.product:
+                            print(f"Restoring product {item.product.id} stock by {item.quantity}")
+                            item.product.stock += item.quantity
+                            item.product.save(update_fields=['stock'])
+        except Exception as e:
+            print(f"Error restoring inventory: {str(e)}")
+            raise
 
+    # [Rest of the methods remain unchanged]
+    def refund_wallet(self):
+        """Process refund to wallet regardless of payment method"""
+        try:
+            with transaction.atomic():
+                if not self.is_refunded:
+                    wallet, created = Wallet.objects.get_or_create(user=self.user)
+                    
+                    refund_amount = Decimal(str(self.final_amount)) - Decimal(str(self.delivery_charge))
+                    
+                    wallet.balance += refund_amount
+                    wallet.save()
+
+                    Transaction.objects.create(
+                        wallet=wallet,
+                        transaction_id=f"RF{str(uuid.uuid4())[:8].upper()}",
+                        type='deposit',
+                        amount=refund_amount,
+                        description=f"Refund for order #{self.id} (excluding delivery charges)"
+                    )
+
+                    self.is_refunded = True
+                    self.save(update_fields=['is_refunded'])
+        except Exception as e:
+            print(f"Error processing refund: {str(e)}")
+            raise
 
     @property
     def has_returns(self):
-        """Check if any items in the order have returns"""
         return self.items.filter(orderreturn__isnull=False).exists()
 
     @property
     def all_items_returned(self):
-        """Check if all items in the order are returned"""
         return all(item.orderreturn is not None for item in self.items.all())
-        
 
     @property
     def return_allowed(self):
         if not self.delivered_at:
+            print(f"Order {self.id}: delivered_at not set")
             return False
-        return_period_days = 7  # Adjust as needed
+    
+        return_period_days = 7
+        current_time = now()
         return_deadline = self.delivered_at + timedelta(days=return_period_days)
-        return now() <= return_deadline
-
-    def refund_wallet(self):
-
-        if not self.is_refunded and self.status in ['Return Accepted', 'Cancelled']:
-            wallet = self.user.wallet 
-            if wallet:
-                wallet.balance += Decimal(self.total_price)  
-                wallet.save()
-
-            wallet.transactions.create(
-                transaction_id=f"refund-{self.id}",
-                type="credit",
-                amount=Decimal(self.total_price),
-                description=f"Refund for order #{self.id} (Payment method: {self.payment_method})"
-            )
-
-            self.is_refunded = True
-            self.save(update_fields=['is_refunded'])
-
-    def restore_inventory(self):
-        for item in self.items.all():
-            if item.variant:
-                item.variant.stock += item.quantity
-                item.variant.save()
-            elif item.product:
-                item.product.stock += item.quantity
-                item.product.save()
+    
+        is_allowed = (self.status == 'Delivered' and 
+                     self.delivered_at is not None and 
+                     current_time <= return_deadline)
+    
+        print(f"""
+    Order {self.id} return check:
+    - Status: {self.status} 
+    - Delivered at: {self.delivered_at}
+    - Current time: {current_time}
+    - Return deadline: {return_deadline}
+    - Is allowed: {is_allowed}
+    """)
+    
+        return is_allowed
 
     @property
     def discounted_price(self):
@@ -206,34 +253,51 @@ class Order(models.Model):
         return self.total_price - discount_amount
 
     def is_retry_period_expired(self):
-        """Check if the 7-day retry period has expired."""
         if self.payment_failed_at:
             return (timezone.now() - self.payment_failed_at).days > 7
         return False
 
     def can_retry_payment(self):
-        """Check if the user can retry payment (within 7 days and less than 2 attempts)."""
         return self.status == 'failed' and self.payment_attempts < 2 and not self.is_retry_period_expired()
 
-    
-
     def save(self, *args, **kwargs):
-        
         original_status = None
         if self.pk:
-            original_order = Order.objects.get(pk=self.pk)
-            original_status = original_order.status
+            try:
+                original_order = Order.objects.get(pk=self.pk)
+                original_status = original_order.status
+            except Order.DoesNotExist:
+                pass
 
-        super().save(*args, **kwargs) 
+        super().save(*args, **kwargs)
 
-        if self.status in ['Return Accepted', 'Cancelled'] and self.status != original_status:
-            self.refund_wallet()
+        if original_status != self.status:
+            print(f"Status changed from {original_status} to {self.status}")
+            
+            # Handle stock reduction when order is placed
+            if self.status == 'Pending' and original_status != 'Pending':
+                print("Order paid - reducing inventory")
+                try:
+                    self.reduce_inventory()
+                except Exception as e:
+                    print(f"Error reducing inventory: {str(e)}")
+                    # Revert status if stock reduction fails
+                    self.status = 'Payment Failed'
+                    self.save(update_fields=['status'])
+                    raise
+            
+            # Handle cancellation or return
+            elif self.status in ['Cancelled', 'Return Accepted'] and not self.is_refunded:
+                print("Processing cancellation/return")
+                try:
+                    self.restore_inventory()
+                    self.refund_wallet()
+                except Exception as e:
+                    print(f"Error in cancellation process: {str(e)}")
+                    raise
 
-        if self.coupons.exists():
-            for coupon in self.coupons.all():
-                coupon.used = True
-                coupon.save()
-
+            # Update order items status
+            self.items.all().update(status=self.status)    
 
 
 
@@ -261,57 +325,42 @@ class OrderItem(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
 
 
-    def reduce_stock(self):
-        
-        if self.variant:
-            self.variant.reduce_stock(self.quantity)
-        elif self.product:
-            self.product.reduce_stock(self.quantity)
+    
+    def save(self, *args, **kwargs):
+        # Always sync status with parent order
+        if self.order and self.status != self.order.status:
+            self.status = self.order.status
 
-    def increase_stock_for_return(self, return_quantity):
-        """Increase stock when items are returned"""
-        if return_quantity > self.quantity - self.returned_quantity:
-            raise ValueError("Return quantity cannot exceed available quantity")
-            
-        if self.variant:
-            self.variant.increase_stock(return_quantity)
-        elif self.product:
-            self.product.increase_stock(return_quantity)
-            
-        self.returned_quantity += return_quantity
+        # Reduce stock only when a new order item is created
+        if not self.pk:  
+            self.reduce_stock()
+
+        super().save(*args, **kwargs)
+
+    def reduce_stock(self):
+        """ Reduce stock when an order is placed. """
+        with transaction.atomic():
+            if self.variant:
+                self.variant.reduce_stock(self.quantity)
+            elif self.product:
+                self.product.reduce_stock(self.quantity)
+
+    def restore_stock(self):
+        """ Restore stock when an order is canceled or returned. """
+        with transaction.atomic():
+            if self.variant:
+                self.variant.increase_stock(self.quantity)
+            elif self.product:
+                self.product.increase_stock(self.quantity)
+
+    def update_status(self, new_status):
+        """ Handle stock restoration when status is changed to Cancelled or Return Accepted. """
+        if new_status in ['Cancelled', 'Return Accepted'] and self.status not in ['Cancelled', 'Return Accepted']:
+            self.restore_stock()
+        self.status = new_status
         self.save()
     
-    property
-    def return_status(self):
-        """Get the return status for this specific item"""
-        try:
-            return_request = self.orderreturn
-            return return_request.status if return_request else None
-        except OrderReturn.DoesNotExist:
-            return None
-
-    @property
-    def can_be_returned(self):
-        """Check if this item can be returned"""
-        if self.order.status == 'Delivered':
-            if not self.orderreturn:  # No return request exists
-                return timezone.now() <= self.order.delivered_at + timedelta(days=14)
-        return False
-
-
-
-    @property
-    def available_quantity_for_return(self):
-        """Get quantity available for return"""
-        return self.quantity - self.returned_quantity        
-
-    def __str__(self):
-        if self.variant:
-            return f"{self.variant.product.name} (x{self.quantity})"
-        return f"{self.product.name} (x{self.quantity})"
-
-
-
+   
 
 #for use orderreturn
 class OrderReturn(models.Model):
@@ -341,29 +390,34 @@ class OrderReturn(models.Model):
         """Process the return and update stock"""
         if not self.processed and self.status == 'Return Accepted':
             try:
-                # Check if return quantity is valid
-                if self.return_quantity > self.order_item.quantity - self.order_item.returned_quantity:
-                    raise ValueError("Return quantity exceeds available quantity")
+                with transaction.atomic():
+                    # Validate return quantity
+                    if self.return_quantity > (self.order_item.quantity - self.order_item.returned_quantity):
+                        raise ValueError("Return quantity exceeds available quantity")
 
-                # Update the stock
-                if self.order_item.variant:
-                    self.order_item.variant.increase_stock(self.return_quantity)
-                elif self.order_item.product:
-                    self.order_item.product.increase_stock(self.return_quantity)
+                    # Update the stock using the variant or product methods
+                    if self.order_item.variant:
+                        self.order_item.variant.increase_stock(self.return_quantity)
+                    elif self.order_item.product:
+                        self.order_item.product.increase_stock(self.return_quantity)
 
-                # Update the returned quantity on the order item
-                self.order_item.returned_quantity += self.return_quantity
-                self.order_item.save()
+                    # Update order item
+                    self.order_item.returned_quantity += self.return_quantity
+                    self.order_item.status = 'Return Accepted'
+                    self.order_item.save()
 
-                # Mark as processed
-                self.processed = True
-                self.save()
-                return True
+                    # Process refund
+                    if not self.order.is_refunded:
+                        self.order.refund_wallet()
+
+                    # Mark return as processed
+                    self.processed = True
+                    self.save()
+                    return True
             except Exception as e:
                 print(f"Error processing return: {str(e)}")
-                return False
+                raise
         return False
-
 
 
 #for user profile
