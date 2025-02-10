@@ -1,11 +1,12 @@
 
 from datetime import timedelta
 from time import timezone
+import uuid
 import razorpay 
 import json
 from django.shortcuts import render ,redirect,get_object_or_404
 from admin_app.models import Category ,Product,ProductVariant,Brand,Coupon,Offer
-from .models import Cart, CartItem,Address, Order,OrderItem,Wishlist,OrderReturn
+from .models import Cart, CartItem,Address, Order,OrderItem, Transaction, Wallet,Wishlist,OrderReturn
 from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.views.decorators.csrf import csrf_exempt
@@ -1045,6 +1046,21 @@ def cancel_order_item(request, order_item_id):
                 if order_item.variant:
                     order_item.variant.stock += order_item.quantity
                     order_item.variant.save()
+
+                refund_amount = order_item.total_price
+                    # Process refund if payment was made
+                if order_item.order.payment_method in ['online', 'wallet','cod']:
+                        wallet, created = Wallet.objects.get_or_create(user=request.user)
+                        wallet.balance+=Decimal(str(refund_amount))
+                        wallet.save()
+
+                        Transaction.objects.create(
+                        wallet=wallet,
+                        transaction_id=f"RF{str(uuid.uuid4())[:8].upper()}",
+                        type='deposit',
+                        amount=refund_amount,
+                        description=f"Refund for order item #{order_item.id}"
+                    )    
                 
                 # Cancel the order item
                 OrderItem.objects.filter(id=order_item.id).update(status='Cancelled')
@@ -1062,10 +1078,7 @@ def cancel_order_item(request, order_item_id):
                     order.status = 'Cancelled'
                     order.save()
                     
-                    # Process refund if payment was made
-                    if order.payment_method in ['online', 'wallet']:
-                        order.refund_wallet()
-                
+
                 messages.success(request, "Order cancelled successfully.")
             else:
                 messages.error(request, 
@@ -1135,22 +1148,19 @@ def request_return(request):
                     order__user=request.user
                 )
 
-                # Only check if delivered and not already returned
                 if order_item.status != 'Delivered':
                     return JsonResponse({
                         'status': 'error',
                         'message': 'This item has not been delivered yet'
                     })
 
-                # Check if return already exists
                 if OrderReturn.objects.filter(order_item=order_item).exists():
                     return JsonResponse({
                         'status': 'error',
                         'message': 'Return already requested for this item'
                     })
 
-                # Create return request
-                OrderReturn.objects.create(
+                return_request = OrderReturn.objects.create(
                     order=order_item.order,
                     order_item=order_item,
                     reason=reason,
@@ -1161,13 +1171,41 @@ def request_return(request):
                     return_quantity=1
                 )
 
+                # Process refund for this specific item
+                refund_amount = order_item.total_price
+                
+                if order_item.order.payment_method in ['online', 'wallet', 'cod']:
+                    wallet, created = Wallet.objects.get_or_create(user=request.user)
+                    wallet.balance += Decimal(str(refund_amount))
+                    wallet.save()
+
+                    Transaction.objects.create(
+                        wallet=wallet,
+                        transaction_id=f"RF{str(uuid.uuid4())[:8].upper()}",
+                        type='deposit',
+                        amount=refund_amount,
+                        description=f"Refund for returned item #{order_item.id}"
+                    )
+
                 # Update order item status
-                order_item.status = 'Return Pending'
-                order_item.save()
+                OrderItem.objects.filter(id=order_item.id).update(
+                    status='Return Accepted',
+                    is_refunded=True
+                )
+
+                # Update order status if all items are returned
+                remaining_active = OrderItem.objects.filter(
+                    order=order_item.order
+                ).exclude(
+                    status__in=['Cancelled', 'Return Accepted']
+                ).exists()
+
+                if not remaining_active:
+                    Order.objects.filter(id=order_item.order.id).update(status='Return Accepted')
 
                 return JsonResponse({
                     'status': 'success',
-                    'message': 'Return request submitted successfully'
+                    'message': 'Return request submitted and refund processed successfully'
                 })
 
         except OrderItem.DoesNotExist:

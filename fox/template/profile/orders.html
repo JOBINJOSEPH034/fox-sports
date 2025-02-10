@@ -67,38 +67,49 @@
                             <td class="px-4 fw-medium">₹{{ item.total_price|floatformat:2 }}</td>
                             <td class="px-4">
                                 <div class="d-flex gap-2 flex-column">
-                                    {% if item.status == 'Delivered' %}
-                                        {% if not item.orderreturn %}
+                                    {% if item.orderreturn %}
+                                        {% if item.orderreturn.status == 'Return Accepted' %}
+                                            <span class="text-success">Return Accepted - Amount Refunded</span>
+                                        {% elif item.orderreturn.status == 'Return Pending' %}
+                                            <span class="text-warning">Return Pending - Agent pickup within 3 days</span>
+                                        {% else %}
+                                            {% if item.status == 'Delivered' %}
+                                                <button class="btn btn-sm btn-warning" 
+                                                        onclick="openReturnModal('{{ item.id }}')">
+                                                    Return Item
+                                                </button>
+                                            {% endif %}
+                                        {% endif %}
+                                    {% else %}
+                                        {% if item.status == 'Delivered' %}
                                             <button class="btn btn-sm btn-warning" 
                                                     onclick="openReturnModal('{{ item.id }}')">
                                                 Return Item
                                             </button>
-                                        {% else %}
-                                            <small class="text-warning">Return request in process</small>
                                         {% endif %}
-                                    {% endif %}
-                                    
-                                    {% if item.status in 'Payment Pending,Pending,Processing,Shipped,Out for Delivery' %}
-                                        <form action="{% url 'cancel_order_item' item.id %}" method="POST" class="d-inline">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-danger"
-                                                    onclick="return confirm('Are you sure you want to cancel this item?')">
-                                                Cancel Item
-                                            </button>
-                                        </form>
-                                    {% elif item.status == 'Cancelled' %}
-                                        <span class="text-danger">Order Canceled</span>
-                                    {% endif %}
-                
-                                    {% if item.status == 'Payment Failed' %}
-                                        <span class="text-danger">Payment Failed</span>
-                                    {% elif item.status == 'Payment Pending' %}
-                                        <form action="{% url 'continue_payment' item.order.id %}" method="POST" class="d-inline">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn btn-sm btn-primary">
-                                                Continue Payment
-                                            </button>
-                                        </form>
+                                        
+                                        {% if item.status in 'Payment Pending,Pending,Processing,Shipped,Out for Delivery' %}
+                                            <form action="{% url 'cancel_order_item' item.id %}" method="POST" class="d-inline">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-danger"
+                                                        onclick="return confirm('Are you sure you want to cancel this item?')">
+                                                    Cancel Item
+                                                </button>
+                                            </form>
+                                        {% elif item.status == 'Cancelled' %}
+                                            <span class="text-danger">Order Canceled</span>
+                                        {% endif %}
+                            
+                                        {% if item.status == 'Payment Failed' %}
+                                            <span class="text-danger">Payment Failed</span>
+                                        {% elif item.status == 'Payment Pending' %}
+                                            <form action="{% url 'continue_payment' item.order.id %}" method="POST" class="d-inline">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-primary">
+                                                    Continue Payment
+                                                </button>
+                                            </form>
+                                        {% endif %}
                                     {% endif %}
                                 </div>
                             </td>
@@ -110,6 +121,8 @@
                         {% endfor %}
                     </tbody>
                 </table>
+                
+             
                 
                 
             </div>

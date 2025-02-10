@@ -84,9 +84,6 @@ class Address(models.Model):
             Address.objects.filter(user=self.user).update(is_default=False)
         super().save(*args, **kwargs)
 
-
-        
-
 class Order(models.Model):
     STATUS_CHOICES = [
         ('Pending', 'Pending'),
@@ -161,7 +158,7 @@ class Order(models.Model):
 
 
     def restore_inventory(self):
-        """Restore inventory for cancelled or returned items"""
+        """Restore inventory only if not already refunded"""
         try:
             with transaction.atomic():
                 for item in self.items.select_related('variant', 'product').all():
@@ -174,38 +171,52 @@ class Order(models.Model):
                             print(f"Restoring product {item.product.id} stock by {item.quantity}")
                             item.product.stock += item.quantity
                             item.product.save(update_fields=['stock'])
+
+                    # Mark as refunded to prevent multiple restores
+                        item.is_refunded = True
+                        item.save(update_fields=['is_refunded'])
         except Exception as e:
             print(f"Error restoring inventory: {str(e)}")
             raise
 
+
     # [Rest of the methods remain unchanged]
     def refund_wallet(self):
-        """Process refund to wallet regardless of payment method"""
+        """Refund only for specific canceled or returned items"""
 
-        print('hhhiii')
         try:
             with transaction.atomic():
-                if not self.is_refunded:
-                    wallet, created = Wallet.objects.get_or_create(user=self.user)
-                    
-                    refund_amount = Decimal(str(self.final_amount)) 
-                    
-                    wallet.balance += refund_amount
-                    wallet.save()
+                wallet, created = Wallet.objects.get_or_create(user=self.user)
+                total_refund_amount = Decimal('0')
 
-                    Transaction.objects.create(
-                        wallet=wallet,
-                        transaction_id=f"RF{str(uuid.uuid4())[:8].upper()}",
-                        type='deposit',
-                        amount=refund_amount,
-                        description=f"Refund for order #{self.id} (excluding delivery charges)"
+                for item in self.items.all():  # Iterate over all order items
+                    if item.status in ['Cancelled', 'Return Accepted'] and not item.is_refunded:
+                        refund_amount = Decimal(str(item.total_price))  # Refund item price
+                    
+                        wallet.balance += refund_amount
+                        total_refund_amount += refund_amount
+                        wallet.save()
+
+                    # Mark item as refunded
+                        item.is_refunded = True
+                        item.save(update_fields=['is_refunded'])
+
+                    # Log transaction
+                        Transaction.objects.create(
+                            wallet=wallet,
+                            transaction_id=f"RF{str(uuid.uuid4())[:8].upper()}",
+                            type='deposit',
+                            amount=refund_amount,
+                            description=f"Refund for {item.product_name} (Order #{self.id})"
                     )
 
-                    self.is_refunded = True
-                    self.save(update_fields=['is_refunded'])
+                if total_refund_amount > 0:
+                    print(f"Refunded {total_refund_amount} to wallet for Order #{self.id}")
+
         except Exception as e:
             print(f"Error processing refund: {str(e)}")
-            raise
+            return False
+
 
     @property
     def has_returns(self):
