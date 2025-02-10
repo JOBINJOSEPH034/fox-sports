@@ -205,7 +205,7 @@ class Offer(models.Model):
     referral_code = models.CharField(max_length=255, blank=True, null=True)
     discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)  # Allow NULL
     is_used = models.BooleanField(default=False)
-
+    created_at = models.DateTimeField(default=now)
     def __str__(self):
         return f"{self.name} - {self.discount_percentage}%"
     
@@ -237,6 +237,8 @@ class Offer(models.Model):
             variant.discount_price = variant_discounted_price
             variant.save()
 
+    class Meta:
+        ordering = ['-created_at']  
 
 #model for sales report
 class SalesReport(models.Model):

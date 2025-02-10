@@ -907,11 +907,11 @@ def manage_offers(request):
     search_query = request.GET.get('search', '')
 
     if search_query:
-        offers = Offer.objects.filter(name__icontains=search_query) 
+        offers = Offer.objects.filter(name__icontains=search_query).order_by('-created_at') 
     else:
-        offers = Offer.objects.all()
+        offers = Offer.objects.all().order_by('-created_at')
 
-    paginator = Paginator(offers, 10)
+    paginator = Paginator(offers, 5)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 

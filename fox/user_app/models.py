@@ -84,6 +84,9 @@ class Address(models.Model):
             Address.objects.filter(user=self.user).update(is_default=False)
         super().save(*args, **kwargs)
 
+
+        
+
 class Order(models.Model):
     STATUS_CHOICES = [
         ('Pending', 'Pending'),
@@ -158,11 +161,11 @@ class Order(models.Model):
 
 
     def restore_inventory(self):
-        """Restore inventory for cancelled or returned orders"""
+        """Restore inventory for cancelled or returned items"""
         try:
             with transaction.atomic():
                 for item in self.items.select_related('variant', 'product').all():
-                    if item.status in ['Cancelled', 'Return Accepted']:
+                    if item.status in ['Cancelled', 'Return Accepted'] and not item.is_refunded:
                         if item.variant:
                             print(f"Restoring variant {item.variant.id} stock by {item.quantity}")
                             item.variant.stock += item.quantity
@@ -178,12 +181,14 @@ class Order(models.Model):
     # [Rest of the methods remain unchanged]
     def refund_wallet(self):
         """Process refund to wallet regardless of payment method"""
+
+        print('hhhiii')
         try:
             with transaction.atomic():
                 if not self.is_refunded:
                     wallet, created = Wallet.objects.get_or_create(user=self.user)
                     
-                    refund_amount = Decimal(str(self.final_amount)) - Decimal(str(self.delivery_charge))
+                    refund_amount = Decimal(str(self.final_amount)) 
                     
                     wallet.balance += refund_amount
                     wallet.save()
@@ -323,7 +328,7 @@ class OrderItem(models.Model):
     total_price = models.DecimalField(max_digits=10, decimal_places=2,default=0)
     returned_quantity = models.PositiveIntegerField(default=0)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
-
+    is_refunded = models.BooleanField(default=False)
 
     
     def save(self, *args, **kwargs):
