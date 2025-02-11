@@ -24,6 +24,7 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph
 from reportlab.lib.styles import getSampleStyleSheet
 from json.decoder import JSONDecodeError
+from django.db import transaction
 
 
 
@@ -402,9 +403,8 @@ def add_to_cart(request, product_id):
     variant_id = request.POST.get("variant")  
     quantity = int(request.POST.get("quantity", 1))
 
-    # Ensure variant_id is valid
     variant = None
-    if variant_id and variant_id.isdigit():  # Check if it's a valid number
+    if variant_id and variant_id.isdigit():  
         variant = ProductVariant.objects.filter(id=int(variant_id)).first()
 
     cart, _ = Cart.objects.get_or_create(user=request.user)
@@ -774,7 +774,6 @@ def checkout(request):
 
 
      
-
 razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
 
 @csrf_exempt
@@ -982,19 +981,15 @@ def generate_invoice(request, order):
 
     return response
 
-from django.utils import timezone
-from datetime import timedelta
 
 @login_required
 def order_management(request):
-    # Get order items with their related objects
     order_items = OrderItem.objects.filter(
         order__user=request.user
     ).select_related(
         'order', 'variant', 'variant__product'
     ).order_by('-order__created_at')
     
-    # Calculate return eligibility for each item
     for item in order_items:
         delivered_timestamp = item.order.delivered_at
         has_return = OrderReturn.objects.filter(order_item=item).exists()
@@ -1008,7 +1003,6 @@ def order_management(request):
         else:
             item.can_return = False
             
-        # Add payment retry eligibility
         if item.order.status == 'Payment Failed':
             payment_failed_at = item.order.payment_failed_at
             if payment_failed_at:
@@ -1042,13 +1036,11 @@ def cancel_order_item(request, order_item_id):
     try:
         with transaction.atomic():
             if order_item.status in cancellable_statuses:
-                # Update inventory
                 if order_item.variant:
                     order_item.variant.stock += order_item.quantity
                     order_item.variant.save()
 
                 refund_amount = order_item.total_price
-                    # Process refund if payment was made
                 if order_item.order.payment_method in ['online', 'wallet','cod']:
                         wallet, created = Wallet.objects.get_or_create(user=request.user)
                         wallet.balance+=Decimal(str(refund_amount))
@@ -1062,10 +1054,8 @@ def cancel_order_item(request, order_item_id):
                         description=f"Refund for order item #{order_item.id}"
                     )    
                 
-                # Cancel the order item
                 OrderItem.objects.filter(id=order_item.id).update(status='Cancelled')
                 
-                # Check remaining active items
                 remaining_active = OrderItem.objects.filter(
                     order=order_item.order
                 ).exclude(
@@ -1073,7 +1063,6 @@ def cancel_order_item(request, order_item_id):
                 ).exists()
                 
                 if not remaining_active:
-                    # Cancel entire order if no active items remain
                     order = order_item.order
                     order.status = 'Cancelled'
                     order.save()
@@ -1120,18 +1109,6 @@ def continue_payment(request, order_id):
 
 
 
-from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
-from django.utils.timezone import now
-from django.db import transaction
-from django.shortcuts import get_object_or_404
-from django.core.files.storage import default_storage
-import os
-from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
-from django.utils.timezone import now
-from django.db import transaction
-from django.shortcuts import get_object_or_404
 
 @login_required
 def request_return(request):
@@ -1171,7 +1148,6 @@ def request_return(request):
                     return_quantity=1
                 )
 
-                # Process refund for this specific item
                 refund_amount = order_item.total_price
                 
                 if order_item.order.payment_method in ['online', 'wallet', 'cod']:
@@ -1187,13 +1163,11 @@ def request_return(request):
                         description=f"Refund for returned item #{order_item.id}"
                     )
 
-                # Update order item status
                 OrderItem.objects.filter(id=order_item.id).update(
                     status='Return Accepted',
                     is_refunded=True
                 )
 
-                # Update order status if all items are returned
                 remaining_active = OrderItem.objects.filter(
                     order=order_item.order
                 ).exclude(
@@ -1231,13 +1205,11 @@ def mark_as_delivered(request, order_id):
             order = Order.objects.get(id=order_id)
             order_items = OrderItem.objects.filter(order=order)
             
-            # Only mark non-cancelled items as delivered
             for item in order_items:
                 if item.status != 'Cancelled':
                     item.status = 'Delivered'
                     item.save()
             
-            # Update order status and delivery timestamp
             order.status = 'Delivered'
             order.delivered_at = now()
             order.save()
@@ -1252,7 +1224,6 @@ def mark_as_delivered(request, order_id):
             'message': 'Order not found'
         })
     
-# User Profile View (Displays user details)
 @login_required
 def profile(request):
     user = request.user

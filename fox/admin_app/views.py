@@ -21,6 +21,10 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from io import BytesIO
 from django.db.models.functions import ExtractWeek, ExtractYear, ExtractMonth, ExtractDay
+from django.utils.html import format_html
+from django.db import transaction
+
+
 
 
 # Create your views here.
@@ -29,9 +33,7 @@ from django.db.models.functions import ExtractWeek, ExtractYear, ExtractMonth, E
 @never_cache
 
 def admin_home(request):
-    print('Admin home view executed')  # Debugging print statement
 
-    # Top-selling products, categories, and brands
     top_products = OrderItem.objects.values('product__name') \
         .annotate(total_sold=Sum('quantity')) \
         .order_by('-total_sold')[:10]
@@ -44,7 +46,6 @@ def admin_home(request):
         .annotate(total_sold=Sum('quantity')) \
         .order_by('-total_sold')[:10]
 
-    # Sales data based on filter type
     filter_type = request.GET.get('filter', 'daily')
 
     if filter_type == 'monthly':
@@ -359,15 +360,11 @@ def admin_order_management(request):
 def admin_update_item_status(request, item_id, status):
     try:
         with transaction.atomic():
-            # Get the order item
             order_item = get_object_or_404(OrderItem, id=item_id)
             
-            # Add debug print statements
-            print(f"Updating item {item_id} status from {order_item.status} to {status}")
             
             if status == 'Cancelled':
                 if order_item.status in ['Pending', 'Processing', 'Shipped', 'Out for Delivery']:
-                    # Update stock
                     if order_item.variant:
                         order_item.variant.stock += order_item.quantity
                         order_item.variant.save()
@@ -375,13 +372,10 @@ def admin_update_item_status(request, item_id, status):
                         order_item.product.stock += order_item.quantity
                         order_item.product.save()
                     
-                    # Directly update the status field
                     OrderItem.objects.filter(id=item_id).update(status=status)
                     
-                    # Refresh from database
                     order_item.refresh_from_db()
                     
-                    # Check all items
                     all_cancelled = all(
                         item.status == 'Cancelled' 
                         for item in order_item.order.items.all()
@@ -395,15 +389,11 @@ def admin_update_item_status(request, item_id, status):
                 else:
                     messages.error(request, "Item cannot be cancelled at this stage.")
             else:
-                # Directly update the status using update() method
                 OrderItem.objects.filter(id=item_id).update(status=status)
                 
-                # Refresh the order item from database
                 order_item.refresh_from_db()
                 
-                print(f"Updated status in database to: {order_item.status}")
                 
-                # Check if all items have same status
                 all_same_status = all(
                     item.status == status 
                     for item in OrderItem.objects.filter(order=order_item.order)
@@ -420,25 +410,17 @@ def admin_update_item_status(request, item_id, status):
                 
                 messages.success(request, f"Item status updated to {status}")
                 
-            print(f"Final item status: {OrderItem.objects.get(id=item_id).status}")
             
     except Exception as e:
-        print(f"Error in status update: {str(e)}")
         messages.error(request, f"Error updating status: {str(e)}")
     
     return redirect('admin_order_management')
 
 
-from django.shortcuts import get_object_or_404
-from django.http import JsonResponse
-from django.utils.html import format_html
-from user_app.models import Order  # Ensure correct import
-from user_app.models import Address  # Import Address model
 
 def admin_order_details(request, order_id):
     order = get_object_or_404(Order.objects.prefetch_related('items__product', 'items__variant', 'items__orderreturn'), id=order_id)
     
-    # Fetch the default address for the order user
     address = Address.objects.filter(user=order.user, is_default=True).first()
 
     order_details_html = format_html(
@@ -500,7 +482,6 @@ def admin_order_details(request, order_id):
 def admin_update_order_status(request, order_id, status):
     order = get_object_or_404(Order, id=order_id)
     
-    # Add this block to set delivered_at when status changes to Delivered
     if status == 'Delivered':
         order.delivered_at = timezone.now()
     
@@ -539,25 +520,20 @@ def admin_update_return_status(request, return_id, status):
             order_return = get_object_or_404(OrderReturn, id=return_id)
             original_status = order_return.status
             
-            # Update return status
             order_return.status = status
             order_return.save()
             
-            # Handle return acceptance
             if status == 'Return Accepted' and original_status != 'Return Accepted':
                 if order_return.process_return():
-                    # Update the order item status
                     order_item = order_return.order_item
                     order_item.status = 'Return Accepted'
                     order_item.save()
                     
-                    # Check if all items are returned
                     all_returns_accepted = all(
                         item.status == 'Return Accepted'
                         for item in order_return.order.items.all()
                     )
                     
-                    # Update order status if all items are returned
                     if all_returns_accepted:
                         order = order_return.order
                         order.status = 'Return Accepted'
@@ -577,18 +553,10 @@ def admin_update_return_status(request, return_id, status):
 
 
 
-from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
-from django.utils.timezone import now
-from django.db import transaction
-from django.shortcuts import get_object_or_404
-from django.core.files.storage import default_storage
-import os
 
 
 @login_required
 def process_return_request(request, return_id):
-    """Admin view to process return requests"""
     if not request.user.is_staff:
         return JsonResponse({'status': 'error', 'message': 'Unauthorized'})
         
@@ -597,8 +565,7 @@ def process_return_request(request, return_id):
             return_request = get_object_or_404(OrderReturn, id=return_id)
             action = request.POST.get('action')
             
-            if action == 'approve':
-                # Process the return
+            if action == 'Return Accepted':
                 if return_request.process_return():
                     return_request.status = 'Return Accepted'
                     return_request.save()
@@ -614,7 +581,6 @@ def process_return_request(request, return_id):
                         order.status = 'Return Accepted'
                         order.save()
                         
-                        # Process refund
                         order.refund_wallet()
                         
                     return JsonResponse({
@@ -631,7 +597,6 @@ def process_return_request(request, return_id):
                 return_request.status = 'Return Rejected'
                 return_request.save()
                 
-                # Update order item status
                 order_item = return_request.order_item
                 order_item.return_status = 'Return Rejected'
                 order_item.save()
@@ -652,7 +617,6 @@ def process_return_request(request, return_id):
         'message': 'Invalid action'
     })
 
-# For admin inventory management 
 @login_required
 @never_cache
 def inventory_management(request):
