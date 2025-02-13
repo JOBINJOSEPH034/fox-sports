@@ -1,4 +1,4 @@
-
+﻿
 from django.db import models
 from admin_app.models import Product, ProductVariant,Coupon,Offer,transaction
 from django.contrib.auth.models import User
