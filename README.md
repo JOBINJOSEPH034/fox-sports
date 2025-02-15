@@ -22,6 +22,10 @@
   - Change password
 
 ### Admin Features:
+- **Admin Dashboard**:
+  - Graphical representation of orders (daily, weekly, monthly, yearly)
+  - Filter sales data by different timeframes
+  - Display top-selling brands, categories, and products
 - **Product Management**: Add/edit products
 - **Customer Management**: Block/unblock customers
 - **Category Management**: Add/edit/block categories
@@ -33,10 +37,7 @@
 - **Sales Reports**:
   - Generate full sales reports
   - Export data to **Excel & PDF**
-- **Admin Dashboard**:
-  - Graphical representation of orders (daily, weekly, monthly, yearly)
-  - Filter sales data by different timeframes
-  - Display top-selling brands, categories, and products
+
 
 ## Technology Stack
 ### Backend:
