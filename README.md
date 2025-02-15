@@ -11,7 +11,7 @@
   - Increase/decrease stock quantity
   - Apply and remove available coupons
 - **Checkout Page**:
-  - Payment options: **Cash on Delivery (COD)** and **Razorpay Online Payment**
+  - Payment options: **Cash on Delivery (COD)**, **Wallet**  and **Razorpay Online Payment**
   - Add wallet balance via **Razorpay Integration**
 - **Profile Page**:
   - Manage profile details
