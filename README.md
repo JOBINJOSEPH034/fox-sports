@@ -122,8 +122,6 @@
 This project is licensed under the MIT License.
 
 ## Author
-**Jobin** - Developer & Founder of Fox Sports
+**Jobin T** - Developer & Founder of Fox Sports
 
----
-Feel free to modify the content based on your specific deployment and additional features!
 
