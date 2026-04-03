@@ -24,8 +24,10 @@ Thumbs.db
 *.sublime-project
 *.sublime-workspace
 
-# Django Static Files
-/static/
+# Django Collected Static (must be committed for Vercel deploy)
+!staticfiles/
+# Source static folder (local only)
+# /static/
 *.jpg
 *.jpeg
 *.png
