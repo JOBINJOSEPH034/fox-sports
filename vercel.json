@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "buildCommand": "pip install -r requirements.txt && python manage.py collectstatic --no-input && python manage.py migrate",
   "builds": [
     {
       "src": "fox/wsgi.py",
@@ -8,27 +9,13 @@
         "maxLambdaSize": "15mb",
         "runtime": "python3.10"
       }
-    },
-    {
-      "src": "build.sh",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "staticfiles_build"
-      }
     }
   ],
   "routes": [
-    {
-      "src": "/static/(.*)",
-      "dest": "/static/$1"
-    },
-    {
-      "src": "/media/(.*)",
-      "dest": "/media/$1"
-    },
     {
       "src": "/(.*)",
       "dest": "fox/wsgi.py"
     }
   ]
 }
+
