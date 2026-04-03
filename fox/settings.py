@@ -196,12 +196,17 @@ EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 
 
 #google authetication
-SITE_ID = 2
+SITE_ID = 1
 
 SOCIALACCOUNT_LOGIN_ON_GET = True  
 
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
+        'APP': {
+            'client_id': os.environ.get('GOOGLE_CLIENT_ID', 'fallback'),
+            'secret': os.environ.get('GOOGLE_CLIENT_SECRET', 'fallback'),
+            'key': ''
+        },
         'SCOPE': [
             'profile',
             'email'
