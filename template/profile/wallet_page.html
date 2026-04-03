@@ -1,0 +1,329 @@
+{% extends 'profile/base1.html' %}
+{% load static %}
+
+{% block title %}My Wallet - JoLetics{% endblock %}
+
+{% block profile_content %}
+<h2 class="section-title mb-4">My Wallet</h2>
+
+<style>
+    .wallet-hero {
+        background: #1a1a1a;
+        color: #fff;
+        border-radius: 15px;
+        padding: 40px;
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .wallet-hero::after {
+        content: '\f555';
+        font-family: 'Font Awesome 6 Free';
+        font-weight: 900;
+        position: absolute;
+        right: -20px;
+        bottom: -20px;
+        font-size: 150px;
+        opacity: 0.05;
+    }
+
+    .balance-label {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        opacity: 0.6;
+        margin-bottom: 5px;
+        font-weight: 700;
+    }
+
+    .balance-amount {
+        font-size: clamp(2rem, 8vw, 3.5rem);
+        font-weight: 900;
+        margin-bottom: 25px;
+    }
+
+    @media (max-width: 576px) {
+        .wallet-hero {
+            padding: 30px 20px;
+        }
+
+        .balance-amount {
+            margin-bottom: 15px;
+        }
+
+        .transaction-item {
+            padding: 10px;
+        }
+
+        .transaction-icon {
+            width: 36px;
+            height: 36px;
+            margin-right: 10px;
+        }
+
+        .transaction-type {
+            font-size: 0.9rem;
+        }
+
+        .transaction-amount {
+            font-size: 0.9rem;
+        }
+    }
+
+    .transaction-item {
+        display: flex;
+        align-items: center;
+        padding: 15px;
+        border-radius: 12px;
+        border: 1px solid #f0f0f0;
+        margin-bottom: 12px;
+        transition: all 0.3s;
+    }
+
+    .transaction-item:hover {
+        border-color: #ff6b35;
+        background: #fafafa;
+    }
+
+    .transaction-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 15px;
+        font-size: 0.9rem;
+    }
+
+    .icon-deposit {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+
+    .icon-withdraw {
+        background: #ffebee;
+        color: #c62828;
+    }
+
+    .transaction-details {
+        flex-grow: 1;
+    }
+
+    .transaction-type {
+        font-weight: 700;
+        color: #1a1a1a;
+        margin-bottom: 2px;
+    }
+
+    .transaction-time {
+        font-size: 0.75rem;
+        color: #888;
+    }
+
+    .transaction-amount {
+        font-weight: 800;
+        font-size: 1rem;
+    }
+
+    .amount-positive {
+        color: #2e7d32;
+    }
+
+    .amount-negative {
+        color: #d32f2f;
+    }
+</style>
+
+<div class="wallet-hero">
+    <div class="balance-label">Available Balance</div>
+    <div class="balance-amount">₹{{ wallet.balance|floatformat:2 }}</div>
+    <button class="btn btn-premium btn-lg rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addFundsModal">
+        <i class="fas fa-plus-circle me-2"></i> ADD FUNDS
+    </button>
+</div>
+
+<!-- Add Funds Modal -->
+<div class="modal fade" id="addFundsModal" tabindex="-1" aria-labelledby="addFundsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-20 shadow-lg">
+            <div class="modal-header border-0 bg-light px-4 py-3">
+                <h5 class="modal-title fw-bold" id="addFundsModalLabel">Add Funds to Wallet</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="text-center mb-4">
+                    <div class="d-inline-block p-3 rounded-circle bg-premium-light mb-3">
+                        <i class="fas fa-wallet fa-2x text-premium"></i>
+                    </div>
+                    <p class="text-muted small">Enter the amount you'd like to add to your wallet balance.</p>
+                </div>
+                
+                <div class="mb-4">
+                    <div class="input-group input-group-lg border-2 rounded-15 overflow-hidden border">
+                        <span class="input-group-text bg-white border-0 fw-bold text-muted">₹</span>
+                        <input type="number" id="addAmountInput" class="form-control border-0 fw-bold px-3" placeholder="0.00" min="1" step="0.01">
+                    </div>
+                    <div class="invalid-feedback d-none" id="amountError">Please enter a valid amount greater than 0.</div>
+                </div>
+
+                <div class="quick-amounts d-flex justify-content-between gap-2 mb-2">
+                    <button class="btn btn-outline-dark flex-grow-1 rounded-12 py-2" onclick="setAmount(100)">+ ₹100</button>
+                    <button class="btn btn-outline-dark flex-grow-1 rounded-12 py-2" onclick="setAmount(500)">+ ₹500</button>
+                    <button class="btn btn-outline-dark flex-grow-1 rounded-12 py-2" onclick="setAmount(1000)">+ ₹1000</button>
+                </div>
+            </div>
+            <div class="modal-footer border-0 px-4 pb-4">
+                <button type="button" class="btn btn-light rounded-pill px-4 w-100 mb-2" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-premium rounded-pill px-4 w-100 py-3 fw-bold" id="payNowBtn" onclick="initiatePayment()">
+                    PROCEED TO PAY
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="transactions-section">
+    <h5 class="fw-bold mb-4">Transaction History</h5>
+    {% for transaction in transactions %}
+    <div class="transaction-item">
+        <div class="transaction-icon icon-{{ transaction.type|lower }}">
+            <i class="fas fa-{% if transaction.type == 'withdraw' %}arrow-up text-danger{% else %}arrow-down text-success{% endif %}"></i>
+        </div>
+        <div class="transaction-details">
+            <div class="transaction-type">{{ transaction.type|title }}</div>
+            <div class="transaction-time text-muted small">{{ transaction.created_at|date:"d M Y • H:i" }}</div>
+        </div>
+        <div class="text-end">
+            <div class="transaction-amount {% if transaction.type == 'withdraw' %}amount-negative{% else %}amount-positive{% endif %} fw-900">
+                {% if transaction.type == 'withdraw' %}-{% else %}+{% endif %}₹{{ transaction.amount|floatformat:2 }}
+            </div>
+            <small class="text-muted d-block opacity-50" style="font-size: 0.65rem;">REF: {{ transaction.transaction_id }}</small>
+        </div>
+    </div>
+    {% empty %}
+    <div class="text-center py-5">
+        <div class="mb-4 text-muted opacity-10">
+            <i class="fas fa-history fa-5x"></i>
+        </div>
+        <p class="text-muted">No transactions yet.</p>
+    </div>
+    {% endfor %}
+</div>
+
+<style>
+    .rounded-20 { border-radius: 20px !important; }
+    .rounded-15 { border-radius: 15px !important; }
+    .rounded-12 { border-radius: 12px !important; }
+    .bg-premium-light { background: #fff5f2; }
+    .text-premium { color: #ff6b35; }
+    .fw-900 { font-weight: 900; }
+    .uppercase { text-transform: uppercase; }
+    .tracking-wide { letter-spacing: 0.1em; }
+</style>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+    function setAmount(amt) {
+        document.getElementById('addAmountInput').value = amt;
+        document.getElementById('amountError').classList.add('d-none');
+    }
+
+    function initiatePayment() {
+        const amountInput = document.getElementById('addAmountInput');
+        const amount = parseFloat(amountInput.value);
+        const errorDiv = document.getElementById('amountError');
+        const payBtn = document.getElementById('payNowBtn');
+
+        if (!amount || amount <= 0) {
+            errorDiv.classList.remove('d-none');
+            amountInput.classList.add('is-invalid');
+            return;
+        }
+
+        errorDiv.classList.add('d-none');
+        amountInput.classList.remove('is-invalid');
+        
+        // Disable button and show loading state
+        payBtn.disabled = true;
+        payBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>PROCESSING...';
+
+        fetch("{% url 'create_razorpay_order' %}", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": "{{ csrf_token }}",
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ amount: amount })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "success") {
+                const options = {
+                    key: "{{ razorpay_key }}",
+                    amount: data.amount,
+                    currency: data.currency,
+                    order_id: data.order_id,
+                    name: "JoLetics Wallet",
+                    description: "Add funds to your JoLetics wallet",
+                    image: "{% static 'img/logo.png' %}",
+                    handler: function (response) {
+                        verifyPayment(response, amount);
+                    },
+                    modal: {
+                        ondismiss: function() {
+                            payBtn.disabled = false;
+                            payBtn.innerHTML = 'PROCEED TO PAY';
+                        }
+                    },
+                    prefill: {
+                        email: "{{ request.user.email }}"
+                    },
+                    theme: {
+                        color: "#ff6b35"
+                    }
+                };
+                const rzp = new Razorpay(options);
+                rzp.open();
+            } else {
+                alert(data.message);
+                payBtn.disabled = false;
+                payBtn.innerHTML = 'PROCEED TO PAY';
+            }
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            payBtn.disabled = false;
+            payBtn.innerHTML = 'PROCEED TO PAY';
+        });
+    }
+
+    function verifyPayment(response, amount) {
+        fetch("{% url 'verify_wallet_payment' %}", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": "{{ csrf_token }}",
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_signature: response.razorpay_signature,
+                amount: amount
+            })
+        })
+        .then(res => res.json())
+        .then(resData => {
+            if (resData.status === "success") {
+                location.reload();
+            } else {
+                alert("Payment Verification Failed: " + resData.message);
+                document.getElementById('payNowBtn').disabled = false;
+                document.getElementById('payNowBtn').innerHTML = 'PROCEED TO PAY';
+            }
+        });
+    }
+</script>
+{% endblock %}

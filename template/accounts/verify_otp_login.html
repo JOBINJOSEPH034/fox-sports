@@ -1,0 +1,101 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Enter OTP</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/png" href="" />
+    <link rel="stylesheet" type="text/css" href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'fonts/font-awesome-4.7.0/css/font-awesome.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/design-system.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        html,
+        body {
+            height: 100%;
+        }
+
+        .centered-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        .timer {
+            font-size: 0.9rem;
+            color: #6c757d;
+            font-weight: bold;
+        }
+
+        .resend-link {
+            color: #212529;
+            text-decoration: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .resend-link.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+            cursor: default;
+        }
+    </style>
+</head>
+
+<body class="bg-light">
+    {% include 'partials/_messages_partial.html' %}
+    <div class="container centered-container">
+        <div class="w-100">
+            <div class="row justify-content-center">
+                <div class="col-12 col-md-8 col-lg-6">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body p-5">
+
+                            <p>Please enter the OTP sent to your email: {{ email }}</p>
+
+                            <!-- OTP Form -->
+                            <form method="POST" action="">
+                                {% csrf_token %}
+
+                                <div class="form-group">
+                                    <label for="otp">Enter OTP</label>
+                                    <input type="text" class="form-control form-control-lg text-center" id="otp"
+                                        name="otp" minlength='6' maxlength="6" required placeholder="Enter 6-digit OTP">
+                                </div>
+
+                                <button type="submit" class="btn btn-dark btn-block btn-lg mb-4">VERIFY OTP</button>
+
+                                <button>
+                                    <a href="{% url 'login' %}">Back to Login</a>
+                                </button>
+
+                                <!-- Resend OTP Link with Timer -->
+                                <div class="text-center">
+
+                                    {% if errors %}
+                                    <div class="alert alert-danger mt-3">
+                                        <ul class="mb-0">
+                                            {% for error in errors %}
+                                            <li>{{ error }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{% static 'vendor/jquery/jquery-3.2.1.min.js' %}"></script>
+    <script src="{% static 'vendor/bootstrap/js/bootstrap.min.js' %}"></script>
+    {% include 'partials/_messages_partial.html' %}
+</body>
+
+</html>

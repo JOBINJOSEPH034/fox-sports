@@ -1,0 +1,258 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block body %}
+<div class="page-wrapper">
+    <div class="content container-fluid">
+        <!-- Page Header -->
+        <div class="admin-page-header">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h3 class="admin-page-title">Brand Management</h3>
+                    <div class="admin-breadcrumb">
+                        <a href="{% url 'admin_home' %}" style="color: #7f8c8d; text-decoration: none;">Dashboard</a>
+                        <span style="margin: 0 8px; color: #7f8c8d;">/</span>
+                        <span style="color: #ff6b35;">Brands</span>
+                    </div>
+                </div>
+                <div class="col-auto">
+                    <button type="button" class="btn-admin btn-admin-primary" data-bs-toggle="modal"
+                        data-bs-target="#createBrandModal">
+                        <i class="fas fa-plus"></i> Add Brand
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Section -->
+        <div class="admin-card">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <form method="GET" action="{% url 'brand_management' %}" class="position-relative">
+                        <div style="position: relative; max-width: 400px;">
+                            <i class="fas fa-search"
+                                style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: #7f8c8d;"></i>
+                            <input type="text" name="search" value="{{ search_query }}" class="admin-form-input"
+                                placeholder="Search brands..." style="padding-left: 45px;">
+                            {% if search_query %}
+                            <button type="button" class="btn-admin btn-admin-sm clear-search-btn"
+                                style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); padding: 4px 8px;"
+                                data-url="{% url 'brand_management' %}">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+                <div class="col-md-4 text-right">
+                    <span style="color: #7f8c8d; font-size: 14px;">
+                        <i class="fas fa-tag"></i> Total Brands: <strong style="color: #ff6b35;">{{
+                            page_obj.paginator.count }}</strong>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Brand Table -->
+        <div class="admin-table-container">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th style="width: 80px;">ID</th>
+                        <th>Brand Details</th>
+                        <th>Description</th>
+                        <th style="text-align: center;">Products</th>
+                        <th style="text-align: center;">Total Stock</th>
+                        <th>Status</th>
+                        <th style="text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for data in brand_data %}
+                    <tr>
+                        <td><strong>#{{ data.brand.id }}</strong></td>
+                        <td>
+                            <div style="font-weight: 600; color: #2c3e50;">{{ data.brand.name }}</div>
+                        </td>
+                        <td style="color: #7f8c8d;">
+                            {% if data.brand.description %}
+                            {{ data.brand.description|truncatewords:8 }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td style="text-align: center;">
+                            <span class="badge-admin" style="background: #eef2ff; color: #4361ee;">{{ data.product_count
+                                }}</span>
+                        </td>
+                        <td style="text-align: center;">
+                            <span class="badge-admin" style="background: #e0f2f1; color: #009688;">{{ data.total_stock
+                                }}</span>
+                        </td>
+                        <td>
+                            {% if data.brand.is_active %}
+                            <span class="badge-admin" style="background-color: #27ae60; color: white;">Active</span>
+                            {% else %}
+                            <span class="badge-admin" style="background-color: #95a5a6; color: white;">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            <div class="admin-action-group" style="justify-content: flex-end;">
+                                <form method="post" action="{% url 'toggle_brand_status' data.brand.id %}"
+                                    style="display: inline;">
+                                    {% csrf_token %}
+                                    <button type="submit"
+                                        class="btn-admin btn-admin-sm {% if data.brand.is_active %}btn-admin-warning{% else %}btn-admin-success{% endif %}"
+                                        title="{% if data.brand.is_active %}Deactivate{% else %}Activate{% endif %}">
+                                        <i
+                                            class="fas fa-{% if data.brand.is_active %}ban{% else %}check{% endif %}"></i>
+                                    </button>
+                                </form>
+                                <form method="post" action="{% url 'delete_brand' data.brand.id %}"
+                                    style="display: inline;"
+                                    onsubmit="return confirm('Are you sure you want to delete this brand?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-admin btn-admin-sm btn-admin-danger"
+                                        title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px; color: #7f8c8d;">
+                            <i class="fas fa-tags" style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;"></i>
+                            <div style="font-size: 16px; font-weight: 600;">No brands found</div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div class="admin-card" style="margin-top: 24px;">
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center" style="margin: 0;">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}"
+                            style="border-radius: 8px 0 0 8px;">
+                            <i class="fas fa-angle-double-left"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link"
+                            href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">
+                            <i class="fas fa-angle-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    <li class="page-item active">
+                        <span class="page-link"
+                            style="background: var(--admin-primary-gradient); border-color: var(--admin-primary); color: white;">
+                            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                        </span>
+                    </li>
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link"
+                            href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">
+                            <i class="fas fa-angle-right"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link"
+                            href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}"
+                            style="border-radius: 0 8px 8px 0;">
+                            <i class="fas fa-angle-double-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal for Creating Brand -->
+<div class="modal fade" id="createBrandModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content"
+            style="border-radius: 16px; border: none; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+            <div class="modal-header"
+                style="background: var(--admin-primary-gradient); color: white; border: none; padding: 20px 24px;">
+                <h5 class="modal-title" style="font-weight: 700;">Add New Brand</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"
+                    style="color: white; opacity: 1; filter: invert(1);"></button>
+            </div>
+            <form method="POST" class="p-4">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="name" class="form-label" style="font-weight: 600; color: #2c3e50;">Brand Name</label>
+                    <input type="text" class="admin-form-input" id="name" name="name" required placeholder="e.g. Nike">
+                </div>
+                <div class="mb-4">
+                    <label for="description" class="form-label"
+                        style="font-weight: 600; color: #2c3e50;">Description</label>
+                    <textarea class="admin-form-input" id="description" name="description" rows="3"
+                        placeholder="Optional description..."></textarea>
+                </div>
+                <div class="d-grid">
+                    <button type="submit" class="btn-admin btn-admin-primary btn-block"
+                        style="justify-content: center;">Add Brand</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .pagination .page-link {
+        border: 2px solid #e0e0e0;
+        color: #2c3e50;
+        padding: 8px 16px;
+        margin: 0 4px;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        font-weight: 600;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        height: 100%;
+    }
+
+    .pagination .page-link:hover {
+        background: #f8f9fa;
+        border-color: #ff6b35;
+        color: #ff6b35;
+    }
+
+    .pagination .page-item.active .page-link {
+        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+    }
+</style>
+<script src="{% static 'assets/js/jquery-3.6.0.min.js' %}"></script>
+<script src="{% static 'assets/js/popper.min.js' %}"></script>
+<script src="{% static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
+<script src="{% static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
+<script src="{% static 'assets/js/script.js' %}"></script>
+<script>
+    // Handle clear search button
+    document.addEventListener('DOMContentLoaded', function () {
+        const clearBtn = document.querySelector('.clear-search-btn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function () {
+                window.location.href = this.dataset.url;
+            });
+        }
+    });
+</script>
+
+{% endblock %}

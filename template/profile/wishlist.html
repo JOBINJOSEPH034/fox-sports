@@ -1,0 +1,149 @@
+{% extends 'profile/base1.html' %}
+{% load static %}
+
+{% block title %}My Wishlist - JoLetics{% endblock %}
+
+{% block profile_content %}
+<h2 class="section-title mb-4">My Wishlist</h2>
+
+<style>
+    .wishlist-item {
+        background: #fff;
+        border: 1px solid #f0f0f0;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+    }
+
+    .wishlist-item:hover {
+        border-color: #ff6b35;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+    }
+
+    .wishlist-img-wrapper {
+        width: 100px;
+        height: 100px;
+        overflow: hidden;
+        border-radius: 10px;
+        border: 1px solid #f8f9fa;
+        margin-right: 20px;
+        flex-shrink: 0;
+    }
+
+    .wishlist-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.5s;
+    }
+
+    .wishlist-item:hover .wishlist-img {
+        transform: scale(1.1);
+    }
+
+    .item-name {
+        font-weight: 700;
+        color: #1a1a1a;
+        font-size: 1.1rem;
+        text-decoration: none;
+        transition: color 0.3s;
+    }
+
+    .item-name:hover {
+        color: #ff6b35;
+    }
+
+    .item-meta {
+        font-size: 0.8rem;
+        color: #888;
+        margin-bottom: 8px;
+    }
+
+    .item-price {
+        font-weight: 800;
+        color: #ff6b35;
+        font-size: 1.2rem;
+    }
+
+    .stock-badge {
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 20px;
+    }
+</style>
+
+<div class="wishlist-container">
+    {% for item in page_obj %}
+    <div class="wishlist-item">
+        <div class="wishlist-img-wrapper">
+            <a href="{% url 'product_details' item.product.id %}">
+                {% if item.product.image1 %}
+                <img src="{{ item.product.image1.url }}" class="wishlist-img" alt="{{ item.product.name }}">
+                {% else %}
+                <div class="w-100 h-100 d-flex align-items-center justify-content-center bg-light">
+                    <i class="fas fa-image text-muted"></i>
+                </div>
+                {% endif %}
+            </a>
+        </div>
+
+        <div class="flex-grow-1">
+            <div class="item-meta">{{ item.product.category.name }} | {{ item.product.brand.name }}</div>
+            <a href="{% url 'product_details' item.product.id %}" class="item-name d-block mb-1">{{ item.product.name
+                }}</a>
+            <div class="d-flex align-items-center mt-2">
+                <div class="item-price me-3">₹{{ item.product.price|floatformat:2 }}</div>
+                {% if item.product.total_stock > 0 %}
+                <span class="stock-badge bg-success bg-opacity-10 text-success">In Stock</span>
+                {% else %}
+                <span class="stock-badge bg-danger bg-opacity-10 text-danger">Out of Stock</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="ms-3 text-end d-flex flex-column gap-2">
+            <a href="{% url 'product_details' item.product.id %}"
+                class="btn btn-premium btn-sm rounded-pill px-4">VIEW</a>
+            <form action="{% url 'remove_from_wishlist' item.id %}" method="POST">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill w-100"
+                    onclick="return confirm('Remove from wishlist?')">
+                    <i class="fas fa-trash-alt me-1"></i> REMOVE
+                </button>
+            </form>
+        </div>
+    </div>
+    {% empty %}
+    <div class="text-center py-5">
+        <div class="mb-4 text-muted opacity-25">
+            <i class="fas fa-heart fa-4x"></i>
+        </div>
+        <h5>Your wishlist is empty</h5>
+        <p class="text-muted mb-4">You haven't added any items to your wishlist yet.</p>
+        <a href="{% url 'shop' %}" class="btn btn-premium rounded-pill px-5">EXPLORE SHOP</a>
+    </div>
+    {% endfor %}
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <nav class="mt-5">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}"><i
+                        class="fas fa-chevron-left"></i></a></li>
+            {% endif %}
+            <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+            {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}"><i
+                        class="fas fa-chevron-right"></i></a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

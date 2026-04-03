@@ -1,0 +1,108 @@
+{% extends 'auth_base.html' %}
+{% load static %}
+
+{% block title %}Sign Up - JoLetics{% endblock %}
+
+{% block extra_css %}
+<style>
+    .auth-wrapper {
+        max-width: 650px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+    <div class="text-center">
+        <h2>Create Account</h2>
+        <p class="subtitle">Join JoLetics today</p>
+    </div>
+
+    <form method="post" action="{% url 'signup' %}">
+        {% csrf_token %}
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="first_name" class="form-label">First Name</label>
+                <input type="text" class="form-control" id="first_name" name="first_name" value="{{first_name}}"
+                    placeholder="John" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="last_name" class="form-label">Last Name</label>
+                <input type="text" class="form-control" id="last_name" name="last_name" value="{{last_name}}"
+                    placeholder="Doe" required>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <label for="username" class="form-label">Username</label>
+            <input type="text" class="form-control" id="username" name="username" value="{{user_name}}"
+                placeholder="johndoe" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="email" class="form-label">Email Address</label>
+            <input type="email" class="form-control" id="email" name="email" value="{{email}}"
+                placeholder="john@example.com" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="referral_code" class="form-label">Referral Code <span
+                    style="color: #999; font-weight: 400;">(Optional)</span></label>
+            <input type="text" class="form-control" id="referral_code" name="referral_code"
+                placeholder="Enter code if you have one">
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" class="form-control" id="password" name="password"
+                    placeholder="Min. 8 characters" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <label for="confirm_password" class="form-label">Confirm Password</label>
+                <input type="password" class="form-control" id="confirm_password" name="confirm_password"
+                    placeholder="Repeat password" required>
+            </div>
+        </div>
+
+        {% if errors %}
+        <div class="alert mb-3">
+            <ul class="mb-0 ps-3">
+                {% for error in errors %}
+                <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <button type="submit" class="btn btn-primary-custom w-100 mb-3">
+            Create Account
+        </button>
+
+        <div class="text-center">
+            <p class="mb-0" style="color: #666; font-size: 0.9rem;">
+                Already have an account?
+                <a href="{% url 'login' %}" style="font-weight: 600;">Sign in</a>
+            </p>
+        </div>
+    </form>
+</div>
+
+{% if account_exists %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        Swal.fire({
+            title: 'Account exists!',
+            text: 'An account with this email ID already exists.',
+            icon: 'error',
+            confirmButtonColor: '#ff6b35',
+            confirmButtonText: 'OK'
+        }).then(() => {
+            window.location.href = "{% url 'login' %}";
+        });
+    });
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,622 @@
+{% extends 'user_base.html' %}
+{% load static %}
+
+{% block title %}Shopping Cart - JoLetics{% endblock %}
+
+{% block extra_css %}
+<style>
+    .cart-container {
+        padding: 50px 0 80px;
+        min-height: 60vh;
+    }
+
+    .cart-header {
+        margin-bottom: 40px;
+    }
+
+    .cart-title {
+        font-weight: 800;
+        color: #1a1a1a;
+        font-size: clamp(1.5rem, 5vw, 2rem);
+        letter-spacing: -0.5px;
+    }
+
+    .cart-count {
+        color: #ff6b35;
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-left: 10px;
+    }
+
+    /* Table Styles */
+    .cart-table-wrapper {
+        background: #fff;
+        border-radius: 15px;
+        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.03);
+        overflow: hidden;
+        border: 1px solid #f0f0f0;
+    }
+
+    .cart-table {
+        margin-bottom: 0;
+        width: 100%;
+    }
+
+    .cart-table thead th {
+        background: #f8f9fa;
+        border-bottom: 2px solid #e9ecef;
+        padding: 20px;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        color: #666;
+        border-top: none;
+    }
+
+    .cart-table td {
+        padding: 25px 20px;
+        vertical-align: middle;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .product-info {
+        display: flex;
+        align-items: center;
+    }
+
+    .product-img-wrapper {
+        width: 80px;
+        height: 80px;
+        border-radius: 10px;
+        overflow: hidden;
+        background: #f8f9fa;
+        margin-right: 20px;
+        border: 1px solid #eee;
+        flex-shrink: 0;
+    }
+
+    .product-img-wrapper img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .product-meta h6 {
+        font-weight: 700;
+        margin-bottom: 5px;
+        color: #1a1a1a;
+    }
+
+    .product-meta h6 a {
+        color: #1a1a1a;
+        text-decoration: none;
+        transition: color 0.3s;
+    }
+
+    .product-meta h6 a:hover {
+        color: #ff6b35;
+    }
+
+    .product-meta .brand {
+        font-size: 0.8rem;
+        color: #888;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .product-meta .variant {
+        font-size: 0.85rem;
+        color: #666;
+        margin-top: 5px;
+        background: #f8f9fa;
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 4px;
+    }
+
+    .price-text {
+        font-weight: 700;
+        color: #1a1a1a;
+        font-size: 1.1rem;
+    }
+
+    .price-discounted {
+        color: #ff6b35;
+    }
+
+    .price-original {
+        font-size: 0.9rem;
+        color: #999;
+        text-decoration: line-through;
+        display: block;
+    }
+
+    /* Quantity Control */
+    .qty-control {
+        display: flex;
+        align-items: center;
+        border: 2px solid #e9ecef;
+        border-radius: 30px;
+        width: 120px;
+        height: 40px;
+        overflow: hidden;
+    }
+
+    .qty-btn {
+        width: 35px;
+        height: 100%;
+        border: none;
+        background: transparent;
+        font-weight: 700;
+        color: #666;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+
+    .qty-btn:hover:not(:disabled) {
+        color: #ff6b35;
+        background: #fff5f2;
+    }
+
+    .qty-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+    }
+
+    .qty-input {
+        flex: 1;
+        border: none;
+        text-align: center;
+        font-weight: 700;
+        color: #1a1a1a;
+        width: 40px;
+    }
+
+    .total-price {
+        font-weight: 800;
+        color: #1a1a1a;
+        font-size: 1.2rem;
+    }
+
+    .remove-btn {
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        background: #fff;
+        border: 1px solid #e9ecef;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #999;
+        transition: all 0.3s;
+        margin: 0 auto;
+    }
+
+    .remove-btn:hover {
+        background: #fff5f2;
+        color: #ff4757;
+        border-color: #ff4757;
+    }
+
+    /* Summary Card */
+    .summary-card {
+        background: #fff;
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 5px 25px rgba(0, 0, 0, 0.03);
+        border: 1px solid #f0f0f0;
+        position: sticky;
+        top: 100px;
+    }
+
+    .summary-title {
+        font-weight: 800;
+        font-size: 1.1rem;
+        margin-bottom: 20px;
+        color: #1a1a1a;
+        letter-spacing: 0.5px;
+    }
+
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 15px;
+        color: #666;
+        font-size: 1rem;
+    }
+
+    .summary-row.total {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 2px solid #f0f0f0;
+        font-weight: 800;
+        color: #1a1a1a;
+        font-size: 1.3rem;
+        margin-bottom: 0;
+    }
+
+    .total-value {
+        color: #ff6b35;
+    }
+
+    .discount-row {
+        color: #28a745;
+    }
+
+    .coupon-section {
+        margin: 25px 0;
+        padding: 20px 0;
+        border-top: 1px solid #f0f0f0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .coupon-input-group {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .coupon-input {
+        flex: 1;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        padding: 10px 15px;
+        font-size: 0.9rem;
+        transition: all 0.3s;
+    }
+
+    .coupon-input:focus {
+        border-color: #ff6b35;
+        outline: none;
+    }
+
+    .btn-apply {
+        background: #333;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 0 15px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: all 0.3s;
+    }
+
+    .btn-apply:hover {
+        background: #000;
+    }
+
+    .btn-checkout {
+        background: #ff6b35;
+        color: #fff;
+        width: 100%;
+        padding: 15px;
+        border-radius: 30px;
+        font-weight: 800;
+        font-size: 1.1rem;
+        border: none;
+        letter-spacing: 1px;
+        transition: all 0.3s;
+        box-shadow: 0 10px 20px rgba(255, 107, 53, 0.2);
+        display: block;
+        text-align: center;
+        text-decoration: none;
+    }
+
+    .btn-checkout:hover {
+        background: #ff5722;
+        transform: translateY(-2px);
+        box-shadow: 0 15px 30px rgba(255, 107, 53, 0.3);
+        color: #fff;
+    }
+
+    .btn-checkout.disabled {
+        background: #e9ecef;
+        color: #999;
+        cursor: not-allowed;
+        box-shadow: none;
+        transform: none;
+    }
+
+    /* Applied Coupon */
+    .applied-coupon {
+        background: #f0fff4;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+        padding: 10px 15px;
+        border-radius: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .btn-remove-coupon {
+        background: none;
+        border: none;
+        color: #dc3545;
+        font-size: 0.8rem;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .empty-cart {
+        text-align: center;
+        padding: 80px 0;
+    }
+
+    .empty-icon {
+        font-size: 5rem;
+        color: #e9ecef;
+        margin-bottom: 20px;
+    }
+
+    .btn-start-shopping {
+        background: #ff6b35;
+        color: #fff;
+        padding: 12px 30px;
+        border-radius: 30px;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.3s;
+        display: inline-block;
+        margin-top: 20px;
+    }
+
+    .btn-start-shopping:hover {
+        background: #ff5722;
+        color: #fff;
+        transform: translateY(-2px);
+    }
+
+    @media (max-width: 991px) {
+        .cart-table thead {
+            display: none;
+        }
+
+        .cart-table,
+        .cart-table tbody,
+        .cart-table tr,
+        .cart-table td {
+            display: block;
+            width: 100%;
+        }
+
+        .cart-table tr {
+            margin-bottom: 20px;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .cart-table td {
+            padding: 10px 0;
+            text-align: right;
+            border-bottom: 1px dashed #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .cart-table td:last-child {
+            border-bottom: none;
+        }
+
+        .cart-table td::before {
+            content: attr(data-label);
+            font-weight: 700;
+            color: #666;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+        }
+
+        .product-info {
+            width: 100%;
+            justify-content: flex-start;
+        }
+
+        .summary-card {
+            margin-top: 30px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container cart-container">
+    <div class="row">
+        {% if cart_items %}
+        <div class="col-lg-8">
+            <div class="cart-header d-flex align-items-baseline">
+                <h1 class="cart-title">Shopping Cart</h1>
+                <span class="cart-count">({{ total_items }} items)</span>
+            </div>
+
+            <div class="cart-table-wrapper">
+                <table class="table cart-table">
+                    <thead>
+                        <tr>
+                            <th width="45%">Product</th>
+                            <th width="15%">Price</th>
+                            <th width="20%">Quantity</th>
+                            <th width="15%">Total</th>
+                            <th width="5%"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in cart_items %}
+                        <tr>
+                            <td data-label="Product">
+                                <div class="product-info">
+                                    <div class="product-img-wrapper">
+                                        {% if item.product.image1 %}
+                                        <img src="{{ item.product.image1.url }}" alt="{{ item.product.name }}">
+                                        {% else %}
+                                        <div
+                                            class="d-flex align-items-center justify-content-center h-100 bg-light text-muted">
+                                            <i class="fas fa-box"></i>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="product-meta text-start">
+                                        {% if item.product.brand %}<div class="brand">{{ item.product.brand.name }}</div>{% endif %}
+                                        <h6><a href="{% url 'product_details' item.product.id %}">{{ item.product.name }}</a></h6>
+                                        {% if item.variant %}
+                                        <div class="variant">Size: {{ item.variant.size }} | Color: {{ item.variant.color }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td data-label="Price">
+                                {% if item.get_discounted_price < item.product.price %} <div
+                                    class="price-text price-discounted">₹{{ item.get_discounted_price|floatformat:2 }}
+            </div>
+            <span class="price-original">₹{{ item.product.price }}</span>
+            {% else %}
+            <div class="price-text">₹{{ item.product.price }}</div>
+            {% endif %}
+            </td>
+            <td data-label="Quantity">
+                <form method="POST" action="{% url 'update_cart_item' item.id %}"
+                    class="d-flex justify-content-end justify-content-lg-start">
+                    {% csrf_token %}
+                    <div class="qty-control">
+                        <button type="submit" name="quantity" value="{{ item.quantity|add:'-1' }}" class="qty-btn" {% if item.quantity <= 1 %}disabled{% endif %}>-</button>
+                        <input type="text" class="qty-input" value="{{ item.quantity }}" readonly>
+                        <button type="submit" name="quantity" value="{{ item.quantity|add:'1' }}" class="qty-btn" {% if item.quantity >= item.variant.stock %}disabled{% endif %}>+</button>
+                    </div>
+                </form>
+                {% if item.quantity >= item.variant.stock %}
+                <div class="text-danger small mt-1 text-end text-lg-start" style="font-size: 0.75rem;">Max stock reached
+                </div>
+                {% endif %}
+            </td>
+            <td data-label="Total">
+                <span class="total-price">₹{{ item.total_price|floatformat:2 }}</span>
+            </td>
+            <td data-label="Remove">
+                <a href="{% url 'remove_cart_item' item.id %}" class="remove-btn" title="Remove Item">
+                    <i class="fas fa-trash-alt"></i>
+                </a>
+            </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="summary-card">
+            <h5 class="summary-title">ORDER SUMMARY</h5>
+
+            <div class="summary-row">
+                <span>Subtotal</span>
+                <span class="fw-bold">₹{{ cart_total|floatformat:2 }}</span>
+            </div>
+
+            {% if discount_amount > 0 %}
+            <div class="summary-row discount-row">
+                <span>Discount</span>
+                <span>- ₹{{ discount_amount|floatformat:2 }}</span>
+            </div>
+            {% endif %}
+
+            <div class="summary-row">
+                <span>Shipping</span>
+                <span class="text-success fw-bold">FREE</span>
+            </div>
+
+            <div class="coupon-section">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="fw-bold small text-uppercase">Coupon Code</label>
+                    {% if not coupon_code %}
+                    <a href="#" class="small text-primary text-decoration-none fw-bold" data-bs-toggle="modal"
+                        data-bs-target="#couponsModal">View Coupons</a>
+                    {% endif %}
+                </div>
+
+                {% if coupon_code %}
+                <div class="applied-coupon">
+                    <span><i class="fas fa-ticket-alt me-2"></i>{{ coupon_code }} Applied</span>
+                    <form method="POST" action="{% url 'cart_page' %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" name="remove_coupon" class="btn-remove-coupon">REMOVE</button>
+                    </form>
+                </div>
+                {% else %}
+                <form method="POST" action="{% url 'cart_page' %}">
+                    {% csrf_token %}
+                    <div class="coupon-input-group">
+                        <input type="text" name="coupon_code" class="coupon-input" placeholder="Enter code">
+                        <button type="submit" class="btn-apply">APPLY</button>
+                    </div>
+                </form>
+                {% endif %}
+            </div>
+
+            <div class="summary-row total">
+                <span>TOTAL</span>
+                <span class="total-value">₹{{ final_total|floatformat:2 }}</span>
+            </div>
+
+            <p class="text-muted small mb-4 mt-2">Taxes and shipping calculated at checkout</p>
+
+            <a href="{% url 'checkout' %}" class="btn-checkout">PROCEED TO CHECKOUT</a>
+
+            <div class="text-center mt-3">
+                <a href="{% url 'shop' %}" class="text-muted small text-decoration-none fw-600">Continue Shopping</a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+        <div class="empty-cart">
+            <div class="empty-icon">
+                <i class="fas fa-shopping-cart"></i>
+            </div>
+            <h2 class="fw-bold mb-3">Your Cart is Empty</h2>
+            <p class="text-muted mb-4">Looks like you haven't added any items to your cart yet.</p>
+            <a href="{% url 'shop' %}" class="btn-start-shopping">START SHOPPING</a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+</div>
+
+<!-- Coupons Modal -->
+<div class="modal fade" id="couponsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-light border-0">
+                <h5 class="modal-title fw-bold">Available Coupons</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                {% if available_coupons %}
+                {% for coupon in available_coupons %}
+                <div class="card border-dashed mb-3">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="fw-bold text-primary mb-1">{{ coupon.code }}</h6>
+                            <p class="mb-0 small text-muted">Get {{ coupon.discount_percentage }}% OFF</p>
+                        </div>
+                        <form method="POST" action="{% url 'cart_page' %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="coupon_code" value="{{ coupon.code }}">
+                            <button type="submit" class="btn btn-sm btn-outline-dark fw-bold">APPLY</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="far fa-sad-tear fa-2x text-muted mb-3"></i>
+                    <p class="text-muted mb-0">No active coupons available right now.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

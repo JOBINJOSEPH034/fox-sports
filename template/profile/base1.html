@@ -1,0 +1,228 @@
+{% extends 'user_base.html' %}
+{% load static %}
+
+{% block title %}Account - JoLetics{% endblock %}
+
+{% block extra_css %}
+<style>
+    .profile-sidebar {
+        background: #fff;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+        border: 1px solid #f0f0f0;
+        position: sticky;
+        top: 100px;
+    }
+
+    @media (max-width: 991px) {
+        .profile-sidebar {
+            position: static;
+            margin-bottom: 30px;
+            padding: 15px;
+        }
+
+        .profile-menu {
+            display: flex;
+            overflow-x: auto;
+            padding-bottom: 10px;
+            gap: 10px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .profile-menu-item {
+            margin-bottom: 0;
+            flex: 0 0 auto;
+        }
+
+        .profile-menu-link {
+            padding: 8px 15px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        .profile-menu-link i {
+            margin-right: 8px;
+            font-size: 1rem;
+        }
+
+        .profile-sidebar .text-center.mb-4 {
+            display: flex;
+            align-items: center;
+            text-align: left !important;
+            gap: 15px;
+            margin-bottom: 20px !important;
+        }
+
+        .profile-sidebar .text-center.mb-4 .bg-light {
+            margin-bottom: 0 !important;
+            padding: 10px !important;
+        }
+        
+        .profile-sidebar .text-center.mb-4 i {
+            font-size: 2rem !important;
+        }
+
+        .profile-sidebar hr, .profile-sidebar .mt-4 {
+            display: none;
+        }
+    }
+
+    .profile-menu {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .profile-menu-item {
+        margin-bottom: 10px;
+    }
+
+    .profile-menu-link {
+        display: flex;
+        align-items: center;
+        padding: 12px 20px;
+        color: #444;
+        text-decoration: none;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s;
+        border: 1px solid transparent;
+    }
+
+    .profile-menu-link i {
+        width: 25px;
+        font-size: 1.1rem;
+        margin-right: 12px;
+        color: #888;
+        transition: all 0.3s;
+    }
+
+    .profile-menu-link:hover {
+        background: #fff5f2;
+        color: #ff6b35;
+        border-color: #ffd8cc;
+    }
+
+    .profile-menu-link:hover i {
+        color: #ff6b35;
+        transform: translateX(3px);
+    }
+
+    .profile-menu-link.active {
+        background: #ff6b35;
+        color: #fff;
+        box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3);
+    }
+
+    .profile-menu-link.active i {
+        color: #fff;
+    }
+
+    .content-card {
+        background: #fff;
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05);
+        border: 1px solid #f0f0f0;
+        min-height: 500px;
+    }
+
+    .section-title {
+        font-weight: 800;
+        margin-bottom: 25px;
+        color: #1a1a1a;
+        font-size: 1.5rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .section-title::after {
+        content: '';
+        height: 4px;
+        width: 40px;
+        background: #ff6b35;
+        margin-left: 15px;
+        border-radius: 2px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-lg-3 mb-4">
+            <div class="profile-sidebar">
+                <div class="text-center mb-4">
+                    <div class="d-inline-block p-3 rounded-circle bg-light mb-3">
+                        <i class="fas fa-user-circle fa-3x text-muted"></i>
+                    </div>
+                    <h6 class="mb-0 fw-bold">{{ request.user.username }}</h6>
+                    <small class="text-muted">{{ request.user.email }}</small>
+                </div>
+
+                <ul class="profile-menu">
+                    <li class="profile-menu-item">
+                        <a href="{% url 'profile' %}"
+                            class="profile-menu-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">
+                            <i class="fas fa-address-card"></i> Account Details
+                        </a>
+                    </li>
+                    <li class="profile-menu-item">
+                        <a href="{% url 'manage_addresses' %}"
+                            class="profile-menu-link {% if request.resolver_match.url_name == 'manage_addresses' %}active{% endif %}">
+                            <i class="fas fa-map-marker-alt"></i> Manage Addresses
+                        </a>
+                    </li>
+                    <li class="profile-menu-item">
+                        <a href="{% url 'order_management' %}"
+                            class="profile-menu-link {% if request.resolver_match.url_name == 'order_management' %}active{% endif %}">
+                            <i class="fas fa-shopping-bag"></i> My Orders
+                        </a>
+                    </li>
+                    <li class="profile-menu-item">
+                        <a href="{% url 'wishlist' %}"
+                            class="profile-menu-link {% if request.resolver_match.url_name == 'wishlist' %}active{% endif %}">
+                            <i class="fas fa-heart"></i> Wishlist
+                        </a>
+                    </li>
+                    <li class="profile-menu-item">
+                        <a href="{% url 'wallet_page' %}"
+                            class="profile-menu-link {% if request.resolver_match.url_name == 'wallet_page' %}active{% endif %}">
+                            <i class="fas fa-wallet"></i> Wallet
+                        </a>
+                    </li>
+                    <li class="profile-menu-item">
+                        <a href="{% url 'change_password' %}"
+                            class="profile-menu-link {% if request.resolver_match.url_name == 'change_password' %}active{% endif %}">
+                            <i class="fas fa-key"></i> Change Password
+                        </a>
+                    </li>
+                    <li class="mt-4">
+                        <hr class="text-muted opacity-25">
+                    </li>
+                    <li class="profile-menu-item">
+                        <a href="{% url 'logout' %}" class="profile-menu-link text-danger">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-lg-9">
+            <div class="content-card">
+                {% block profile_content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Any profile specific shared JS
+</script>
+{% endblock %}

@@ -1,0 +1,207 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block body %}
+<div class="page-wrapper">
+    <div class="content container-fluid">
+        <!-- Page Header -->
+        <div class="admin-page-header">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h3 class="admin-page-title">Category Management</h3>
+                    <div class="admin-breadcrumb">
+                        <a href="{% url 'admin_home' %}" style="color: #7f8c8d; text-decoration: none;">Dashboard</a>
+                        <span style="margin: 0 8px; color: #7f8c8d;">/</span>
+                        <span style="color: #ff6b35;">Categories</span>
+                    </div>
+                </div>
+                <div class="col-auto">
+                    <a href="{% url 'add_category' %}" class="btn-admin btn-admin-primary">
+                        <i class="fas fa-plus"></i> Add Category
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Section -->
+        <div class="admin-card">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <form method="GET" action="{% url 'category' %}" class="position-relative">
+                        <div style="position: relative; max-width: 400px;">
+                            <i class="fas fa-search"
+                                style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: #7f8c8d;"></i>
+                            <input type="text" name="q" value="{{ query }}" class="admin-form-input"
+                                placeholder="Search categories..." style="padding-left: 45px;">
+                            {% if query %}
+                            <button type="button" class="btn-admin btn-admin-sm clear-search-btn"
+                                style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); padding: 4px 8px;"
+                                data-url="{% url 'category' %}">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+                <div class="col-md-4 text-right">
+                    <span style="color: #7f8c8d; font-size: 14px;">
+                        <i class="fas fa-th-large"></i> Total Categories: <strong style="color: #ff6b35;">{{
+                            page_obj.paginator.count }}</strong>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category Table -->
+        <div class="admin-table-container">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th style="width: 80px;">ID</th>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th style="width: 120px;">Status</th>
+                        <th style="width: 200px; text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for category in page_obj %}
+                    <tr>
+                        <td><strong>#{{ category.id }}</strong></td>
+                        <td>
+                            <div style="font-weight: 600; color: #2c3e50;">{{ category.name }}</div>
+                        </td>
+                        <td style="color: #7f8c8d;">
+                            {% if category.description %}
+                            {{ category.description|truncatewords:8 }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if category.is_active %}
+                            <span class="badge-admin" style="background-color: #27ae60; color: white;">Active</span>
+                            {% else %}
+                            <span class="badge-admin" style="background-color: #e74c3c; color: white;">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            <div class="admin-action-group" style="justify-content: flex-end;">
+                                <a href="{% url 'edit_category' category.id %}"
+                                    class="btn-admin btn-admin-sm btn-admin-primary" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'toggle_category_status' category.id %}"
+                                    class="btn-admin btn-admin-sm {% if category.is_active %}btn-admin-warning{% else %}btn-admin-success{% endif %}"
+                                    title="{% if category.is_active %}Deactivate{% else %}Activate{% endif %}">
+                                    <i class="fas fa-{% if category.is_active %}ban{% else %}check{% endif %}"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 40px; color: #7f8c8d;">
+                            <i class="fas fa-th-list" style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;"></i>
+                            <div style="font-size: 16px; font-weight: 600;">No categories found</div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div class="admin-card" style="margin-top: 24px;">
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center" style="margin: 0;">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if query %}&q={{ query }}{% endif %}"
+                            style="border-radius: 8px 0 0 8px;">
+                            <i class="fas fa-angle-double-left"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link"
+                            href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}">
+                            <i class="fas fa-angle-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    <li class="page-item active">
+                        <span class="page-link"
+                            style="background: var(--admin-primary-gradient); border-color: var(--admin-primary); color: white;">
+                            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                        </span>
+                    </li>
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link"
+                            href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}">
+                            <i class="fas fa-angle-right"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link"
+                            href="?page={{ page_obj.paginator.num_pages }}{% if query %}&q={{ query }}{% endif %}"
+                            style="border-radius: 0 8px 8px 0;">
+                            <i class="fas fa-angle-double-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+</div>
+
+<script src="{% static 'assets/js/jquery-3.6.0.min.js' %}"></script>
+<script src="{% static 'assets/js/popper.min.js' %}"></script>
+<script src="{% static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
+<script src="{% static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
+<script src="{% static 'assets/js/script.js' %}"></script>
+<script>
+    // Handle clear search button
+    document.addEventListener('DOMContentLoaded', function () {
+        const clearBtn = document.querySelector('.clear-search-btn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function () {
+                window.location.href = this.dataset.url;
+            });
+        }
+    });
+</script>
+
+<style>
+    .pagination .page-link {
+        border: 2px solid #e0e0e0;
+        color: #2c3e50;
+        padding: 8px 16px;
+        margin: 0 4px;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        font-weight: 600;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        height: 100%;
+    }
+
+    .pagination .page-link:hover {
+        background: #f8f9fa;
+        border-color: #ff6b35;
+        color: #ff6b35;
+    }
+
+    .pagination .page-item.active .page-link {
+        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,362 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block body %}
+<div class="page-wrapper">
+    <div class="content container-fluid">
+        <!-- Page Header -->
+        <div class="admin-page-header">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h3 class="admin-page-title">Product Management</h3>
+                    <div class="admin-breadcrumb">
+                        <a href="{% url 'admin_home' %}" style="color: #7f8c8d; text-decoration: none;">Dashboard</a>
+                        <span style="margin: 0 8px; color: #7f8c8d;">/</span>
+                        <span style="color: #ff6b35;">Products</span>
+                    </div>
+                </div>
+                <div class="col-auto">
+                    <a href="{% url 'add_product' %}" class="btn-admin btn-admin-primary">
+                        <i class="fas fa-plus"></i> Add Product
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search and Filter Section -->
+        <div class="admin-card">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <form method="GET" action="{% url 'product' %}" class="position-relative">
+                        <div style="position: relative; max-width: 400px;">
+                            <i class="fas fa-search"
+                                style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: #7f8c8d;"></i>
+                            <input type="text" name="q" value="{{ query }}" class="admin-form-input"
+                                placeholder="Search products by name, category, or brand..."
+                                style="padding-left: 45px;">
+                            {% if query %}
+                            <button type="button" class="btn-admin btn-admin-sm"
+                                style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); padding: 4px 8px;"
+                                onclick="clearSearch()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+                <div class="col-md-4 text-right">
+                    <span style="color: #7f8c8d; font-size: 14px;">
+                        <i class="fas fa-box"></i> Total Products: <strong style="color: #ff6b35;">{{
+                            page_obj.paginator.count }}</strong>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Product Table -->
+        <div class="admin-table-container">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">ID</th>
+                        <th>Product</th>
+                        <th>Category</th>
+                        <th>Brand</th>
+                        <th style="width: 100px;">Stock</th>
+                        <th style="width: 120px;">Price</th>
+                        <th style="width: 100px;">Status</th>
+                        <th style="width: 280px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in page_obj %}
+                    <tr>
+                        <td><strong>#{{ product.id }}</strong></td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                {% if product.image1 %}
+                                <img src="{{ product.image1.url }}" alt="{{ product.name }}"
+                                    style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; margin-right: 12px; border: 2px solid #f0f0f0;">
+                                {% else %}
+                                <div
+                                    style="width: 50px; height: 50px; background: linear-gradient(135deg, #f0f0f0, #e0e0e0); border-radius: 8px; margin-right: 12px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-image" style="color: #ccc;"></i>
+                                </div>
+                                {% endif %}
+                                <div>
+                                    <div style="font-weight: 600; color: #2c3e50;">{{ product.name }}</div>
+                                    <div style="font-size: 12px; color: #7f8c8d;">
+                                        {% if product.description %}
+                                        {{ product.description|truncatewords:8 }}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span
+                                style="background: linear-gradient(135deg, rgba(52, 152, 219, 0.1), rgba(52, 152, 219, 0.2)); color: #3498db; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600;">
+                                {% if product.category %}
+                                {{ product.category.name }}
+                                {% else %}
+                                Uncategorized
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>
+                            {% if product.brand %}
+                            {{ product.brand.name }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if product.stock > 10 %}
+                            <span class="badge-admin"
+                                style="background-color: #27ae60; color: white; padding: 6px 12px; border-radius: 20px; font-weight: 600;">{{
+                                product.stock }}</span>
+                            {% elif product.stock > 0 %}
+                            <span class="badge-admin"
+                                style="background-color: #f39c12; color: white; padding: 6px 12px; border-radius: 20px; font-weight: 600;">{{
+                                product.stock }}</span>
+                            {% else %}
+                            <span class="badge-admin"
+                                style="background-color: #e74c3c; color: white; padding: 6px 12px; border-radius: 20px; font-weight: 600;">Out
+                                of Stock</span>
+                            {% endif %}
+                        </td>
+                        <td><strong style="color: #27ae60; font-size: 15px;">₹{{ product.price }}</strong></td>
+                        <td>
+                            {% if product.is_active %}
+                            <span class="badge-admin"
+                                style="background-color: #27ae60; color: white; padding: 6px 12px; border-radius: 20px; font-weight: 600;">Active</span>
+                            {% else %}
+                            <span class="badge-admin"
+                                style="background-color: #e74c3c; color: white; padding: 6px 12px; border-radius: 20px; font-weight: 600;">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="admin-action-group">
+                                <a href="{% url 'edit_product' product.id %}"
+                                    class="btn-admin btn-admin-sm btn-admin-primary" title="Edit Product">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'toggle_product_status' product.id %}"
+                                    class="btn-admin btn-admin-sm {% if product.is_active %}btn-admin-warning{% else %}btn-admin-success{% endif %}"
+                                    title="{% if product.is_active %}Deactivate{% else %}Activate{% endif %}">
+                                    <i
+                                        class="fas fa-{% if product.is_active %}toggle-on{% else %}toggle-off{% endif %}"></i>
+                                </a>
+                                <button class="btn-admin btn-admin-sm btn-admin-secondary view-variants-btn"
+                                    data-id="{{ product.id }}" title="View Variants">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <form action="{% url 'delete_product' product.id %}" method="POST"
+                                    style="display:inline;"
+                                    onsubmit="return confirm('Are you sure you want to permanently delete this product?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-admin btn-admin-sm btn-admin-danger"
+                                        title="Delete Product">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 40px; color: #7f8c8d;">
+                            <i class="fas fa-box-open" style="font-size: 48px; margin-bottom: 16px; opacity: 0.3;"></i>
+                            <div style="font-size: 16px; font-weight: 600;">No products found</div>
+                            <div style="font-size: 14px; margin-top: 8px;">
+                                {% if query %}
+                                Try adjusting your search terms
+                                {% else %}
+                                <a href="{% url 'add_product' %}" style="color: #ff6b35;">Add your first product</a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div class="admin-card" style="margin-top: 24px;">
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center" style="margin: 0;">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1{% if query %}&q={{ query }}{% endif %}"
+                            style="border-radius: 8px 0 0 8px;">
+                            <i class="fas fa-angle-double-left"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link"
+                            href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}">
+                            <i class="fas fa-angle-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    <li class="page-item active">
+                        <span class="page-link"
+                            style="background: var(--admin-primary-gradient); border-color: var(--admin-primary); color: white;">
+                            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                        </span>
+                    </li>
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link"
+                            href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}">
+                            <i class="fas fa-angle-right"></i>
+                        </a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link"
+                            href="?page={{ page_obj.paginator.num_pages }}{% if query %}&q={{ query }}{% endif %}"
+                            style="border-radius: 0 8px 8px 0;">
+                            <i class="fas fa-angle-double-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Variant Details Modal -->
+<div class="modal fade" id="viewVariantsModal" tabindex="-1" role="dialog" aria-labelledby="variantModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content" style="border-radius: 16px; border: none; overflow: hidden;">
+            <div class="modal-header"
+                style="background: var(--admin-primary-gradient); color: white; border: none; padding: 20px 24px;">
+                <h5 class="modal-title" id="variantModalLabel" style="font-weight: 700; margin: 0;">
+                    <i class="fas fa-layer-group"></i> Product Variants
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close"
+                    style="color: white; opacity: 1; font-size: 32px; font-weight: 300; text-shadow: none; background: none; border: none; cursor: pointer;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: 24px;">
+                <div id="variant-details">
+                    <div class="admin-table-container">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Size</th>
+                                    <th>Color</th>
+                                    <th>Stock</th>
+                                    <th>Total Price</th>
+                                </tr>
+                            </thead>
+                            <tbody id="variant-table-body">
+                                <tr>
+                                    <td colspan="4" style="text-align: center; padding: 40px; color: #7f8c8d;">
+                                        <i class="fas fa-spinner fa-spin" style="font-size: 24px;"></i>
+                                        <div style="margin-top: 12px;">Loading variants...</div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'assets/js/jquery-3.6.0.min.js' %}"></script>
+<script src="{% static 'assets/js/popper.min.js' %}"></script>
+<script src="{% static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
+<script src="{% static 'assets/plugins/slimscroll/jquery.slimscroll.min.js' %}"></script>
+<script src="{% static 'assets/js/script.js' %}"></script>
+
+<script>
+    $(document).ready(function () {
+        $('.view-variants-btn').on('click', function () {
+            const productId = $(this).data('id');
+            $('#variant-table-body').html('<tr><td colspan="4" style="text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin" style="font-size: 24px; color: #ff6b35;"></i><div style="margin-top: 12px; color: #7f8c8d;">Loading variants...</div></td></tr>');
+
+            $.ajax({
+                url: `{% url 'product_variant_list' 0 %}`.replace('0', productId),
+                method: 'GET',
+                success: function (data) {
+                    const variants = data.variants;
+                    const tbody = $('#variant-table-body');
+                    tbody.empty();
+
+                    if (variants.length > 0) {
+                        variants.forEach(variant => {
+                            const stockBadge = variant.stock > 10
+                                ? `<span class="badge-admin badge-success">${variant.stock}</span>`
+                                : variant.stock > 0
+                                    ? `<span class="badge-admin badge-warning">${variant.stock}</span>`
+                                    : `<span class="badge-admin badge-danger">Out of Stock</span>`;
+
+                            tbody.append(`
+                                <tr>
+                                    <td><strong>${variant.size}</strong></td>
+                                    <td>
+                                        <span style="display: inline-block; width: 20px; height: 20px; background: ${variant.color}; border-radius: 4px; border: 2px solid #ddd; vertical-align: middle; margin-right: 8px;"></span>
+                                        ${variant.color}
+                                    </td>
+                                    <td>${stockBadge}</td>
+                                    <td><strong style="color: #27ae60;">₹${variant.total_price}</strong></td>
+                                </tr>
+                            `);
+                        });
+                    } else {
+                        tbody.append('<tr><td colspan="4" style="text-align: center; padding: 40px; color: #7f8c8d;"><i class="fas fa-info-circle" style="font-size: 24px; margin-bottom: 12px; opacity: 0.5;"></i><div>No variants available for this product</div></td></tr>');
+                    }
+                },
+                error: function () {
+                    $('#variant-table-body').html('<tr><td colspan="4" style="text-align: center; padding: 40px; color: #e74c3c;"><i class="fas fa-exclamation-triangle" style="font-size: 24px; margin-bottom: 12px;"></i><div>Error loading variant details. Please try again.</div></td></tr>');
+                }
+            });
+
+            $('#viewVariantsModal').modal('show');
+        });
+    });
+
+    function clearSearch() {
+        window.location.href = '{% url "product" %}';
+    }
+</script>
+
+<style>
+    .pagination .page-link {
+        border: 2px solid #e0e0e0;
+        color: #2c3e50;
+        padding: 8px 16px;
+        margin: 0 4px;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        font-weight: 600;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        height: 100%;
+    }
+
+    .pagination .page-link:hover {
+        background: #f8f9fa;
+        border-color: #ff6b35;
+        color: #ff6b35;
+    }
+
+    .pagination .page-item.active .page-link {
+        box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+    }
+</style>
+{% endblock %}

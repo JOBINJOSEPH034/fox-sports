@@ -1,0 +1,56 @@
+{% extends 'user_base.html' %}
+{% load static %}
+
+{% block title %}Verify OTP - JoLetics{% endblock %}
+
+{% block extra_css %}
+<style>
+    .auth-container {
+        min-height: calc(100vh - 400px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 0;
+    }
+
+    .otp-input {
+        letter-spacing: 15px;
+        text-align: center;
+        font-size: 24px;
+        font-weight: 700;
+        padding-left: 25px !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container auth-container">
+    <div class="row w-100 justify-content-center">
+        <div class="col-12 col-md-8 col-lg-5">
+            <div class="card auth-card shadow-lg p-4 p-md-5 text-center">
+                <div class="mb-4">
+                    <i class="fas fa-shield-alt fa-3x text-primary mb-3"></i>
+                    <h2 class="fw-900 border-bottom d-inline-block pb-2">VERIFY OTP</h2>
+                    <p class="text-muted small mt-2">We've sent a 6-digit code to your email. Please enter it below.</p>
+                </div>
+
+                <form method="POST" action="">
+                    {% csrf_token %}
+
+                    <div class="mb-4">
+                        <input type="text" class="form-control form-control-premium otp-input" name="otp" maxlength="6"
+                            pattern="\d{6}" placeholder="******" required autofocus>
+                    </div>
+
+                    <button type="submit" class="btn btn-premium w-100 mb-4">VERIFY & PROCEED</button>
+
+                    <div class="text-center">
+                        <p class="small text-muted mb-0">Didn't receive the code? <a href="#"
+                                class="text-dark fw-bold text-decoration-none">Resend OTP</a></p>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

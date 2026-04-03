@@ -1,0 +1,46 @@
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+{# Embed messages as JSON data #}
+<script id="messages-data" type="application/json">
+[
+    {% for message in messages %}
+    {
+        "tags": "{{ message.tags }}",
+        "text": "{{ message|escapejs }}"
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+]
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 5000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer)
+                toast.addEventListener('mouseleave', Swal.resumeTimer)
+            }
+        });
+
+        try {
+            const messages = JSON.parse(document.getElementById('messages-data').textContent);
+            messages.forEach(msg => {
+                let iconType = 'info';
+                if (msg.tags.includes('success')) iconType = 'success';
+                else if (msg.tags.includes('error') || msg.tags.includes('danger')) iconType = 'error';
+                else if (msg.tags.includes('warning')) iconType = 'warning';
+
+                Toast.fire({
+                    icon: iconType,
+                    title: msg.text
+                });
+            });
+        } catch (e) {
+            console.error('Error parsing messages:', e);
+        }
+    });
+</script>

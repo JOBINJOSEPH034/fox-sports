@@ -1,0 +1,452 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block body %}
+
+<div class="page-wrapper">
+    <div class="content container-fluid">
+        <!-- Page Header -->
+        <div class="admin-page-header">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h3 class="admin-page-title">Add New Product</h3>
+                    <div class="admin-breadcrumb">
+                        <a href="{% url 'admin_home' %}" style="color: #7f8c8d; text-decoration: none;">Dashboard</a>
+                        <span style="margin: 0 8px; color: #7f8c8d;">/</span>
+                        <a href="{% url 'product' %}" style="color: #7f8c8d; text-decoration: none;">Products</a>
+                        <span style="margin: 0 8px; color: #7f8c8d;">/</span>
+                        <span style="color: #ff6b35;">Add Product</span>
+                    </div>
+                </div>
+                <div class="col-auto">
+                    <a href="{% url 'product' %}" class="btn-admin btn-admin-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to List
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            <!-- Product Details Card -->
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h4 class="admin-card-title">
+                        <i class="fas fa-info-circle" style="color: #ff6b35; margin-right: 8px;"></i>
+                        Product Details
+                    </h4>
+                </div>
+                <div class="admin-card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="admin-form-group">
+                                <label class="admin-form-label" for="{{ product_form.name.id_for_label }}">
+                                    Product Name <span style="color: #e74c3c;">*</span>
+                                </label>
+                                {{ product_form.name }}
+                                {% if product_form.name.errors %}
+                                <small style="color: #e74c3c; font-size: 12px; margin-top: 4px; display: block;">{{
+                                    product_form.name.errors.0 }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="admin-form-group">
+                                <label class="admin-form-label" for="{{ product_form.category.id_for_label }}">
+                                    Category <span style="color: #e74c3c;">*</span>
+                                </label>
+                                {{ product_form.category }}
+                                {% if product_form.category.errors %}
+                                <small style="color: #e74c3c; font-size: 12px; margin-top: 4px; display: block;">{{
+                                    product_form.category.errors.0 }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="admin-form-group">
+                                <label class="admin-form-label" for="{{ product_form.brand.id_for_label }}">
+                                    Brand <span style="color: #e74c3c;">*</span>
+                                </label>
+                                {{ product_form.brand }}
+                                {% if product_form.brand.errors %}
+                                <small style="color: #e74c3c; font-size: 12px; margin-top: 4px; display: block;">{{
+                                    product_form.brand.errors.0 }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="admin-form-group">
+                                <label class="admin-form-label" for="{{ product_form.price.id_for_label }}">
+                                    Price (₹) <span style="color: #e74c3c;">*</span>
+                                </label>
+                                {{ product_form.price }}
+                                {% if product_form.price.errors %}
+                                <small style="color: #e74c3c; font-size: 12px; margin-top: 4px; display: block;">{{
+                                    product_form.price.errors.0 }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="admin-form-group">
+                                <label class="admin-form-label" for="{{ product_form.stock.id_for_label }}">
+                                    Stock Quantity <span style="color: #e74c3c;">*</span>
+                                </label>
+                                {{ product_form.stock }}
+                                {% if product_form.stock.errors %}
+                                <small style="color: #e74c3c; font-size: 12px; margin-top: 4px; display: block;">{{
+                                    product_form.stock.errors.0 }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="admin-form-group">
+                        <label class="admin-form-label" for="{{ product_form.description.id_for_label }}">
+                            Description
+                        </label>
+                        {{ product_form.description }}
+                        {% if product_form.description.errors %}
+                        <small style="color: #e74c3c; font-size: 12px; margin-top: 4px; display: block;">{{
+                            product_form.description.errors.0 }}</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product Images Card -->
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h4 class="admin-card-title">
+                        <i class="fas fa-images" style="color: #ff6b35; margin-right: 8px;"></i>
+                        Product Images
+                    </h4>
+                    <small style="color: #7f8c8d; font-size: 13px;">Upload up to 2 images for your product</small>
+                </div>
+                <div class="admin-card-body">
+                    <div class="row">
+                        <!-- Image 1 -->
+                        <div class="col-md-6">
+                            <div class="admin-form-group">
+                                <label class="admin-form-label" for="id_image1">
+                                    <i class="fas fa-image"></i> Primary Image
+                                </label>
+                                <div class="image-upload-container">
+                                    <div class="image-preview-box" id="preview-box-1">
+                                        {% if product.image1 %}
+                                        <img src="{{ product.image1.url }}" alt="Image 1" id="image1-preview"
+                                            class="preview-image">
+                                        {% else %}
+                                        <div class="preview-placeholder">
+                                            <i class="fas fa-cloud-upload-alt"></i>
+                                            <p>Click to upload image</p>
+                                            <small>JPG, PNG or GIF (Max 5MB)</small>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <input type="file" id="id_image1" name="image1" class="admin-form-input"
+                                        accept="image/*" style="margin-top: 12px;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Image 2 -->
+                        <div class="col-md-6">
+                            <div class="admin-form-group">
+                                <label class="admin-form-label" for="id_image2">
+                                    <i class="fas fa-image"></i> Secondary Image
+                                </label>
+                                <div class="image-upload-container">
+                                    <div class="image-preview-box" id="preview-box-2">
+                                        {% if product.image2 %}
+                                        <img src="{{ product.image2.url }}" alt="Image 2" id="image2-preview"
+                                            class="preview-image">
+                                        {% else %}
+                                        <div class="preview-placeholder">
+                                            <i class="fas fa-cloud-upload-alt"></i>
+                                            <p>Click to upload image</p>
+                                            <small>JPG, PNG or GIF (Max 5MB)</small>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <input type="file" id="id_image2" name="image2" class="admin-form-input"
+                                        accept="image/*" style="margin-top: 12px;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cropper UI -->
+                    <div id="image-cropper"
+                        style="display:none; margin-top: 24px; padding: 20px; background: #f8f9fa; border-radius: 12px;">
+                        <h5 style="color: #2c3e50; margin-bottom: 16px;">
+                            <i class="fas fa-crop"></i> Crop Image
+                        </h5>
+                        <div id="cropper-container"
+                            style="max-height: 400px; background: white; border-radius: 8px; overflow: hidden;"></div>
+                        <div style="margin-top: 16px; text-align: center;">
+                            <button type="button" id="crop-image-btn" class="btn-admin btn-admin-primary">
+                                <i class="fas fa-check"></i> Apply Crop
+                            </button>
+                            <button type="button" id="cancel-crop-btn" class="btn-admin btn-admin-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Product Variants Card -->
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h4 class="admin-card-title">
+                        <i class="fas fa-layer-group" style="color: #ff6b35; margin-right: 8px;"></i>
+                        Product Variants
+                    </h4>
+                    <small style="color: #7f8c8d; font-size: 13px;">Add size and color variations for this
+                        product</small>
+                </div>
+                <div class="admin-card-body">
+                    <div class="admin-table-container">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Size</th>
+                                    <th>Color</th>
+                                    <th>Additional Price (₹)</th>
+                                    <th>Stock</th>
+                                    <th style="width: 80px;">Remove</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{ variant_formset.management_form }}
+                                {% for form in variant_formset %}
+                                <tr>
+                                    <td>{{ form.size }}</td>
+                                    <td>{{ form.color }}</td>
+                                    <td>{{ form.additional_price }}</td>
+                                    <td>{{ form.stock }}</td>
+                                    <td style="text-align: center;">
+                                        <label class="admin-toggle" style="margin: 0;">
+                                            {{ form.DELETE }}
+                                            <span class="admin-toggle-slider"></span>
+                                        </label>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="admin-card" style="background: #f8f9fa; border: 2px dashed #e0e0e0;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <p style="margin: 0; color: #7f8c8d; font-size: 14px;">
+                            <i class="fas fa-info-circle"></i> Make sure all required fields are filled before saving
+                        </p>
+                    </div>
+                    <div class="admin-action-group">
+                        <a href="{% url 'product' %}" class="btn-admin btn-admin-secondary">
+                            <i class="fas fa-times"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn-admin btn-admin-primary btn-admin-lg">
+                            <i class="fas fa-save"></i> Save Product
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Custom Styles -->
+<style>
+    .image-upload-container {
+        width: 100%;
+    }
+
+    .image-preview-box {
+        width: 100%;
+        height: 250px;
+        border: 2px dashed #e0e0e0;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        background: #f8f9fa;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .image-preview-box:hover {
+        border-color: #ff6b35;
+        background: #fff5f2;
+    }
+
+    .preview-placeholder {
+        text-align: center;
+        color: #7f8c8d;
+    }
+
+    .preview-placeholder i {
+        font-size: 48px;
+        margin-bottom: 12px;
+        color: #ccc;
+    }
+
+    .preview-placeholder p {
+        margin: 8px 0 4px;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .preview-placeholder small {
+        font-size: 12px;
+        color: #7f8c8d;
+    }
+
+    .preview-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    #cropper-container img {
+        max-width: 100%;
+        display: block;
+    }
+
+    /* Form styling */
+    .admin-form-input,
+    .admin-form-select,
+    .admin-form-textarea {
+        font-family: 'Inter', sans-serif;
+    }
+
+    .admin-table tbody tr td input,
+    .admin-table tbody tr td select {
+        width: 100%;
+        padding: 8px 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+
+    .admin-table tbody tr td input:focus,
+    .admin-table tbody tr td select:focus {
+        outline: none;
+        border-color: #ff6b35;
+        box-shadow: 0 0 0 4px rgba(255, 107, 53, 0.1);
+    }
+</style>
+
+<!-- Scripts -->
+<script src="{% static 'assets/js/jquery-3.6.0.min.js' %}"></script>
+<script src="{% static 'assets/js/popper.min.js' %}"></script>
+<script src="{% static 'assets/plugins/bootstrap/js/bootstrap.min.js' %}"></script>
+<script src="{% static 'assets/js/script.js' %}"></script>
+
+<script>
+    let cropper;
+    let currentImageInput;
+
+    $(document).ready(function () {
+        // Image preview on file select
+        $('#id_image1, #id_image2').on('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const imageNum = $(this).attr('id').includes('image1') ? '1' : '2';
+            const reader = new FileReader();
+
+            reader.onload = function (event) {
+                $(`#preview-box-${imageNum}`).html(`<img src="${event.target.result}" class="preview-image" id="image${imageNum}-preview">`);
+            };
+
+            reader.readAsDataURL(file);
+        });
+
+        // Cropper functionality (if Cropper.js is loaded)
+        if (typeof Cropper !== 'undefined') {
+            $('input[type="file"]').on('change', function (e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                currentImageInput = $(this);
+                const reader = new FileReader();
+
+                reader.onload = function (event) {
+                    const imgElement = $('<img>', {
+                        src: event.target.result,
+                        style: 'max-width: 100%; display: block;'
+                    });
+
+                    $('#cropper-container').empty().append(imgElement);
+
+                    if (cropper) {
+                        cropper.destroy();
+                    }
+
+                    cropper = new Cropper(imgElement[0], {
+                        aspectRatio: 1,
+                        viewMode: 1,
+                        autoCropArea: 0.8,
+                        responsive: true,
+                        background: false
+                    });
+
+                    $('#image-cropper').slideDown();
+                    $('html, body').animate({
+                        scrollTop: $('#image-cropper').offset().top - 100
+                    }, 500);
+                };
+
+                reader.readAsDataURL(file);
+            });
+
+            $('#crop-image-btn').click(function () {
+                if (!cropper) return;
+
+                const canvas = cropper.getCroppedCanvas({
+                    width: 800,
+                    height: 800
+                });
+
+                const croppedImage = canvas.toDataURL('image/jpeg', 0.9);
+                const imageNum = currentImageInput.attr('id').includes('image1') ? '1' : '2';
+
+                $(`#image${imageNum}-preview`).attr('src', croppedImage);
+
+                // Convert to blob and update file input
+                canvas.toBlob(function (blob) {
+                    const file = new File([blob], `cropped_image_${imageNum}.jpg`, { type: 'image/jpeg' });
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    currentImageInput[0].files = dataTransfer.files;
+                });
+
+                cropper.destroy();
+                cropper = null;
+                $('#image-cropper').slideUp();
+            });
+
+            $('#cancel-crop-btn').click(function () {
+                if (cropper) {
+                    cropper.destroy();
+                    cropper = null;
+                }
+                currentImageInput.val('');
+                $('#image-cropper').slideUp();
+            });
+        }
+    });
+</script>
+
+{% endblock %}
