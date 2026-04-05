@@ -4,36 +4,49 @@
 {% block title %}Verify OTP - JoLetics{% endblock %}
 
 {% block content %}
-<div class="auth-card">
-    <div class="text-center mb-4">
-        <h2>VERIFY OTP</h2>
-        <p class="subtitle mt-2">We've sent a 6-digit code to your email. Please enter it below.</p>
+<div class="auth-card text-center">
+
+    <div class="otp-icon-wrap mb-3">
+        <i class="fas fa-shield-alt" style="font-size: 2.5rem; color: #ff6b35;"></i>
     </div>
 
-    <form method="POST" action="">
+    <h2>Verify OTP</h2>
+    <p class="subtitle">
+        We've sent a 6-digit code to<br>
+        <strong style="color:#1a1a1a;">{{ email }}</strong>
+    </p>
+
+    <form method="POST" action="?email={{ email }}">
         {% csrf_token %}
 
         <div class="mb-4">
-            <input type="text" class="form-control" name="otp" maxlength="6"
-                pattern="\d{6}" placeholder="******" style="letter-spacing: 15px; text-align: center; font-size: 24px; font-weight: 700; padding-left: 25px;" required autofocus>
+            <input
+                type="text"
+                class="form-control"
+                name="otp"
+                maxlength="6"
+                inputmode="numeric"
+                pattern="\d{6}"
+                placeholder="• • • • • •"
+                style="letter-spacing: 18px; text-align: center; font-size: 26px; font-weight: 700; padding: 14px 10px;"
+                required
+                autofocus>
         </div>
 
-        {% if messages %}
-            {% for message in messages %}
-            <div class="alert mb-3">
-                <i class="fas fa-exclamation-circle me-2"></i>{{ message }}
-            </div>
-            {% endfor %}
-        {% endif %}
-
-        <button type="submit" class="btn btn-primary-custom w-100 mb-4">VERIFY & PROCEED</button>
-
-        <div class="text-center">
-            <p class="mb-0" style="color: #666; font-size: 0.9rem;">
-                Didn't receive the code? 
-                <a href="#" style="font-weight: 600;">Resend OTP</a>
-            </p>
-        </div>
+        <button type="submit" class="btn btn-primary-custom w-100 mb-3">
+            <i class="fas fa-check-circle me-2"></i>Verify & Proceed
+        </button>
     </form>
+
+    <div class="mt-3">
+        <p style="color: #666; font-size: 0.9rem;">
+            Didn't receive a code?
+            <a href="{% url 'forgot_password' %}" style="font-weight: 600;">Resend OTP</a>
+        </p>
+        <p style="margin-top: 8px;">
+            <a href="{% url 'login' %}" style="font-size: 0.85rem; color: #999;">← Back to Login</a>
+        </p>
+    </div>
+
 </div>
-{% endblock %}
+{% endblock %}
