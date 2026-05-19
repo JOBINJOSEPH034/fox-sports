@@ -15,7 +15,6 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'fox.settings')
 application = get_wsgi_application()
 
 # Auto-create the database cache table on cold-start if it doesn't exist.
-# This is needed on Vercel since build.sh doesn't run in the Python lambda context.
 try:
     from django.db import connection
     with connection.cursor() as cursor:
@@ -28,4 +27,6 @@ try:
             call_command('createcachetable', verbosity=0)
 except Exception:
     pass  # Fail silently — never crash the app over cache table creation
+
+
 

@@ -1,65 +1,97 @@
-gunicorn
-whitenoise
-dj-database-url
-psycopg2-binary
-arabic-reshaper==3.0.0
+# Core Django & Web Framework
+Django==5.1.13
 asgiref==3.8.1
-asn1crypto==1.5.1
-Brotli==1.1.0
-cairocffi==1.7.1
-CairoSVG==2.7.1
-certifi==2024.12.14
-cffi==1.17.1
-chardet==5.2.0
-charset-normalizer==3.4.1
-click==8.1.8
-colorama==0.4.6
-cryptography==44.0.0
-cssselect2==0.7.0
-defusedxml==0.7.1
-Django==5.1.4
-django-cloudinary-storage
-cloudinary
-django-allauth==65.3.1
-et_xmlfile==2.0.0
-fonttools==4.55.3
-html5lib==1.1
-idna==3.10
-lxml==5.3.0
-numpy==2.2.1
-openpyxl==3.1.5
-oscrypto==1.3.0
-pandas==2.2.3
-pdfkit==1.0.0
-pillow==11.0.0
+whitenoise==6.8.0
+gunicorn==23.0.0
 
-pycparser==2.22
-pydyf==0.11.0
-pyHanko==0.25.3
-pyhanko-certvalidator==0.26.5
-PyJWT==2.10.1
-pypdf==5.1.0
-pyphen==0.17.0
-python-bidi==0.6.3
-python-dateutil==2.9.0.post0
-pytz==2024.2
-PyYAML==6.0.2
-qrcode==8.0
-razorpay==1.4.2
-reportlab==4.2.5
-requests==2.32.3
-setuptools==75.8.0
-six==1.17.0
+# Database
+psycopg2-binary==2.9.10
+dj-database-url==2.1.0
 sqlparse==0.5.3
-svglib==1.5.1
+
+# Authentication & Authorization
+django-allauth==65.13.0
+PyJWT==2.10.1
+
+# Image Processing & Storage
+Pillow==12.1.1
+cloudinary==1.41.1
+django-cloudinary-storage==0.3.0
+
+# PDF Generation (WeasyPrint + ReportLab)
+weasyprint==68.0
+reportlab==4.3.0
+CairoSVG==2.7.1
+cairocffi==1.7.1
+
+# Security & Cryptography
+cryptography==44.0.1
+certifi==2025.2.0
+
+# HTTP & Networking
+requests==2.32.4
+urllib3==2.5.0
+charset-normalizer==3.4.1
+idna==3.10
+
+# Data Processing & Excel
+pandas==2.3.0
+openpyxl==3.1.5
+numpy==2.2.1
+python-dateutil==2.9.0.post0
+
+# Text & Document Processing
+lxml==5.3.1
+html5lib==1.1.1
+cssselect2==0.7.0
 tinycss2==1.4.0
-tinyhtml5==2.0.0
+webencodings==0.5.1
+defusedxml==0.7.1
+
+# Font & Text Rendering
+fonttools==4.60.2
+pyphen==0.17.0
+arabic-reshaper==3.0.0
+python-bidi==0.6.3
+
+# Compression
+Brotli==1.2.0
+zopfli==0.2.3.post1
+
+# QR Code Generation
+qrcode==8.0
+
+# Utility Libraries
+pytz==2024.2
 tzdata==2024.2
 tzlocal==5.2
-uritools==4.0.3
-urllib3==2.3.0
-weasyprint==63.1
-webencodings==0.5.1
-xhtml2pdf==0.2.16
-xlwt==1.3.0
-zopfli==0.2.3.post1
+PyYAML==6.0.3
+click==8.1.8
+colorama==0.4.6
+
+# Configuration & Serialization
+cffi==1.17.1
+pycparser==2.22
+chardet==5.2.1
+et_xmlfile==2.0.0
+tinyhtml5==2.0.0
+
+# Build & Development Tools
+setuptools==78.1.1
+
+# Payment Integration
+razorpay==1.4.2
+
+# Django Sites Framework (required for allauth)
+django-sites==4.0
+
+# NOTE: REMOVED PACKAGES FOR SECURITY
+# - xhtml2pdf==0.2.16 (unmaintained, replaced by weasyprint)
+# - oscrypto==1.3.0 (unmaintained, security library)
+# - asn1crypto==1.5.1 (deprecated, use cryptography)
+# - pyHanko==0.25.3 (unused PDF signing)
+# - pyhanko-certvalidator==0.26.5 (unused cert validation)
+# - pdfkit==1.0.0 (duplicate, use weasyprint)
+# - pydyf==0.11.0 (transitive via weasyprint)
+# - xlwt==1.3.0 (legacy Excel, use openpyxl)
+# - six==1.17.0 (Python 2 compatibility, verify before removing)
