@@ -352,7 +352,7 @@
     </div>
     <div class="carousel-inner">
         <div class="carousel-item active">
-            <img src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=1920&h=600&fit=crop"
+            <img src="{% static 'img/new-carousel-1.jpg' %}" onerror="this.src='https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=1920&h=600&fit=crop'"
                 alt="Fitness Training">
             <div class="carousel-content">
                 <h1>Unleash Your Potential</h1>
@@ -361,7 +361,7 @@
             </div>
         </div>
         <div class="carousel-item">
-            <img src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1920&h=600&fit=crop" alt="Running">
+            <img src="{% static 'img/new-carousel-2.jpg' %}" onerror="this.src='https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1920&h=600&fit=crop'" alt="Running">
             <div class="carousel-content">
                 <h1>Train Like A Champion</h1>
                 <p>Engineered for excellence, built for victory</p>
@@ -369,7 +369,7 @@
             </div>
         </div>
         <div class="carousel-item">
-            <img src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=1920&h=600&fit=crop"
+            <img src="{% static 'img/new-carousel-3.jpg' %}" onerror="this.src='https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=1920&h=600&fit=crop'"
                 alt="Gym Equipment">
             <div class="carousel-content">
                 <h1>Elevate Your Game</h1>
@@ -440,7 +440,7 @@
                     {% endif %}
                     <div class="product-img-wrapper">
                         {% if product.image1 %}
-                        <img src="{{ product.image1.url }}" alt="{{ product.name }}">
+                        <img src="{{ product.image1.url }}" alt="{{ product.name }}" onerror="this.onerror=null; this.src='{% static 'img/new-product-1.jpg' %}';">
                         {% else %}
                         <div class="d-flex align-items-center justify-content-center h-100">
                             <i class="fas fa-box-open text-muted fa-3x"></i>
@@ -466,9 +466,38 @@
             {% endfor %}
         </div>
 
-        <p class="lead text-muted mb-5">Thank you for choosing JoLetics. Your order is being processed.</p>
         <div class="text-center mt-5">
             <a href="{% url 'shop' %}" class="btn btn-carousel px-5">VIEW ALL PRODUCTS</a>
+        </div>
+    </div>
+</section>
+
+<!-- Promo Offer Banners -->
+<section class="py-5" style="background: #f8f9fa;">
+    <div class="container">
+        <div class="row g-4 mb-4">
+            <div class="col-md-6">
+                <div class="position-relative rounded-4 overflow-hidden shadow-sm" style="min-height: 220px;">
+                    <img src="{% static 'img/new-offer-1.jpg' %}" class="w-100 h-100 position-absolute top-0 start-0" style="object-fit: cover;" alt="Special Season Offer">
+                    <div class="position-relative p-4 p-md-5 d-flex flex-column justify-content-center h-100" style="background: linear-gradient(90deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 100%); min-height: 220px;">
+                        <span class="badge bg-danger mb-2 align-self-start px-3 py-2 fw-bold">SAVE UP TO 30%</span>
+                        <h3 class="text-white fw-bold mb-2">High Performance Wear</h3>
+                        <p class="text-white-50 mb-3">Engineered athletic sportswear for champions</p>
+                        <a href="{% url 'shop_men' %}" class="btn btn-carousel align-self-start py-2 px-4" style="font-size: 0.9rem;">Shop Men's</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="position-relative rounded-4 overflow-hidden shadow-sm" style="min-height: 220px;">
+                    <img src="{% static 'img/new-offer-2.jpg' %}" class="w-100 h-100 position-absolute top-0 start-0" style="object-fit: cover;" alt="Clearance Sale">
+                    <div class="position-relative p-4 p-md-5 d-flex flex-column justify-content-center h-100" style="background: linear-gradient(90deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.3) 100%); min-height: 220px;">
+                        <span class="badge bg-warning text-dark mb-2 align-self-start px-3 py-2 fw-bold">SPECIAL DEAL</span>
+                        <h3 class="text-white fw-bold mb-2">Women's Training Gear</h3>
+                        <p class="text-white-50 mb-3">Elevate your fitness journey with style</p>
+                        <a href="{% url 'shop_women' %}" class="btn btn-carousel align-self-start py-2 px-4" style="font-size: 0.9rem;">Shop Women's</a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </section>

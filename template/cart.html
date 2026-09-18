@@ -450,7 +450,7 @@
                                 <div class="product-info">
                                     <div class="product-img-wrapper">
                                         {% if item.product.image1 %}
-                                        <img src="{{ item.product.image1.url }}" alt="{{ item.product.name }}">
+                                        <img src="{{ item.product.image1.url }}" alt="{{ item.product.name }}" onerror="this.onerror=null; this.src='{% static 'img/new-product-1.jpg' %}';">
                                         {% else %}
                                         <div
                                             class="d-flex align-items-center justify-content-center h-100 bg-light text-muted">

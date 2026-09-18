@@ -46,7 +46,7 @@
                             <tr class="border-bottom">
                                 <td class="ps-3 ps-md-4 py-3 py-md-4" style="width: 80px;">
                                     {% if item.product.image1 %}
-                                    <img src="{{ item.product.image1.url }}" class="rounded-12 border" style="width: 60px; height: 60px; min-width: 60px; object-fit: cover;" alt="{{ item.product.name }}">
+                                    <img src="{{ item.product.image1.url }}" class="rounded-12 border" style="width: 60px; height: 60px; min-width: 60px; object-fit: cover;" alt="{{ item.product.name }}" onerror="this.onerror=null; this.src='{% static 'img/new-product-1.jpg' %}';">
                                     {% else %}
                                     <div class="bg-light rounded-12 border d-flex align-items-center justify-content-center" style="width: 60px; height: 60px; min-width: 60px;">
                                         <i class="fas fa-box text-muted opacity-50"></i>

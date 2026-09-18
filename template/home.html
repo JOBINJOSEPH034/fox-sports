@@ -430,16 +430,73 @@
         </div>
     </nav>
 
-    <!-- Hero -->
-    <section class="hero">
+    <!-- Hero Section with Banners & Carousel -->
+    <section class="hero py-4" style="background: #f8f9fa;">
         <div class="container">
-            <div class="row align-items-center">
-                <div class="col-lg-6 hero-content">
-                    <h1>Elevate Your Game</h1>
-                    <p>Discover premium athletic equipment and apparel designed for champions. Quality gear that helps
-                        you perform at your best.</p>
-                    <a href="{% url 'login' %}" class="btn btn-hero">Shop Now <i
-                            class="fas fa-arrow-right ms-2"></i></a>
+            <div class="row g-4 align-items-stretch">
+                <div class="col-lg-8">
+                    <div id="homeCarousel" class="carousel slide rounded-4 overflow-hidden shadow-sm h-100" data-bs-ride="carousel" data-bs-interval="4000">
+                        <div class="carousel-indicators">
+                            <button type="button" data-bs-target="#homeCarousel" data-bs-slide-to="0" class="active"></button>
+                            <button type="button" data-bs-target="#homeCarousel" data-bs-slide-to="1"></button>
+                            <button type="button" data-bs-target="#homeCarousel" data-bs-slide-to="2"></button>
+                        </div>
+                        <div class="carousel-inner h-100" style="min-height: 420px;">
+                            <div class="carousel-item active h-100 position-relative">
+                                <img src="{% static 'img/new-carousel-1.jpg' %}" onerror="this.src='https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=1920&h=600&fit=crop'" class="d-block w-100 h-100" style="object-fit: cover; min-height: 420px;" alt="Men's Athletic Gear">
+                                <div class="carousel-caption d-flex flex-column align-items-start justify-content-end text-start p-4 p-md-5" style="background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.85) 100%); top: 0; left: 0; right: 0; bottom: 0;">
+                                    <span class="badge bg-primary mb-2 px-3 py-2 fw-semibold">NEW SEASON</span>
+                                    <h1 class="display-6 text-white fw-bold mb-2">Men's Athletic Collection</h1>
+                                    <p class="text-white-50 mb-3" style="max-width: 500px;">Engineered for durability and maximum athletic performance</p>
+                                    <a href="{% url 'login' %}" class="btn btn-hero">Shop Collection <i class="fas fa-arrow-right ms-2"></i></a>
+                                </div>
+                            </div>
+                            <div class="carousel-item h-100 position-relative">
+                                <img src="{% static 'img/new-carousel-2.jpg' %}" onerror="this.src='https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1920&h=600&fit=crop'" class="d-block w-100 h-100" style="object-fit: cover; min-height: 420px;" alt="Women's Collection">
+                                <div class="carousel-caption d-flex flex-column align-items-start justify-content-end text-start p-4 p-md-5" style="background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.85) 100%); top: 0; left: 0; right: 0; bottom: 0;">
+                                    <span class="badge bg-warning text-dark mb-2 px-3 py-2 fw-semibold">BEST SELLERS</span>
+                                    <h1 class="display-6 text-white fw-bold mb-2">Women's Elite Apparel</h1>
+                                    <p class="text-white-50 mb-3" style="max-width: 500px;">Elevate your daily training with premium comfort & fit</p>
+                                    <a href="{% url 'login' %}" class="btn btn-hero">Explore Women's <i class="fas fa-arrow-right ms-2"></i></a>
+                                </div>
+                            </div>
+                            <div class="carousel-item h-100 position-relative">
+                                <img src="{% static 'img/new-carousel-3.jpg' %}" onerror="this.src='https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=1920&h=600&fit=crop'" class="d-block w-100 h-100" style="object-fit: cover; min-height: 420px;" alt="Professional Equipment">
+                                <div class="carousel-caption d-flex flex-column align-items-start justify-content-end text-start p-4 p-md-5" style="background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.85) 100%); top: 0; left: 0; right: 0; bottom: 0;">
+                                    <span class="badge bg-success mb-2 px-3 py-2 fw-semibold">CHAMPIONS CHOICE</span>
+                                    <h1 class="display-6 text-white fw-bold mb-2">Pro Sports Gear</h1>
+                                    <p class="text-white-50 mb-3" style="max-width: 500px;">Handpicked equipment for athletes who strive for victory</p>
+                                    <a href="{% url 'login' %}" class="btn btn-hero">Discover Gear <i class="fas fa-arrow-right ms-2"></i></a>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="carousel-control-prev" type="button" data-bs-target="#homeCarousel" data-bs-slide="prev">
+                            <span class="carousel-control-prev-icon"></span>
+                        </button>
+                        <button class="carousel-control-next" type="button" data-bs-target="#homeCarousel" data-bs-slide="next">
+                            <span class="carousel-control-next-icon"></span>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-lg-4 d-flex flex-column gap-3">
+                    <div class="position-relative rounded-4 overflow-hidden shadow-sm flex-fill" style="min-height: 195px;">
+                        <img src="{% static 'img/new-offer-1.jpg' %}" class="w-100 h-100" style="object-fit: cover; min-height: 195px;" alt="Save 20% Offer">
+                        <div class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center p-4 text-white" style="background: linear-gradient(135deg, rgba(255,107,53,0.88) 0%, rgba(20,20,20,0.75) 100%);">
+                            <span class="badge bg-white text-dark mb-2 align-self-start fw-bold">SAVE 20%</span>
+                            <h4 class="fw-bold mb-1">Special Season Offer</h4>
+                            <p class="small text-white-50 mb-2">Exclusive discounts on top sports gear</p>
+                            <a href="{% url 'login' %}" class="btn btn-sm btn-light fw-bold align-self-start rounded-pill px-3">Shop Now</a>
+                        </div>
+                    </div>
+                    <div class="position-relative rounded-4 overflow-hidden shadow-sm flex-fill" style="min-height: 195px;">
+                        <img src="{% static 'img/new-offer-2.jpg' %}" class="w-100 h-100" style="object-fit: cover; min-height: 195px;" alt="Up to 50% Off">
+                        <div class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center p-4 text-white" style="background: linear-gradient(135deg, rgba(20,20,20,0.88) 0%, rgba(255,107,53,0.75) 100%);">
+                            <span class="badge bg-warning text-dark mb-2 align-self-start fw-bold">UP TO 50% OFF</span>
+                            <h4 class="fw-bold mb-1">Clearance Deals</h4>
+                            <p class="small text-white-50 mb-2">Unbeatable prices on premium equipment</p>
+                            <a href="{% url 'login' %}" class="btn btn-sm btn-warning text-dark fw-bold align-self-start rounded-pill px-3">Discover</a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -503,7 +560,7 @@
 
                         <div class="product-img-wrapper">
                             {% if product.image1 %}
-                            <img src="{{ product.image1.url }}" alt="{{ product.name }}">
+                            <img src="{{ product.image1.url }}" alt="{{ product.name }}" onerror="this.onerror=null; this.src='{% static 'img/new-product-1.jpg' %}';">
                             {% else %}
                             <div class="d-flex align-items-center justify-content-center h-100">
                                 <i class="fas fa-box-open text-muted fa-3x"></i>
@@ -548,6 +605,36 @@
                     </a>
                 </div>
                 {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Promotional Offers Banner -->
+    <section class="py-5" style="background: #fff;">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="position-relative rounded-4 overflow-hidden shadow-sm" style="min-height: 240px;">
+                        <img src="{% static 'img/new-offer-1.jpg' %}" class="w-100 h-100 position-absolute top-0 start-0" style="object-fit: cover;" alt="Special Season Offer">
+                        <div class="position-relative p-5 d-flex flex-column justify-content-center h-100" style="background: linear-gradient(90deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 100%); min-height: 240px;">
+                            <span class="badge bg-danger mb-2 align-self-start px-3 py-2 fw-bold">SAVE UP TO 30%</span>
+                            <h3 class="text-white fw-bold mb-2">Endurance Gear</h3>
+                            <p class="text-white-50 mb-3">Top-performing running and training equipment</p>
+                            <a href="{% url 'login' %}" class="btn btn-hero align-self-start py-2 px-4">Shop Now <i class="fas fa-arrow-right ms-2"></i></a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="position-relative rounded-4 overflow-hidden shadow-sm" style="min-height: 240px;">
+                        <img src="{% static 'img/new-offer-2.jpg' %}" class="w-100 h-100 position-absolute top-0 start-0" style="object-fit: cover;" alt="Clearance Sale">
+                        <div class="position-relative p-5 d-flex flex-column justify-content-center h-100" style="background: linear-gradient(90deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.4) 100%); min-height: 240px;">
+                            <span class="badge bg-warning text-dark mb-2 align-self-start px-3 py-2 fw-bold">SPECIAL DEAL</span>
+                            <h3 class="text-white fw-bold mb-2">Footwear Clearance</h3>
+                            <p class="text-white-50 mb-3">Engineered for comfort, stability, and speed</p>
+                            <a href="{% url 'login' %}" class="btn btn-warning text-dark fw-bold align-self-start rounded-pill py-2 px-4">Claim Deal <i class="fas fa-arrow-right ms-2"></i></a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </section>

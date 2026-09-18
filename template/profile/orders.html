@@ -139,7 +139,7 @@
                 <div class="order-summary-icons">
                     {% for item in order.items.all|slice:":3" %}
                         {% if item.product.image1 %}
-                        <img src="{{ item.product.image1.url }}" class="order-item-img me-1" style="width: 40px; height: 40px;" alt="{{ item.product.name }}">
+                        <img src="{{ item.product.image1.url }}" class="order-item-img me-1" style="width: 40px; height: 40px; object-fit: cover;" alt="{{ item.product.name }}" onerror="this.onerror=null; this.src='{% static 'img/new-product-1.jpg' %}';">
                         {% endif %}
                     {% endfor %}
                     {% if order.items.count > 3 %}

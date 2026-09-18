@@ -352,7 +352,7 @@
             <div class="gallery-container">
                 <div class="main-img-wrapper" id="mainImageWrapper">
                     {% if product.image1 %}
-                    <img src="{{ product.image1.url }}" id="mainProductImage" alt="{{ product.name }}">
+                    <img src="{{ product.image1.url }}" id="mainProductImage" alt="{{ product.name }}" onerror="this.onerror=null; this.src='{% static 'img/new-product-1.jpg' %}';">
                     {% else %}
                     <div class="text-center p-5">
                         <i class="fas fa-box-open text-muted fa-4x mb-3"></i>
@@ -364,12 +364,12 @@
                 <div class="d-flex gap-3 justify-content-center">
                     {% if product.image1 %}
                     <button class="thumb-btn active" onclick="updateMainImage('{{ product.image1.url }}', this)">
-                        <img src="{{ product.image1.url }}" alt="Thumb 1">
+                        <img src="{{ product.image1.url }}" alt="Thumb 1" onerror="this.onerror=null; this.src='{% static 'img/new-product-1.jpg' %}';">
                     </button>
                     {% endif %}
                     {% if product.image2 %}
                     <button class="thumb-btn" onclick="updateMainImage('{{ product.image2.url }}', this)">
-                        <img src="{{ product.image2.url }}" alt="Thumb 2">
+                        <img src="{{ product.image2.url }}" alt="Thumb 2" onerror="this.onerror=null; this.src='{% static 'img/new-product-1.jpg' %}';">
                     </button>
                     {% endif %}
                     {% if product.image3 %}

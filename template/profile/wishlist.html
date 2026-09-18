@@ -83,7 +83,7 @@
         <div class="wishlist-img-wrapper">
             <a href="{% url 'product_details' item.product.id %}">
                 {% if item.product.image1 %}
-                <img src="{{ item.product.image1.url }}" class="wishlist-img" alt="{{ item.product.name }}">
+                <img src="{{ item.product.image1.url }}" class="wishlist-img" alt="{{ item.product.name }}" onerror="this.onerror=null; this.src='{% static 'img/new-product-1.jpg' %}';">
                 {% else %}
                 <div class="w-100 h-100 d-flex align-items-center justify-content-center bg-light">
                     <i class="fas fa-image text-muted"></i>

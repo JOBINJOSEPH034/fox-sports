@@ -466,8 +466,8 @@ def admin_order_details(request, order_id):
             "".join(
                 f"""
                 <li class="d-flex align-items-center gap-3 mb-2">
-                    <img src="{item.product.image1.url if item.product else item.variant.product.image1.url}" 
-                         alt="{item.product.name if item.product else item.variant.product.name}" 
+                    <img src="{item.product.image1_url if item.product else (item.variant.product.image1_url if item.variant and item.variant.product else '/static/img/new-product-1.jpg')}" 
+                         alt="{item.product.name if item.product else (item.variant.product.name if item.variant and item.variant.product else 'Product')}" 
                          class="rounded" width="120" height="120">
                     <div>
                         <div>{item.product.name if item.product else f"{item.variant.product.name} ({item.variant.name})"} (×{item.quantity})</div>

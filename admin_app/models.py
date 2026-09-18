@@ -56,6 +56,30 @@ class Product(models.Model):
     discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0) 
     discount_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)  
 
+    @property
+    def image1_url(self):
+        if not self.image1:
+            return '/static/img/new-product-1.jpg'
+        val = str(self.image1).strip()
+        if val.startswith('http://') or val.startswith('https://'):
+            return val
+        try:
+            return self.image1.url
+        except Exception:
+            return f'/static/{val.lstrip("/")}'
+
+    @property
+    def image2_url(self):
+        if not self.image2:
+            return self.image1_url
+        val = str(self.image2).strip()
+        if val.startswith('http://') or val.startswith('https://'):
+            return val
+        try:
+            return self.image2.url
+        except Exception:
+            return f'/static/{val.lstrip("/")}'
+
     def __str__(self):
         return self.name
 
